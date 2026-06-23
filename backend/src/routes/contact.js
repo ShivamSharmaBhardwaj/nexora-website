@@ -4,7 +4,7 @@ import { body, validationResult } from 'express-validator';
 import pool from '../config/db.js';
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
-import auth from '../middleware/auth.js'; // Import auth middleware
+import auth from '../middleware/auth.js';
 dotenv.config();
 
 const router = express.Router();
@@ -17,7 +17,7 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-// Submit contact form (public - no auth needed)
+// Submit contact form (public)
 router.post('/', [
   body('name').notEmpty().withMessage('Name required'),
   body('email').isEmail().withMessage('Valid email required'),
@@ -31,8 +31,8 @@ router.post('/', [
   const { name, email, phone, subject, message, type } = req.body;
 
   try {
-    const [result] = await pool.query(
-      'INSERT INTO contacts (name, email, phone, subject, message, type) VALUES (?, ?, ?, ?, ?, ?)',
+    const result = await pool.query(
+      'INSERT INTO contacts (name, email, phone, subject, message, type) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
       [name, email, phone || '', subject || '', message, type || 'general']
     );
 
@@ -53,28 +53,28 @@ router.post('/', [
       `
     });
 
-    res.status(201).json({ message: 'Message sent successfully', id: result.insertId });
+    res.status(201).json({ message: 'Message sent successfully', id: result.rows[0].id });
   } catch (error) {
     console.error('Contact error:', error);
     res.status(500).json({ message: error.message });
   }
 });
 
-// Get all contacts (admin only) - ADD auth middleware
+// Get all contacts (admin only)
 router.get('/', auth, async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM contacts ORDER BY created_at DESC');
-    res.json(rows);
+    const result = await pool.query('SELECT * FROM contacts ORDER BY created_at DESC');
+    res.json(result.rows);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
-// Mark as read (admin only) - ADD auth middleware
+// Mark as read (admin only)
 router.put('/:id/read', auth, async (req, res) => {
   try {
-    const [result] = await pool.query('UPDATE contacts SET is_read = 1 WHERE id = ?', [req.params.id]);
-    if (result.affectedRows === 0) {
+    const result = await pool.query('UPDATE contacts SET is_read = $1 WHERE id = $2', [true, req.params.id]);
+    if (result.rowCount === 0) {
       return res.status(404).json({ message: 'Contact not found' });
     }
     res.json({ message: 'Marked as read' });
@@ -83,11 +83,11 @@ router.put('/:id/read', auth, async (req, res) => {
   }
 });
 
-// Delete contact (admin only) - ADD auth middleware
+// Delete contact (admin only)
 router.delete('/:id', auth, async (req, res) => {
   try {
-    const [result] = await pool.query('DELETE FROM contacts WHERE id = ?', [req.params.id]);
-    if (result.affectedRows === 0) {
+    const result = await pool.query('DELETE FROM contacts WHERE id = $1', [req.params.id]);
+    if (result.rowCount === 0) {
       return res.status(404).json({ message: 'Contact not found' });
     }
     res.json({ message: 'Deleted' });

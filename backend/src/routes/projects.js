@@ -4,36 +4,30 @@ import auth from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Helper function to parse features safely (handles both JSON and comma-separated strings)
+// Helper function to parse features
 const parseFeatures = (features) => {
   if (!features) return [];
-  
-  // If it's already an array, return it
   if (Array.isArray(features)) return features;
-  
-  // If it's a string, try to parse it
   if (typeof features === 'string') {
-    // Try parsing as JSON first
     try {
       const parsed = JSON.parse(features);
       if (Array.isArray(parsed)) return parsed;
     } catch (e) {
-      // If JSON parsing fails, split by comma
       return features.split(',').map(f => f.trim()).filter(f => f);
     }
   }
-  
   return [];
 };
 
 // Get all projects
 router.get('/', async (req, res) => {
   try {
-    const [rows] = await pool.query(
-      'SELECT * FROM projects WHERE is_active = 1 ORDER BY created_at DESC'
+    const result = await pool.query(
+      'SELECT * FROM projects WHERE is_active = $1 ORDER BY created_at DESC',
+      [true]
     );
     
-    const projects = rows.map(project => ({
+    const projects = result.rows.map(project => ({
       ...project,
       features: parseFeatures(project.features)
     }));
@@ -48,11 +42,11 @@ router.get('/', async (req, res) => {
 // Get projects by category
 router.get('/category/:category', async (req, res) => {
   try {
-    const [rows] = await pool.query(
-      'SELECT * FROM projects WHERE category = ? AND is_active = 1',
-      [req.params.category]
+    const result = await pool.query(
+      'SELECT * FROM projects WHERE category = $1 AND is_active = $2',
+      [req.params.category, true]
     );
-    const projects = rows.map(project => ({
+    const projects = result.rows.map(project => ({
       ...project,
       features: parseFeatures(project.features)
     }));
@@ -65,13 +59,13 @@ router.get('/category/:category', async (req, res) => {
 // Get single project
 router.get('/:id', async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM projects WHERE id = ?', [req.params.id]);
-    if (rows.length === 0) {
+    const result = await pool.query('SELECT * FROM projects WHERE id = $1', [req.params.id]);
+    if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Project not found' });
     }
     const project = {
-      ...rows[0],
-      features: parseFeatures(rows[0].features)
+      ...result.rows[0],
+      features: parseFeatures(result.rows[0].features)
     };
     res.json(project);
   } catch (error) {
@@ -84,30 +78,28 @@ router.post('/', auth, async (req, res) => {
   const { title, category, description, short_desc, demo_url, video_url, image_url, icon, features, is_upcoming } = req.body;
   
   try {
-    // Ensure features is a valid JSON array
     let featuresJson = JSON.stringify([]);
     if (features) {
       if (Array.isArray(features)) {
         featuresJson = JSON.stringify(features);
       } else if (typeof features === 'string') {
         try {
-          // Try to parse as JSON
           const parsed = JSON.parse(features);
           featuresJson = JSON.stringify(parsed);
         } catch (e) {
-          // If not valid JSON, split by comma
           featuresJson = JSON.stringify(features.split(',').map(f => f.trim()).filter(f => f));
         }
       }
     }
     
-    const [result] = await pool.query(
+    const result = await pool.query(
       `INSERT INTO projects 
        (title, category, description, short_desc, demo_url, video_url, image_url, icon, features, is_upcoming) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [title, category, description, short_desc, demo_url, video_url, image_url, icon, featuresJson, is_upcoming || 0]
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+       RETURNING id`,
+      [title, category, description, short_desc, demo_url, video_url, image_url, icon, featuresJson, is_upcoming || false]
     );
-    res.status(201).json({ message: 'Project created', id: result.insertId });
+    res.status(201).json({ message: 'Project created', id: result.rows[0].id });
   } catch (error) {
     console.error('Error creating project:', error);
     res.status(500).json({ message: error.message });
@@ -119,7 +111,6 @@ router.put('/:id', auth, async (req, res) => {
   const { title, category, description, short_desc, demo_url, video_url, image_url, icon, features, is_active, is_upcoming } = req.body;
   
   try {
-    // Ensure features is a valid JSON array
     let featuresJson = JSON.stringify([]);
     if (features) {
       if (Array.isArray(features)) {
@@ -134,16 +125,16 @@ router.put('/:id', auth, async (req, res) => {
       }
     }
     
-    const [result] = await pool.query(
+    const result = await pool.query(
       `UPDATE projects SET 
-       title = ?, category = ?, description = ?, short_desc = ?, 
-       demo_url = ?, video_url = ?, image_url = ?, icon = ?, 
-       features = ?, is_active = ?, is_upcoming = ? 
-       WHERE id = ?`,
+       title = $1, category = $2, description = $3, short_desc = $4, 
+       demo_url = $5, video_url = $6, image_url = $7, icon = $8, 
+       features = $9, is_active = $10, is_upcoming = $11 
+       WHERE id = $12`,
       [title, category, description, short_desc, demo_url, video_url, image_url, icon, featuresJson, is_active, is_upcoming, req.params.id]
     );
     
-    if (result.affectedRows === 0) {
+    if (result.rowCount === 0) {
       return res.status(404).json({ message: 'Project not found' });
     }
     res.json({ message: 'Project updated' });
@@ -156,8 +147,8 @@ router.put('/:id', auth, async (req, res) => {
 // Delete project (admin only)
 router.delete('/:id', auth, async (req, res) => {
   try {
-    const [result] = await pool.query('DELETE FROM projects WHERE id = ?', [req.params.id]);
-    if (result.affectedRows === 0) {
+    const result = await pool.query('DELETE FROM projects WHERE id = $1', [req.params.id]);
+    if (result.rowCount === 0) {
       return res.status(404).json({ message: 'Project not found' });
     }
     res.json({ message: 'Project deleted' });
