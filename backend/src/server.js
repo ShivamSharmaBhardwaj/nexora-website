@@ -2,9 +2,9 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import pool from './config/db.js';  // Your PostgreSQL connection
+import pool from './config/db.js';
 
-// Routes
+// ✅ IMPORT ROUTES - Make sure these paths are correct
 import projectRoutes from './routes/projects.js';
 import testimonialRoutes from './routes/testimonials.js';
 import contactRoutes from './routes/contact.js';
@@ -16,13 +16,12 @@ const app = express();
 const PORT = process.env.PORT || 5002;
 
 // ============================================
-// ADD THIS FUNCTION TO CREATE TABLES AUTOMATICALLY
+// AUTO-CREATE TABLES FUNCTION
 // ============================================
 async function createTables() {
   try {
     console.log('📊 Creating tables if they don\'t exist...');
     
-    // Create projects table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS projects (
         id SERIAL PRIMARY KEY,
@@ -43,7 +42,6 @@ async function createTables() {
     `);
     console.log('✅ Projects table ready');
 
-    // Create testimonials table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS testimonials (
         id SERIAL PRIMARY KEY,
@@ -59,7 +57,6 @@ async function createTables() {
     `);
     console.log('✅ Testimonials table ready');
 
-    // Create contacts table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS contacts (
         id SERIAL PRIMARY KEY,
@@ -75,7 +72,6 @@ async function createTables() {
     `);
     console.log('✅ Contacts table ready');
 
-    // Create users table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -113,12 +109,17 @@ async function createTables() {
   }
 }
 
-// CORS configuration
+// ============================================
+// CORS CONFIGURATION
+// ============================================
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174',
   'https://nexora-website-epts.onrender.com',
-  // Add your frontend URL
+  'https://nexora-business-frontend.railway.app',
+  'https://nexora-business-backend.railway.app'
 ];
 
 app.use(cors({
@@ -139,7 +140,9 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health check
+// ============================================
+// HEALTH CHECK
+// ============================================
 app.get('/api/health', async (req, res) => {
   try {
     const result = await pool.query('SELECT 1+1 as result');
@@ -152,29 +155,56 @@ app.get('/api/health', async (req, res) => {
   } catch (error) {
     res.json({ 
       status: 'OK', 
-      database: 'not connected (check DATABASE_URL)',
+      database: 'not connected',
       message: error.message,
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// Routes
+// ============================================
+// TEST ROUTE
+// ============================================
+app.get('/api/test', (req, res) => {
+  res.json({ 
+    message: 'API is working!',
+    timestamp: new Date().toISOString(),
+    endpoints: ['/api/health', '/api/test', '/api/projects', '/api/testimonials', '/api/auth', '/api/contact']
+  });
+});
+
+// ============================================
+// ✅ REGISTER ROUTES - THIS IS THE IMPORTANT PART
+// ============================================
+console.log('📋 Registering routes...');
 app.use('/api/auth', authRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/testimonials', testimonialRoutes);
 app.use('/api/contact', contactRoutes);
+console.log('✅ Routes registered: /api/auth, /api/projects, /api/testimonials, /api/contact');
 
-// 404 handler
+// ============================================
+// 404 HANDLER
+// ============================================
 app.use((req, res) => {
+  console.log(`❌ Route not found: ${req.method} ${req.path}`);
   res.status(404).json({ 
     message: 'Route not found', 
     path: req.path,
-    availableEndpoints: ['/api/health', '/api/projects', '/api/testimonials', '/api/auth', '/api/contact']
+    availableEndpoints: [
+      '/api/health', 
+      '/api/test', 
+      '/api/projects', 
+      '/api/testimonials', 
+      '/api/auth', 
+      '/api/contact'
+    ]
   });
 });
 
-// Error handler
+// ============================================
+// ERROR HANDLER
+// ============================================
 app.use((err, req, res, next) => {
   console.error('Error:', err.stack);
   res.status(500).json({ 
@@ -184,7 +214,7 @@ app.use((err, req, res, next) => {
 });
 
 // ============================================
-// CALL THE FUNCTION BEFORE STARTING THE SERVER
+// START SERVER
 // ============================================
 createTables().then(() => {
   app.listen(PORT, '0.0.0.0', () => {
