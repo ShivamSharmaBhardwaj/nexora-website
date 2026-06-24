@@ -39,11 +39,10 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get projects by category
 router.get('/category/:category', async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT * FROM projects WHERE category = $1 AND is_active = $2',
+      'SELECT * FROM projects WHERE LOWER(category) = LOWER($1) AND is_active = $2',
       [req.params.category, true]
     );
     const projects = result.rows.map(project => ({
@@ -52,6 +51,7 @@ router.get('/category/:category', async (req, res) => {
     }));
     res.json(projects);
   } catch (error) {
+    console.error('Error fetching by category:', error);
     res.status(500).json({ message: error.message });
   }
 });
