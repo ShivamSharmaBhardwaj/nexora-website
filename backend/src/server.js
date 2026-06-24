@@ -3,25 +3,29 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import pool from './config/db.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-// ✅ IMPORT ROUTES - Make sure these paths are correct
+// Routes
 import projectRoutes from './routes/projects.js';
 import testimonialRoutes from './routes/testimonials.js';
 import contactRoutes from './routes/contact.js';
 import authRoutes from './routes/auth.js';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5002;
 
 // ============================================
-// AUTO-CREATE TABLES FUNCTION
+// CREATE TABLES AUTOMATICALLY
 // ============================================
 async function createTables() {
   try {
     console.log('📊 Creating tables if they don\'t exist...');
     
+    // Create projects table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS projects (
         id SERIAL PRIMARY KEY,
@@ -42,6 +46,7 @@ async function createTables() {
     `);
     console.log('✅ Projects table ready');
 
+    // Create testimonials table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS testimonials (
         id SERIAL PRIMARY KEY,
@@ -57,6 +62,7 @@ async function createTables() {
     `);
     console.log('✅ Testimonials table ready');
 
+    // Create contacts table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS contacts (
         id SERIAL PRIMARY KEY,
@@ -72,6 +78,7 @@ async function createTables() {
     `);
     console.log('✅ Contacts table ready');
 
+    // Create users table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -84,34 +91,13 @@ async function createTables() {
     `);
     console.log('✅ Users table ready');
 
-    // Insert sample data if tables are empty
-    const projectCheck = await pool.query('SELECT COUNT(*) FROM projects');
-    if (parseInt(projectCheck.rows[0].count) === 0) {
-      await pool.query(`
-        INSERT INTO projects (title, category, description, features, is_active) 
-        VALUES ('Sample Project', 'Web Development', 'This is a sample project', '["Feature 1", "Feature 2", "Feature 3"]', TRUE)
-      `);
-      console.log('✅ Sample project added');
-    }
-
-    const testimonialCheck = await pool.query('SELECT COUNT(*) FROM testimonials');
-    if (parseInt(testimonialCheck.rows[0].count) === 0) {
-      await pool.query(`
-        INSERT INTO testimonials (client_name, client_company, feedback, rating, is_approved) 
-        VALUES ('John Doe', 'ABC Corp', 'Great service! Highly recommended.', 5, TRUE)
-      `);
-      console.log('✅ Sample testimonial added');
-    }
-
     console.log('🎉 Database setup complete!');
   } catch (error) {
     console.error('❌ Error creating tables:', error.message);
   }
 }
 
-// ============================================
-// CORS CONFIGURATION
-// ============================================
+// CORS configuration
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
@@ -119,17 +105,37 @@ const allowedOrigins = [
   'http://127.0.0.1:5174',
   'https://nexora-website-epts.onrender.com',
   'https://nexora-business-frontend.railway.app',
-  'https://nexora-business-backend.railway.app'
+  'https://nexora-business-backend.railway.app',
+  // Add your tunnel URL
+  'https://sight-exploring-validity-discretion.trycloudflare.com',
+  // Allow all cloudflare tunnel subdomains (for development)
+  /\.trycloudflare\.com$/
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    
+    // Check if origin is allowed
+    const isAllowed = allowedOrigins.some(allowed => {
+      if (typeof allowed === 'string') {
+        return allowed === origin;
+      }
+      if (allowed instanceof RegExp) {
+        return allowed.test(origin);
+      }
+      return false;
+    });
+    
+    if (isAllowed) {
       callback(null, true);
     } else {
-      console.warn(`Origin ${origin} not allowed by CORS`);
-      callback(null, true);
+      console.warn(`⚠️ Origin ${origin} not allowed by CORS`);
+      // In development, you might want to allow all origins
+      // For production, be strict
+      callback(null, true); // For development, allow anyway
+      // callback(new Error('Not allowed by CORS')); // For production
     }
   },
   credentials: true,
@@ -141,8 +147,26 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // ============================================
-// HEALTH CHECK
+// ROOT ROUTE - Fix the 404 error
 // ============================================
+app.get('/', (req, res) => {
+  res.json({
+    name: 'Krynova Technologies API',
+    version: '1.0.0',
+    status: 'running',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: '/api/health',
+      projects: '/api/projects',
+      testimonials: '/api/testimonials',
+      contact: '/api/contact',
+      auth: '/api/auth'
+    },
+    documentation: 'https://github.com/ShivamSharmaBhardwaj/nexora-website'
+  });
+});
+
+// Health check
 app.get('/api/health', async (req, res) => {
   try {
     const result = await pool.query('SELECT 1+1 as result');
@@ -155,27 +179,14 @@ app.get('/api/health', async (req, res) => {
   } catch (error) {
     res.json({ 
       status: 'OK', 
-      database: 'not connected',
+      database: 'not connected (check DATABASE_URL)',
       message: error.message,
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// ============================================
-// TEST ROUTE
-// ============================================
-app.get('/api/test', (req, res) => {
-  res.json({ 
-    message: 'API is working!',
-    timestamp: new Date().toISOString(),
-    endpoints: ['/api/health', '/api/test', '/api/projects', '/api/testimonials', '/api/auth', '/api/contact']
-  });
-});
-
-// ============================================
-// ✅ REGISTER ROUTES - THIS IS THE IMPORTANT PART
-// ============================================
+// Routes
 console.log('📋 Registering routes...');
 app.use('/api/auth', authRoutes);
 app.use('/api/projects', projectRoutes);
@@ -184,16 +195,15 @@ app.use('/api/contact', contactRoutes);
 console.log('✅ Routes registered: /api/auth, /api/projects, /api/testimonials, /api/contact');
 
 // ============================================
-// 404 HANDLER
+// API 404 handler for unmatched API routes
 // ============================================
-app.use((req, res) => {
-  console.log(`❌ Route not found: ${req.method} ${req.path}`);
+app.use('/api/*', (req, res) => {
   res.status(404).json({ 
-    message: 'Route not found', 
+    message: 'API endpoint not found', 
     path: req.path,
+    method: req.method,
     availableEndpoints: [
-      '/api/health', 
-      '/api/test', 
+      '/api/health',
       '/api/projects', 
       '/api/testimonials', 
       '/api/auth', 
@@ -203,8 +213,43 @@ app.use((req, res) => {
 });
 
 // ============================================
-// ERROR HANDLER
+// 404 handler for all other routes
 // ============================================
+app.use((req, res) => {
+  // Don't return JSON for browser requests - serve the frontend if available
+  const acceptHeader = req.headers.accept || '';
+  
+  // Check if the request accepts HTML (likely a browser)
+  if (acceptHeader.includes('text/html')) {
+    // Try to serve the frontend if it's built
+    const frontendPath = path.join(__dirname, '../../frontend/dist');
+    try {
+      if (require('fs').existsSync(path.join(frontendPath, 'index.html'))) {
+        res.sendFile(path.join(frontendPath, 'index.html'));
+        return;
+      }
+    } catch (err) {
+      // Fall through to JSON response
+    }
+  }
+  
+  // Default JSON response for API-like requests
+  res.status(404).json({ 
+    message: 'Route not found', 
+    path: req.path,
+    method: req.method,
+    availableEndpoints: [
+      '/',
+      '/api/health', 
+      '/api/projects', 
+      '/api/testimonials', 
+      '/api/auth', 
+      '/api/contact'
+    ]
+  });
+});
+
+// Error handler
 app.use((err, req, res, next) => {
   console.error('Error:', err.stack);
   res.status(500).json({ 
@@ -214,12 +259,15 @@ app.use((err, req, res, next) => {
 });
 
 // ============================================
-// START SERVER
+// START THE SERVER
 // ============================================
 createTables().then(() => {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
     console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
+    console.log(`🏠 Root endpoint: http://localhost:${PORT}/`);
     console.log(`🌐 Allowed origins:`, allowedOrigins);
   });
 });
+
+export default app;
