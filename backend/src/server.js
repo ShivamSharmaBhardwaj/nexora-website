@@ -1,10 +1,14 @@
-// src/server.js
+// backend/src/server.js
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import pool from './config/db.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
+
+// Import security middleware
+import { apiLimiter } from './middleware/rateLimit.js';
+import { sanitizeInput } from './middleware/validation.js';
 
 // Routes
 import projectRoutes from './routes/projects.js';
@@ -17,6 +21,63 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5002;
+
+// ============================================
+// SECURITY MIDDLEWARE (Global)
+// ============================================
+
+// CORS Configuration
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174',
+  'https://nexora-website-epts.onrender.com',
+  'https://nexora-website-1.onrender.com',
+  'https://nexora-business-frontend.railway.app',
+  'https://nexora-business-backend.railway.app',
+  'https://sight-exploring-validity-discretion.trycloudflare.com',
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    
+    const isAllowed = allowedOrigins.some(allowed => {
+      if (typeof allowed === 'string') {
+        return allowed === origin;
+      }
+      if (allowed instanceof RegExp) {
+        return allowed.test(origin);
+      }
+      return false;
+    });
+    
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      console.warn(`⚠️ Origin ${origin} not allowed by CORS`);
+      if (origin.includes('.onrender.com') || origin.includes('.trycloudflare.com')) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Body parsing with size limits
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Global sanitization of all request bodies
+app.use(sanitizeInput);
+
+// Global API rate limiting
+app.use('/api', apiLimiter);
 
 // ============================================
 // CREATE TABLES AUTOMATICALLY
@@ -62,7 +123,7 @@ async function createTables() {
     `);
     console.log('✅ Testimonials table ready');
 
-    // Create contacts table
+    // Create contacts table with ip_address column
     await pool.query(`
       CREATE TABLE IF NOT EXISTS contacts (
         id SERIAL PRIMARY KEY,
@@ -73,6 +134,7 @@ async function createTables() {
         message TEXT NOT NULL,
         type VARCHAR(50) DEFAULT 'general',
         is_read BOOLEAN DEFAULT FALSE,
+        ip_address VARCHAR(45),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
@@ -97,58 +159,11 @@ async function createTables() {
   }
 }
 
-// backend/src/server.js
-
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:5174',
-  'http://127.0.0.1:5173',
-  'http://127.0.0.1:5174',
-  'https://nexora-website-epts.onrender.com',
-  'https://nexora-website-1.onrender.com',     // 👈 ADD THIS
-  'https://nexora-business-frontend.railway.app',
-  'https://nexora-business-backend.railway.app',
-  'https://sight-exploring-validity-discretion.trycloudflare.com',
-];
-
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-    
-    // Check if origin is allowed
-    const isAllowed = allowedOrigins.some(allowed => {
-      if (typeof allowed === 'string') {
-        return allowed === origin;
-      }
-      if (allowed instanceof RegExp) {
-        return allowed.test(origin);
-      }
-      return false;
-    });
-    
-    if (isAllowed) {
-      callback(null, true);
-    } else {
-      console.warn(`⚠️ Origin ${origin} not allowed by CORS`);
-      // For Render deployments, allow any .onrender.com domain
-      if (origin.includes('.onrender.com')) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
 // ============================================
-// ROOT ROUTE - Fix the 404 error
+// ROUTES
 // ============================================
+
+// Root
 app.get('/', (req, res) => {
   res.json({
     name: 'Krynova Technologies API',
@@ -177,9 +192,9 @@ app.get('/api/health', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    res.json({ 
-      status: 'OK', 
-      database: 'not connected (check DATABASE_URL)',
+    res.status(500).json({ 
+      status: 'Error', 
+      database: 'disconnected',
       message: error.message,
       timestamp: new Date().toISOString()
     });
@@ -195,8 +210,10 @@ app.use('/api/contact', contactRoutes);
 console.log('✅ Routes registered: /api/auth, /api/projects, /api/testimonials, /api/contact');
 
 // ============================================
-// API 404 handler for unmatched API routes
+// 404 HANDLERS
 // ============================================
+
+// API 404 handler
 app.use('/api/*', (req, res) => {
   res.status(404).json({ 
     message: 'API endpoint not found', 
@@ -212,28 +229,8 @@ app.use('/api/*', (req, res) => {
   });
 });
 
-// ============================================
-// 404 handler for all other routes
-// ============================================
+// General 404 handler
 app.use((req, res) => {
-  // Don't return JSON for browser requests - serve the frontend if available
-  const acceptHeader = req.headers.accept || '';
-  
-  // Check if the request accepts HTML (likely a browser)
-  if (acceptHeader.includes('text/html')) {
-    // Try to serve the frontend if it's built
-    const frontendPath = path.join(__dirname, '../../frontend/dist');
-    try {
-      if (require('fs').existsSync(path.join(frontendPath, 'index.html'))) {
-        res.sendFile(path.join(frontendPath, 'index.html'));
-        return;
-      }
-    } catch (err) {
-      // Fall through to JSON response
-    }
-  }
-  
-  // Default JSON response for API-like requests
   res.status(404).json({ 
     message: 'Route not found', 
     path: req.path,
@@ -266,6 +263,7 @@ createTables().then(() => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
     console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
     console.log(`🏠 Root endpoint: http://localhost:${PORT}/`);
+    console.log(`🔒 Security: Rate limiting, Input sanitization, CORS enabled`);
     console.log(`🌐 Allowed origins:`, allowedOrigins);
   });
 });

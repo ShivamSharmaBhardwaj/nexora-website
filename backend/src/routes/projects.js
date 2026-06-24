@@ -1,6 +1,10 @@
+// backend/src/routes/projects.js
 import express from 'express';
+import { validationResult } from 'express-validator';
 import pool from '../config/db.js';
 import auth from '../middleware/auth.js';
+import { adminLimiter } from '../middleware/rateLimit.js';
+import { validateProject } from '../middleware/validation.js';
 
 const router = express.Router();
 
@@ -19,6 +23,10 @@ const parseFeatures = (features) => {
   return [];
 };
 
+// ============================================
+// PUBLIC ROUTES (No auth required)
+// ============================================
+
 // Get all projects
 router.get('/', async (req, res) => {
   try {
@@ -35,24 +43,28 @@ router.get('/', async (req, res) => {
     res.json(projects);
   } catch (error) {
     console.error('Error fetching projects:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Failed to fetch projects' });
   }
 });
 
+// Get projects by category
 router.get('/category/:category', async (req, res) => {
   try {
+    const category = decodeURIComponent(req.params.category);
     const result = await pool.query(
-      'SELECT * FROM projects WHERE LOWER(category) = LOWER($1) AND is_active = $2',
-      [req.params.category, true]
+      'SELECT * FROM projects WHERE LOWER(category) = LOWER($1) AND is_active = $2 ORDER BY created_at DESC',
+      [category, true]
     );
+    
     const projects = result.rows.map(project => ({
       ...project,
       features: parseFeatures(project.features)
     }));
+    
     res.json(projects);
   } catch (error) {
-    console.error('Error fetching by category:', error);
-    res.status(500).json({ message: error.message });
+    console.error('Category error:', error);
+    res.status(500).json({ message: 'Failed to fetch projects by category' });
   }
 });
 
@@ -69,83 +81,109 @@ router.get('/:id', async (req, res) => {
     };
     res.json(project);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Error fetching project:', error);
+    res.status(500).json({ message: 'Failed to fetch project' });
   }
 });
 
-// Create project (admin only)
-router.post('/', auth, async (req, res) => {
-  const { title, category, description, short_desc, demo_url, video_url, image_url, icon, features, is_upcoming } = req.body;
-  
-  try {
-    let featuresJson = JSON.stringify([]);
-    if (features) {
-      if (Array.isArray(features)) {
-        featuresJson = JSON.stringify(features);
-      } else if (typeof features === 'string') {
-        try {
-          const parsed = JSON.parse(features);
-          featuresJson = JSON.stringify(parsed);
-        } catch (e) {
-          featuresJson = JSON.stringify(features.split(',').map(f => f.trim()).filter(f => f));
-        }
-      }
-    }
-    
-    const result = await pool.query(
-      `INSERT INTO projects 
-       (title, category, description, short_desc, demo_url, video_url, image_url, icon, features, is_upcoming) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
-       RETURNING id`,
-      [title, category, description, short_desc, demo_url, video_url, image_url, icon, featuresJson, is_upcoming || false]
-    );
-    res.status(201).json({ message: 'Project created', id: result.rows[0].id });
-  } catch (error) {
-    console.error('Error creating project:', error);
-    res.status(500).json({ message: error.message });
-  }
-});
+// ============================================
+// ADMIN ROUTES (Require auth)
+// ============================================
 
-// Update project (admin only)
-router.put('/:id', auth, async (req, res) => {
-  const { title, category, description, short_desc, demo_url, video_url, image_url, icon, features, is_active, is_upcoming } = req.body;
-  
-  try {
-    let featuresJson = JSON.stringify([]);
-    if (features) {
-      if (Array.isArray(features)) {
-        featuresJson = JSON.stringify(features);
-      } else if (typeof features === 'string') {
-        try {
-          const parsed = JSON.parse(features);
-          featuresJson = JSON.stringify(parsed);
-        } catch (e) {
-          featuresJson = JSON.stringify(features.split(',').map(f => f.trim()).filter(f => f));
+// Create project (admin only) - WITH SECURITY
+router.post('/', 
+  auth, 
+  adminLimiter,
+  validateProject,
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { title, category, description, short_desc, demo_url, video_url, image_url, icon, features, is_upcoming } = req.body;
+    
+    try {
+      let featuresJson = JSON.stringify([]);
+      if (features) {
+        if (Array.isArray(features)) {
+          featuresJson = JSON.stringify(features);
+        } else if (typeof features === 'string') {
+          try {
+            const parsed = JSON.parse(features);
+            featuresJson = JSON.stringify(parsed);
+          } catch (e) {
+            featuresJson = JSON.stringify(features.split(',').map(f => f.trim()).filter(f => f));
+          }
         }
       }
+      
+      const result = await pool.query(
+        `INSERT INTO projects 
+         (title, category, description, short_desc, demo_url, video_url, image_url, icon, features, is_upcoming) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+         RETURNING id`,
+        [title, category, description, short_desc, demo_url, video_url, image_url, icon, featuresJson, is_upcoming || false]
+      );
+      
+      res.status(201).json({ message: 'Project created', id: result.rows[0].id });
+    } catch (error) {
+      console.error('Error creating project:', error);
+      res.status(500).json({ message: 'Failed to create project' });
     }
-    
-    const result = await pool.query(
-      `UPDATE projects SET 
-       title = $1, category = $2, description = $3, short_desc = $4, 
-       demo_url = $5, video_url = $6, image_url = $7, icon = $8, 
-       features = $9, is_active = $10, is_upcoming = $11 
-       WHERE id = $12`,
-      [title, category, description, short_desc, demo_url, video_url, image_url, icon, featuresJson, is_active, is_upcoming, req.params.id]
-    );
-    
-    if (result.rowCount === 0) {
-      return res.status(404).json({ message: 'Project not found' });
-    }
-    res.json({ message: 'Project updated' });
-  } catch (error) {
-    console.error('Error updating project:', error);
-    res.status(500).json({ message: error.message });
   }
-});
+);
+
+// Update project (admin only) - WITH SECURITY
+router.put('/:id', 
+  auth, 
+  adminLimiter,
+  validateProject,
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { title, category, description, short_desc, demo_url, video_url, image_url, icon, features, is_active, is_upcoming } = req.body;
+    
+    try {
+      let featuresJson = JSON.stringify([]);
+      if (features) {
+        if (Array.isArray(features)) {
+          featuresJson = JSON.stringify(features);
+        } else if (typeof features === 'string') {
+          try {
+            const parsed = JSON.parse(features);
+            featuresJson = JSON.stringify(parsed);
+          } catch (e) {
+            featuresJson = JSON.stringify(features.split(',').map(f => f.trim()).filter(f => f));
+          }
+        }
+      }
+      
+      const result = await pool.query(
+        `UPDATE projects SET 
+         title = $1, category = $2, description = $3, short_desc = $4, 
+         demo_url = $5, video_url = $6, image_url = $7, icon = $8, 
+         features = $9, is_active = $10, is_upcoming = $11 
+         WHERE id = $12`,
+        [title, category, description, short_desc, demo_url, video_url, image_url, icon, featuresJson, is_active, is_upcoming, req.params.id]
+      );
+      
+      if (result.rowCount === 0) {
+        return res.status(404).json({ message: 'Project not found' });
+      }
+      res.json({ message: 'Project updated' });
+    } catch (error) {
+      console.error('Error updating project:', error);
+      res.status(500).json({ message: 'Failed to update project' });
+    }
+  }
+);
 
 // Delete project (admin only)
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', auth, adminLimiter, async (req, res) => {
   try {
     const result = await pool.query('DELETE FROM projects WHERE id = $1', [req.params.id]);
     if (result.rowCount === 0) {
@@ -154,7 +192,7 @@ router.delete('/:id', auth, async (req, res) => {
     res.json({ message: 'Project deleted' });
   } catch (error) {
     console.error('Error deleting project:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Failed to delete project' });
   }
 });
 

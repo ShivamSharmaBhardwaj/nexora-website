@@ -1,10 +1,12 @@
-// middleware/auth.js
+// backend/src/middleware/auth.js
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 dotenv.config();
 
+// Simple in-memory blacklist (use Redis in production)
+const tokenBlacklist = new Set();
+
 const auth = (req, res, next) => {
-  // Get token from header
   const authHeader = req.header('Authorization');
   
   if (!authHeader) {
@@ -14,7 +16,6 @@ const auth = (req, res, next) => {
     });
   }
 
-  // Check if it's a Bearer token
   const parts = authHeader.split(' ');
   if (parts.length !== 2 || parts[0] !== 'Bearer') {
     return res.status(401).json({ 
@@ -25,7 +26,6 @@ const auth = (req, res, next) => {
 
   const token = parts[1];
 
-  // Check if token is empty
   if (!token || token === 'null' || token === 'undefined') {
     return res.status(401).json({ 
       message: 'Invalid token provided',
@@ -33,21 +33,31 @@ const auth = (req, res, next) => {
     });
   }
 
+  // Check if token is blacklisted
+  if (tokenBlacklist.has(token)) {
+    return res.status(401).json({
+      message: 'Token has been revoked. Please login again.',
+      code: 'TOKEN_REVOKED'
+    });
+  }
+
   try {
-    // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
     
-    // Attach user to request
+    // Check if token is expired
+    if (decoded.exp && decoded.exp < Date.now() / 1000) {
+      tokenBlacklist.add(token);
+      return res.status(401).json({
+        message: 'Token expired. Please login again.',
+        code: 'TOKEN_EXPIRED'
+      });
+    }
+    
     req.user = decoded;
-    
-    // Log for debugging (remove in production)
-    console.log('Auth successful for user:', decoded.email || decoded.id);
-    
     next();
   } catch (error) {
     console.error('Auth error:', error.message);
     
-    // Handle different JWT errors
     if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({ 
         message: 'Invalid token signature',
@@ -56,6 +66,7 @@ const auth = (req, res, next) => {
     }
     
     if (error.name === 'TokenExpiredError') {
+      tokenBlacklist.add(token);
       return res.status(401).json({ 
         message: 'Token has expired. Please login again.',
         code: 'TOKEN_EXPIRED'
@@ -68,5 +79,8 @@ const auth = (req, res, next) => {
     });
   }
 };
+
+// Export blacklist for logout functionality
+export { tokenBlacklist };
 
 export default auth;
