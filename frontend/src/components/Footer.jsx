@@ -15,6 +15,11 @@ const Footer = () => {
             <p className="text-gray-400 text-sm">
               Custom web solutions for any industry. Founded March 2026.
             </p>
+            {/* ✅ Added trust badge */}
+            <p className="text-xs text-gray-500 mt-2">
+              <span className="inline-block w-2 h-2 bg-green-500 rounded-full mr-1"></span>
+              Secure & Trusted
+            </p>
           </div>
 
           <div>
@@ -51,8 +56,14 @@ const Footer = () => {
           </div>
         </div>
 
-        <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400 text-sm">
-          <p>&copy; 2026 Krynova. All rights reserved. Built with ❤️</p>
+        {/* ✅ Updated footer - Clear branding */}
+        <div className="border-t border-gray-800 mt-8 pt-8 text-center">
+          <p className="text-gray-400 text-sm">
+            &copy; 2026 Krynova Technologies. All rights reserved.
+          </p>
+          <p className="text-gray-500 text-xs mt-1">
+            Enterprise Software Solutions | Agra, India
+          </p>
         </div>
       </div>
     </footer>
