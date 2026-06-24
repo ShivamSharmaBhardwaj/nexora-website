@@ -1,10 +1,9 @@
 // frontend/src/utils/api.js
 import axios from 'axios';
-import { secureStorage, getCsrfToken } from './security.js';
+import { secureStorage } from './security.js';  // ✅ Remove getCsrfToken import
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5002';
 
-// Create axios instance with defaults
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 15000,
@@ -27,22 +26,14 @@ apiClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
     
-    // Add CSRF token for non-GET requests
-    const csrfToken = getCsrfToken();
-    if (csrfToken && config.method !== 'get') {
-      config.headers['X-CSRF-Token'] = csrfToken;
-    }
+    // ❌ REMOVED CSRF TOKEN SECTION
     
-    // Sanitize request data (if it's a POST/PUT/PATCH)
+    // Sanitize request data
     if (config.data && ['post', 'put', 'patch'].includes(config.method?.toLowerCase())) {
-      // Data should already be sanitized before sending
-      // But we add an extra layer
       if (typeof config.data === 'object') {
-        // Simple sanitization of string values
         const sanitized = {};
         for (let key in config.data) {
           if (typeof config.data[key] === 'string') {
-            // Basic sanitization - remove HTML tags
             sanitized[key] = config.data[key].replace(/<[^>]*>/g, '').trim();
           } else {
             sanitized[key] = config.data[key];
@@ -65,37 +56,26 @@ apiClient.interceptors.request.use(
 
 apiClient.interceptors.response.use(
   (response) => {
-    // Check if token is about to expire
-    const token = secureStorage.get('auth_token');
-    if (token) {
-      // Could implement token refresh logic here
-    }
     return response;
   },
   (error) => {
-    // Handle 401 Unauthorized
     if (error.response?.status === 401) {
       secureStorage.remove('auth_token');
       secureStorage.remove('user');
-      
-      // Redirect to login if not already there
       if (!window.location.pathname.includes('/login')) {
         window.location.href = '/login?session=expired';
       }
     }
     
-    // Handle 403 Forbidden
     if (error.response?.status === 403) {
       console.warn('🔒 Access forbidden');
     }
     
-    // Handle 429 Rate Limit
     if (error.response?.status === 429) {
       const retryAfter = error.response.headers['retry-after'] || 60;
       console.warn(`⏳ Rate limited. Try again in ${retryAfter} seconds`);
     }
     
-    // Handle network errors
     if (!error.response) {
       console.error('🌐 Network error - please check your connection');
       error.message = 'Network error. Please check your internet connection.';
