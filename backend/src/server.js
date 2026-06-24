@@ -16,7 +16,8 @@ import testimonialRoutes from './routes/testimonials.js';
 import contactRoutes from './routes/contact.js';
 import authRoutes from './routes/auth.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 dotenv.config();
 
 const app = express();
@@ -191,9 +192,21 @@ app.use('/api/contact', contactRoutes);
 console.log('✅ Routes registered');
 
 // ============================================
-// 404 HANDLERS
+// ✅ CRITICAL FIX: Serve Frontend Files
 // ============================================
 
+// Get the frontend dist path
+const frontendPath = path.join(__dirname, '../../frontend/dist');
+console.log(`📁 Frontend path: ${frontendPath}`);
+
+// Serve static files from frontend dist
+app.use(express.static(frontendPath));
+
+// ============================================
+// ✅ CRITICAL FIX: Handle all routes with index.html
+// ============================================
+
+// API 404 handler - Only for API routes
 app.use('/api/*', (req, res) => {
   res.status(404).json({ 
     message: 'API endpoint not found', 
@@ -208,6 +221,23 @@ app.use('/api/*', (req, res) => {
   });
 });
 
+// ✅ CRITICAL: All non-API routes should serve index.html
+app.get('*', (req, res) => {
+  // Check if it's an API route (should be handled above)
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({ error: 'API endpoint not found' });
+  }
+  
+  // Serve index.html for all other routes (React Router handles routing)
+  res.sendFile(path.join(frontendPath, 'index.html'), (err) => {
+    if (err) {
+      console.error('Error serving index.html:', err);
+      res.status(500).send('Error loading application');
+    }
+  });
+});
+
+// Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err.stack);
   res.status(500).json({ 
@@ -225,6 +255,7 @@ createTables().then(() => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
     console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
     console.log(`🏠 Root endpoint: http://localhost:${PORT}/`);
+    console.log(`📁 Serving frontend from: ${frontendPath}`);
     console.log(`🔒 Security: Rate limiting, Input sanitization, CORS enabled`);
   });
 });
