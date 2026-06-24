@@ -47,11 +47,12 @@ router.post('/',
         });
       }
 
-      // Save to database
-      const result = await pool.query(
-        'INSERT INTO contacts (name, email, phone, subject, message, type) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
-        [name, email, phone || '', subject || '', message, type || 'general', req.ip || null]
-      );
+     // ✅ CORRECT - Remove ip_address from the array
+const result = await pool.query(
+  `INSERT INTO contacts (name, email, phone, subject, message, type) 
+   VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+  [name, email, phone || '', subject || '', message, type || 'general'] // 6 parameters
+);
 
       // Try to send email
       try {
