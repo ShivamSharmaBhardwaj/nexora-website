@@ -9,12 +9,17 @@ dotenv.config();
 
 const router = express.Router();
 
+// Configure transporter with better timeout settings
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
-  }
+  },
+  // Add timeout settings
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 10000,
 });
 
 // Submit contact form (public)
@@ -31,32 +36,45 @@ router.post('/', [
   const { name, email, phone, subject, message, type } = req.body;
 
   try {
+    // Save to database first
     const result = await pool.query(
       'INSERT INTO contacts (name, email, phone, subject, message, type) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
       [name, email, phone || '', subject || '', message, type || 'general']
     );
 
-    // Email to admin
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: process.env.EMAIL_USER,
-      subject: `Krynova Contact: ${subject || 'New Enquiry'}`,
-      html: `
-        <h3>New Contact Enquiry</h3>
-        <p><strong>Name:</strong> ${name}</p>
-        <p><strong>Email:</strong> ${email}</p>
-        <p><strong>Phone:</strong> ${phone || 'Not provided'}</p>
-        <p><strong>Type:</strong> ${type || 'general'}</p>
-        <p><strong>Subject:</strong> ${subject || 'N/A'}</p>
-        <p><strong>Message:</strong></p>
-        <p>${message}</p>
-      `
-    });
+    // Try to send email, but don't fail if it doesn't work
+    try {
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: process.env.EMAIL_USER,
+        subject: `Krynova Contact: ${subject || 'New Enquiry'}`,
+        html: `
+          <h3>New Contact Enquiry</h3>
+          <p><strong>Name:</strong> ${name}</p>
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Phone:</strong> ${phone || 'Not provided'}</p>
+          <p><strong>Type:</strong> ${type || 'general'}</p>
+          <p><strong>Subject:</strong> ${subject || 'N/A'}</p>
+          <p><strong>Message:</strong></p>
+          <p>${message}</p>
+        `
+      });
+      console.log('📧 Email sent successfully for contact ID:', result.rows[0].id);
+    } catch (emailError) {
+      // Log email error but don't fail the request
+      console.error('⚠️ Email sending failed:', emailError.message);
+      // Continue - data is already saved in database
+    }
 
-    res.status(201).json({ message: 'Message sent successfully', id: result.rows[0].id });
+    res.status(201).json({ 
+      message: 'Message sent successfully', 
+      id: result.rows[0].id 
+    });
   } catch (error) {
     console.error('Contact error:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ 
+      message: error.message || 'Failed to save contact message' 
+    });
   }
 });
 
@@ -66,6 +84,7 @@ router.get('/', auth, async (req, res) => {
     const result = await pool.query('SELECT * FROM contacts ORDER BY created_at DESC');
     res.json(result.rows);
   } catch (error) {
+    console.error('Error fetching contacts:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -79,6 +98,7 @@ router.put('/:id/read', auth, async (req, res) => {
     }
     res.json({ message: 'Marked as read' });
   } catch (error) {
+    console.error('Error marking contact as read:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -92,6 +112,7 @@ router.delete('/:id', auth, async (req, res) => {
     }
     res.json({ message: 'Deleted' });
   } catch (error) {
+    console.error('Error deleting contact:', error);
     res.status(500).json({ message: error.message });
   }
 });
