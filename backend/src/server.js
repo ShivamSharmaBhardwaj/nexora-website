@@ -22,6 +22,9 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5002;
 
+// ✅ FIX: Trust proxy for rate limiter (Render uses proxy)
+app.set('trust proxy', 1);
+
 // ============================================
 // SECURITY MIDDLEWARE (Global)
 // ============================================
@@ -38,6 +41,7 @@ const allowedOrigins = [
   'https://nexora-business-backend.railway.app',
   'https://sight-exploring-validity-discretion.trycloudflare.com',
 ];
+
 
 app.use(cors({
   origin: function (origin, callback) {
