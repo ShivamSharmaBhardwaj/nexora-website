@@ -1,8 +1,12 @@
 // frontend/src/utils/api.js
 import axios from 'axios';
-import { secureStorage } from './security.js';  // ✅ Remove getCsrfToken import
+import { secureStorage } from './security.js';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5002';
+
+// ============================================
+// AUTHENTICATED API CLIENT (with interceptors)
+// ============================================
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -14,50 +18,21 @@ const apiClient = axios.create({
   withCredentials: true,
 });
 
-// ============================================
-// REQUEST INTERCEPTOR
-// ============================================
-
+// Request interceptor for authenticated routes
 apiClient.interceptors.request.use(
   (config) => {
-    // Add auth token
     const token = secureStorage.get('auth_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
-    // ❌ REMOVED CSRF TOKEN SECTION
-    
-    // Sanitize request data
-    if (config.data && ['post', 'put', 'patch'].includes(config.method?.toLowerCase())) {
-      if (typeof config.data === 'object') {
-        const sanitized = {};
-        for (let key in config.data) {
-          if (typeof config.data[key] === 'string') {
-            sanitized[key] = config.data[key].replace(/<[^>]*>/g, '').trim();
-          } else {
-            sanitized[key] = config.data[key];
-          }
-        }
-        config.data = sanitized;
-      }
-    }
-    
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// ============================================
-// RESPONSE INTERCEPTOR
-// ============================================
-
+// Response interceptor
 apiClient.interceptors.response.use(
-  (response) => {
-    return response;
-  },
+  (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       secureStorage.remove('auth_token');
@@ -66,24 +41,22 @@ apiClient.interceptors.response.use(
         window.location.href = '/login?session=expired';
       }
     }
-    
-    if (error.response?.status === 403) {
-      console.warn('🔒 Access forbidden');
-    }
-    
-    if (error.response?.status === 429) {
-      const retryAfter = error.response.headers['retry-after'] || 60;
-      console.warn(`⏳ Rate limited. Try again in ${retryAfter} seconds`);
-    }
-    
-    if (!error.response) {
-      console.error('🌐 Network error - please check your connection');
-      error.message = 'Network error. Please check your internet connection.';
-    }
-    
     return Promise.reject(error);
   }
 );
+
+// ============================================
+// PUBLIC API CLIENT (NO INTERCEPTORS)
+// ============================================
+
+const publicApiClient = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 15000,
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  },
+});
 
 // ============================================
 // API HELPER FUNCTIONS
@@ -144,9 +117,9 @@ export const api = {
     return apiClient.delete(`/api/testimonials/${id}`);
   },
 
-  // Contact
+  // ✅ FIXED: Contact uses PUBLIC client (no interceptors)
   submitContact: (data) => {
-    return apiClient.post('/api/contact', data);
+    return publicApiClient.post('/api/contact', data);
   },
   getContacts: () => {
     return apiClient.get('/api/contact');
