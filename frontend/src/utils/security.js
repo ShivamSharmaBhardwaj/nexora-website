@@ -6,17 +6,26 @@
 
 /**
  * Sanitize user input to prevent XSS attacks
+ * ✅ FIXED: Preserve spaces properly
  */
 export const sanitizeInput = (input) => {
   if (typeof input !== 'string') return input;
   
-  // Only remove dangerous content, preserve spaces
-  return input
+  // Only remove dangerous content, PRESERVE spaces
+  let sanitized = input
     .replace(/<[^>]*>/g, '') // Remove HTML tags
     .replace(/javascript:/gi, '') // Remove javascript: protocol
     .replace(/on\w+=/gi, '') // Remove event handlers
-    .trim(); // Remove leading/trailing spaces only
+  
+  // ✅ IMPORTANT: Don't .trim() here - preserve internal spaces
+  // Only trim if the entire string is just whitespace
+  if (sanitized.trim() === '') {
+    return '';
+  }
+  
+  return sanitized;
 };
+
 /**
  * Sanitize entire form data object
  */
@@ -50,27 +59,34 @@ export const isValidEmail = (email) => {
 
 /**
  * Validate phone number (international format)
+ * ✅ FIXED: More flexible phone validation
  */
 export const isValidPhone = (phone) => {
   if (!phone) return true;
-  const re = /^[0-9+\-\s()]{10,15}$/;
+  // Allow spaces, +, -, (), and numbers
+  const re = /^[\s+\-()0-9]{10,20}$/;
   return re.test(phone);
 };
 
 /**
- * Validate name (letters, spaces, hyphens, apostrophes only)
+ * Validate name (letters, spaces, hyphens, apostrophes, periods only)
+ * ✅ FIXED: Allow spaces, periods, and other valid characters
  */
 export const isValidName = (name) => {
-  const re = /^[a-zA-Z\s\-']{2,100}$/;
+  if (!name || name.trim().length < 2) return false;
+  // Allow letters, spaces, hyphens, apostrophes, periods
+  const re = /^[a-zA-Z\s\-'.]{2,100}$/;
   return re.test(name);
 };
 
 /**
  * Validate message (minimum 10 chars, no HTML)
+ * ✅ FIXED: Properly validate with spaces
  */
 export const isValidMessage = (message) => {
   if (!message) return false;
   const clean = sanitizeInput(message);
+  // Check length after sanitization but preserve spaces
   return clean.length >= 10 && clean.length <= 5000;
 };
 

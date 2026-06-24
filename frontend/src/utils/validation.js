@@ -41,15 +41,16 @@ export const validationRules = {
     message: {
       required: true,
       validate: (value) => {
+        // ✅ FIXED: Check length after trimming but preserve spaces
         if (!value || value.trim().length < 10) return 'Message must be at least 10 characters';
-        if (value.trim().length > 5000) return 'Message is too long (max 5000 characters)';
+        if (value.length > 5000) return 'Message is too long (max 5000 characters)';
         return null;
       }
     },
     subject: {
       required: false,
       validate: (value) => {
-        if (value && value.trim().length > 200) return 'Subject is too long (max 200 characters)';
+        if (value && value.length > 200) return 'Subject is too long (max 200 characters)';
         return null;
       }
     }
@@ -88,8 +89,9 @@ export const validationRules = {
     feedback: {
       required: true,
       validate: (value) => {
+        // ✅ FIXED: Check length after trimming but preserve spaces
         if (!value || value.trim().length < 10) return 'Feedback must be at least 10 characters';
-        if (value.trim().length > 2000) return 'Feedback is too long (max 2000 characters)';
+        if (value.length > 2000) return 'Feedback is too long (max 2000 characters)';
         return null;
       }
     },
@@ -122,6 +124,7 @@ export const validationRules = {
     description: {
       required: true,
       validate: (value) => {
+        // ✅ FIXED: Check length after trimming but preserve spaces
         if (!value || value.trim().length < 10) return 'Description must be at least 10 characters';
         return null;
       }
@@ -135,13 +138,17 @@ export const validationRules = {
 
 /**
  * Validate a single field
+ * ✅ FIXED: Don't sanitize before validation (preserve spaces)
  */
 export const validateField = (fieldName, value, formType) => {
   const rules = validationRules[formType];
   if (!rules || !rules[fieldName]) return null;
   
   const rule = rules[fieldName];
-  const sanitized = typeof value === 'string' ? sanitizeInput(value) : value;
+  
+  // ✅ REMOVED: Don't sanitize here - preserve spaces for validation
+  // const sanitized = typeof value === 'string' ? sanitizeInput(value) : value;
+  const sanitized = value;
   
   // Check required
   if (rule.required && (!sanitized || (typeof sanitized === 'string' && sanitized.trim() === ''))) {
@@ -184,11 +191,13 @@ export const isFormValid = (errors) => {
 
 /**
  * Sanitize form data before submission
+ * ✅ FIXED: Sanitize only dangerous content, preserve spaces
  */
 export const prepareFormData = (data) => {
   const sanitized = {};
   for (let key in data) {
     if (typeof data[key] === 'string') {
+      // ✅ Only sanitize, don't trim internal spaces
       sanitized[key] = sanitizeInput(data[key]);
     } else {
       sanitized[key] = data[key];

@@ -1,15 +1,16 @@
 // backend/src/middleware/validation.js
 import { body, validationResult } from 'express-validator';
 
-// Sanitize inputs
+// ✅ FIXED: Sanitize without removing internal spaces
 export const sanitizeInput = (req, res, next) => {
   for (let key in req.body) {
     if (typeof req.body[key] === 'string') {
+      // ✅ Only remove dangerous content, PRESERVE spaces
       req.body[key] = req.body[key]
         .replace(/<[^>]*>/g, '') // Remove HTML tags
         .replace(/javascript:/gi, '') // Remove javascript: protocol
-        .replace(/on\w+=/gi, '') // Remove event handlers
-        .trim();
+        .replace(/on\w+=/gi, ''); // Remove event handlers
+      // ✅ Don't .trim() here - preserve internal spaces
     }
   }
   next();
@@ -21,7 +22,7 @@ export const validateContact = [
   body('name')
     .notEmpty().withMessage('Name required')
     .isLength({ min: 2, max: 100 }).withMessage('Name must be 2-100 characters')
-    .matches(/^[a-zA-Z\s\-'.]+$/).withMessage('Invalid name format'), // ✅ Allow periods (.)
+    .matches(/^[a-zA-Z\s\-'.]+$/).withMessage('Invalid name format'), // ✅ Allow periods and spaces
   
   body('email')
     .isEmail().withMessage('Valid email required')
@@ -34,7 +35,7 @@ export const validateContact = [
   body('phone')
     .optional()
     .isLength({ max: 20 }).withMessage('Phone too long')
-    .matches(/^[0-9+\-\s()]+$/).withMessage('Invalid phone format'), // ✅ More flexible
+    .matches(/^[\s+\-()0-9]+$/).withMessage('Invalid phone format'), // ✅ More flexible
   
   body('subject')
     .optional()
@@ -72,7 +73,7 @@ export const validateTestimonial = [
   body('client_name')
     .notEmpty().withMessage('Name required')
     .isLength({ max: 100 }).withMessage('Name too long')
-    .matches(/^[a-zA-Z\s\-'.]+$/).withMessage('Invalid name format'), // ✅ Allow periods
+    .matches(/^[a-zA-Z\s\-'.]+$/).withMessage('Invalid name format'), // ✅ Allow periods and spaces
   body('feedback')
     .notEmpty().withMessage('Feedback required')
     .isLength({ max: 2000 }).withMessage('Feedback too long'),
@@ -87,7 +88,7 @@ export const validateRegister = [
   body('name')
     .notEmpty().withMessage('Name required')
     .isLength({ min: 2, max: 100 }).withMessage('Name must be 2-100 characters')
-    .matches(/^[a-zA-Z\s\-'.]+$/).withMessage('Invalid name format'), // ✅ Allow periods
+    .matches(/^[a-zA-Z\s\-'.]+$/).withMessage('Invalid name format'), // ✅ Allow periods and spaces
   body('email')
     .isEmail().withMessage('Valid email required')
     .normalizeEmail(),
@@ -104,3 +105,17 @@ export const validateLogin = [
   body('password')
     .notEmpty().withMessage('Password required')
 ];
+
+// Validation result middleware
+export const validate = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ 
+      errors: errors.array().map(err => ({
+        field: err.path,
+        message: err.msg
+      }))
+    });
+  }
+  next();
+};

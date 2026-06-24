@@ -35,7 +35,7 @@ router.post('/',
     const { name, email, phone, subject, message, type } = req.body;
 
     try {
-      // Spam check - same email/IP in last hour
+      // Spam check - same email in last hour
       const spamCheck = await pool.query(
         'SELECT COUNT(*) FROM contacts WHERE email = $1 AND created_at > NOW() - INTERVAL \'1 hour\'',
         [email]
@@ -47,14 +47,15 @@ router.post('/',
         });
       }
 
-     // ✅ CORRECT - Remove ip_address from the array
-const result = await pool.query(
-  `INSERT INTO contacts (name, email, phone, subject, message, type) 
-   VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-  [name, email, phone || '', subject || '', message, type || 'general'] // 6 parameters
-);
+      // ✅ FIXED: Correct INSERT query - removed ip_address
+      const result = await pool.query(
+        `INSERT INTO contacts (name, email, phone, subject, message, type, is_read) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7) 
+         RETURNING id`,
+        [name, email, phone || '', subject || '', message, type || 'general', false] // 7 parameters
+      );
 
-      // Try to send email
+      // Try to send email notification
       try {
         await transporter.sendMail({
           from: process.env.EMAIL_USER,
@@ -69,24 +70,28 @@ const result = await pool.query(
             <p><strong>Type:</strong> ${type || 'general'}</p>
             <p><strong>Subject:</strong> ${subject || 'N/A'}</p>
             <p><strong>Message:</strong></p>
-            <p>${message}</p>
+            <p>${message.replace(/\n/g, '<br>')}</p>
             <hr>
-            <p><small>IP: ${req.ip || 'Not available'}</small></p>
+            <p><small>IP: ${req.ip || req.headers['x-forwarded-for'] || 'Not available'}</small></p>
           `
         });
         console.log('📧 Email sent for contact ID:', result.rows[0].id);
       } catch (emailError) {
         console.error('⚠️ Email sending failed:', emailError.message);
+        // Don't fail the request if email fails
       }
 
       res.status(201).json({ 
+        success: true,
         message: 'Message sent successfully', 
         id: result.rows[0].id 
       });
     } catch (error) {
       console.error('Contact error:', error);
       res.status(500).json({ 
-        message: 'Failed to save contact message' 
+        success: false,
+        message: 'Failed to save contact message',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   }
@@ -95,7 +100,9 @@ const result = await pool.query(
 // Get all contacts (admin only) - WITH SECURITY
 router.get('/', auth, adminLimiter, async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM contacts ORDER BY created_at DESC');
+    const result = await pool.query(
+      'SELECT * FROM contacts ORDER BY created_at DESC'
+    );
     res.json(result.rows);
   } catch (error) {
     console.error('Error fetching contacts:', error);
@@ -103,14 +110,37 @@ router.get('/', auth, adminLimiter, async (req, res) => {
   }
 });
 
-// Mark as read (admin only)
-router.put('/:id/read', auth, adminLimiter, async (req, res) => {
+// Get contact by ID (admin only)
+router.get('/:id', auth, adminLimiter, async (req, res) => {
   try {
-    const result = await pool.query('UPDATE contacts SET is_read = $1 WHERE id = $2', [true, req.params.id]);
+    const result = await pool.query(
+      'SELECT * FROM contacts WHERE id = $1',
+      [req.params.id]
+    );
     if (result.rowCount === 0) {
       return res.status(404).json({ message: 'Contact not found' });
     }
-    res.json({ message: 'Marked as read' });
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching contact:', error);
+    res.status(500).json({ message: 'Failed to fetch contact' });
+  }
+});
+
+// Mark as read (admin only)
+router.put('/:id/read', auth, adminLimiter, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'UPDATE contacts SET is_read = $1, read_at = NOW() WHERE id = $2 RETURNING *',
+      [true, req.params.id]
+    );
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: 'Contact not found' });
+    }
+    res.json({ 
+      message: 'Marked as read',
+      contact: result.rows[0]
+    });
   } catch (error) {
     console.error('Error marking contact as read:', error);
     res.status(500).json({ message: 'Failed to mark as read' });
@@ -120,11 +150,17 @@ router.put('/:id/read', auth, adminLimiter, async (req, res) => {
 // Delete contact (admin only)
 router.delete('/:id', auth, adminLimiter, async (req, res) => {
   try {
-    const result = await pool.query('DELETE FROM contacts WHERE id = $1', [req.params.id]);
+    const result = await pool.query(
+      'DELETE FROM contacts WHERE id = $1 RETURNING id',
+      [req.params.id]
+    );
     if (result.rowCount === 0) {
       return res.status(404).json({ message: 'Contact not found' });
     }
-    res.json({ message: 'Deleted' });
+    res.json({ 
+      message: 'Contact deleted successfully',
+      id: req.params.id
+    });
   } catch (error) {
     console.error('Error deleting contact:', error);
     res.status(500).json({ message: 'Failed to delete contact' });

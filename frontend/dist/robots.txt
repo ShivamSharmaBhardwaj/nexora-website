@@ -6,5 +6,5 @@ Disallow: /login/
 Disallow: /api/
 Disallow: /private/
 
-# Sitemap - Use your CURRENT Cloudflare tunnel URL
-Sitemap: https://sight-exploring-validity-discretion.trycloudflare.com/sitemap.xml
+# Sitemap - ✅ FIXED
+Sitemap: https://nexora-website-1.onrender.com/sitemap.xml

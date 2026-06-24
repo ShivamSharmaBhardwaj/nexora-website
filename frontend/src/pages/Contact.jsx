@@ -1,3 +1,4 @@
+// frontend/src/pages/Contact.jsx (or wherever your Contact component is)
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { FaEnvelope, FaPhone, FaMapMarkerAlt, FaSpinner } from 'react-icons/fa';
@@ -23,8 +24,11 @@ const Contact = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
+  // ✅ FIXED: Don't sanitize during input - preserve spaces
   const validateField = (name, value) => {
-    const sanitized = sanitizeInput(value);
+    // Only sanitize for validation, but keep original value
+    const sanitized = typeof value === 'string' ? sanitizeInput(value) : value;
+    
     switch (name) {
       case 'name':
         if (!sanitized || sanitized.trim().length < 2) return 'Name is required';
@@ -39,10 +43,10 @@ const Contact = () => {
         return null;
       case 'message':
         if (!sanitized || sanitized.trim().length < 10) return 'Message must be at least 10 characters';
-        if (sanitized.trim().length > 5000) return 'Message is too long (max 5000 characters)';
+        if (sanitized.length > 5000) return 'Message is too long (max 5000 characters)';
         return null;
       case 'subject':
-        if (sanitized && sanitized.trim().length > 200) return 'Subject is too long (max 200 characters)';
+        if (sanitized && sanitized.length > 200) return 'Subject is too long (max 200 characters)';
         return null;
       default:
         return null;
@@ -51,13 +55,14 @@ const Contact = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    const sanitizedValue = sanitizeInput(value);
     
+    // ✅ FIXED: Store raw value without sanitizing
     setForm(prev => ({
       ...prev,
-      [name]: sanitizedValue
+      [name]: value // ✅ Keep original value with spaces
     }));
     
+    // Clear error for this field when user types
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -112,7 +117,17 @@ const Contact = () => {
 
     setSubmitting(true);
     try {
-      await api.submitContact(form);
+      // ✅ Sanitize only on submission
+      const sanitizedData = {
+        name: sanitizeInput(form.name),
+        email: sanitizeInput(form.email),
+        phone: sanitizeInput(form.phone),
+        subject: sanitizeInput(form.subject),
+        message: sanitizeInput(form.message),
+        type: form.type
+      };
+      
+      await api.submitContact(sanitizedData);
       toast.success('Message sent successfully! We\'ll get back to you within 24 hours.');
       setSubmitted(true);
       setForm({ 
@@ -125,6 +140,7 @@ const Contact = () => {
       });
       setErrors({});
     } catch (error) {
+      console.error('Contact submission error:', error);
       const message = error.response?.data?.message || 'Failed to send message. Please try again.';
       toast.error(message);
     } finally {
@@ -301,6 +317,9 @@ const Contact = () => {
                     }`}
                   />
                   {errors.message && <p className="text-red-500 text-sm mt-1">{errors.message}</p>}
+                  <p className="text-xs text-gray-400 mt-1">
+                    {form.message.length}/5000 characters
+                  </p>
                 </div>
 
                 <button
