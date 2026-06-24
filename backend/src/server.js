@@ -42,7 +42,6 @@ const allowedOrigins = [
   'https://sight-exploring-validity-discretion.trycloudflare.com',
 ];
 
-
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
@@ -214,7 +213,29 @@ app.use('/api/contact', contactRoutes);
 console.log('✅ Routes registered: /api/auth, /api/projects, /api/testimonials, /api/contact');
 
 // ============================================
-// 404 HANDLERS
+// ✅ SPA CATCH-ALL ROUTE (Fixes 404 on refresh)
+// ============================================
+app.get('*', (req, res) => {
+  // Skip API routes
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({ message: 'API endpoint not found' });
+  }
+  
+  // Serve frontend index.html
+  const frontendPath = path.join(__dirname, '../../frontend/dist/index.html');
+  res.sendFile(frontendPath, (err) => {
+    if (err) {
+      console.error('❌ Failed to serve frontend:', err.message);
+      res.status(404).json({ 
+        message: 'Frontend not found',
+        path: req.path 
+      });
+    }
+  });
+});
+
+// ============================================
+// 404 HANDLERS (Fallback)
 // ============================================
 
 // API 404 handler
@@ -225,23 +246,6 @@ app.use('/api/*', (req, res) => {
     method: req.method,
     availableEndpoints: [
       '/api/health',
-      '/api/projects', 
-      '/api/testimonials', 
-      '/api/auth', 
-      '/api/contact'
-    ]
-  });
-});
-
-// General 404 handler
-app.use((req, res) => {
-  res.status(404).json({ 
-    message: 'Route not found', 
-    path: req.path,
-    method: req.method,
-    availableEndpoints: [
-      '/',
-      '/api/health', 
       '/api/projects', 
       '/api/testimonials', 
       '/api/auth', 

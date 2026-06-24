@@ -21,7 +21,7 @@ export const validateContact = [
   body('name')
     .notEmpty().withMessage('Name required')
     .isLength({ min: 2, max: 100 }).withMessage('Name must be 2-100 characters')
-    .matches(/^[a-zA-Z\s\-']+$/).withMessage('Invalid name format'),
+    .matches(/^[a-zA-Z\s\-'.]+$/).withMessage('Invalid name format'), // ✅ Allow periods (.)
   
   body('email')
     .isEmail().withMessage('Valid email required')
@@ -33,7 +33,8 @@ export const validateContact = [
   
   body('phone')
     .optional()
-    .matches(/^[0-9+\-\s()]{10,15}$/).withMessage('Invalid phone format'),
+    .isLength({ max: 20 }).withMessage('Phone too long')
+    .matches(/^[0-9+\-\s()]+$/).withMessage('Invalid phone format'), // ✅ More flexible
   
   body('subject')
     .optional()
@@ -71,7 +72,7 @@ export const validateTestimonial = [
   body('client_name')
     .notEmpty().withMessage('Name required')
     .isLength({ max: 100 }).withMessage('Name too long')
-    .matches(/^[a-zA-Z\s\-']+$/).withMessage('Invalid name format'),
+    .matches(/^[a-zA-Z\s\-'.]+$/).withMessage('Invalid name format'), // ✅ Allow periods
   body('feedback')
     .notEmpty().withMessage('Feedback required')
     .isLength({ max: 2000 }).withMessage('Feedback too long'),
@@ -86,7 +87,7 @@ export const validateRegister = [
   body('name')
     .notEmpty().withMessage('Name required')
     .isLength({ min: 2, max: 100 }).withMessage('Name must be 2-100 characters')
-    .matches(/^[a-zA-Z\s\-']+$/).withMessage('Invalid name format'),
+    .matches(/^[a-zA-Z\s\-'.]+$/).withMessage('Invalid name format'), // ✅ Allow periods
   body('email')
     .isEmail().withMessage('Valid email required')
     .normalizeEmail(),
