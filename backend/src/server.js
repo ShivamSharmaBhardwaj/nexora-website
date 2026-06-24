@@ -97,24 +97,22 @@ async function createTables() {
   }
 }
 
-// CORS configuration
+// backend/src/server.js
+
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
   'http://127.0.0.1:5173',
   'http://127.0.0.1:5174',
   'https://nexora-website-epts.onrender.com',
+  'https://nexora-website-1.onrender.com',     // 👈 ADD THIS
   'https://nexora-business-frontend.railway.app',
   'https://nexora-business-backend.railway.app',
-  // Add your tunnel URL
   'https://sight-exploring-validity-discretion.trycloudflare.com',
-  // Allow all cloudflare tunnel subdomains (for development)
-  /\.trycloudflare\.com$/
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
     // Check if origin is allowed
@@ -132,10 +130,12 @@ app.use(cors({
       callback(null, true);
     } else {
       console.warn(`⚠️ Origin ${origin} not allowed by CORS`);
-      // In development, you might want to allow all origins
-      // For production, be strict
-      callback(null, true); // For development, allow anyway
-      // callback(new Error('Not allowed by CORS')); // For production
+      // For Render deployments, allow any .onrender.com domain
+      if (origin.includes('.onrender.com')) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
     }
   },
   credentials: true,
