@@ -1,18 +1,14 @@
-# render.yaml
 services:
   - type: web
     name: nexora-backend
     runtime: node
     buildCommand: |
       cd backend && npm install
-      cd ../frontend && npm install && npm run build
+      cd ../frontend && npm install --include=dev && npm run build
+      cd ../backend
     startCommand: cd backend && npm start
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 5002
-    buildFilter:
-      paths:
-      - backend/**
-      - frontend/**
