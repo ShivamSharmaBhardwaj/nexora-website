@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import pool from './config/db.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 // Import security middleware
 import { apiLimiter } from './middleware/rateLimit.js';
@@ -22,14 +23,13 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5002;
 
-// ✅ FIX: Trust proxy for rate limiter (Render uses proxy)
+// ✅ Trust proxy for rate limiter
 app.set('trust proxy', 1);
 
 // ============================================
-// SECURITY MIDDLEWARE (Global)
+// CORS Configuration
 // ============================================
 
-// CORS Configuration
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
@@ -76,20 +76,20 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Global sanitization of all request bodies
+// Global sanitization
 app.use(sanitizeInput);
 
 // Global API rate limiting
 app.use('/api', apiLimiter);
 
 // ============================================
-// CREATE TABLES AUTOMATICALLY
+// CREATE TABLES
 // ============================================
+
 async function createTables() {
   try {
     console.log('📊 Creating tables if they don\'t exist...');
     
-    // Create projects table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS projects (
         id SERIAL PRIMARY KEY,
@@ -110,7 +110,6 @@ async function createTables() {
     `);
     console.log('✅ Projects table ready');
 
-    // Create testimonials table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS testimonials (
         id SERIAL PRIMARY KEY,
@@ -126,7 +125,6 @@ async function createTables() {
     `);
     console.log('✅ Testimonials table ready');
 
-    // Create contacts table with ip_address column
     await pool.query(`
       CREATE TABLE IF NOT EXISTS contacts (
         id SERIAL PRIMARY KEY,
@@ -143,7 +141,6 @@ async function createTables() {
     `);
     console.log('✅ Contacts table ready');
 
-    // Create users table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -163,10 +160,10 @@ async function createTables() {
 }
 
 // ============================================
-// ROUTES
+// API ROUTES
 // ============================================
 
-// Root
+// Root API endpoint
 app.get('/', (req, res) => {
   res.json({
     name: 'Krynova Technologies API',
@@ -204,38 +201,88 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// Routes
+// Register API routes
 console.log('📋 Registering routes...');
 app.use('/api/auth', authRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/testimonials', testimonialRoutes);
 app.use('/api/contact', contactRoutes);
-console.log('✅ Routes registered: /api/auth, /api/projects, /api/testimonials, /api/contact');
+console.log('✅ Routes registered');
 
 // ============================================
-// ✅ SPA CATCH-ALL ROUTE (Fixes 404 on refresh)
+// ✅ SERVE FRONTEND (Fixes 404 for all routes)
 // ============================================
-app.get('*', (req, res) => {
-  // Skip API routes
-  if (req.path.startsWith('/api')) {
-    return res.status(404).json({ message: 'API endpoint not found' });
+
+// Try multiple possible frontend paths
+const possibleFrontendPaths = [
+  path.join(__dirname, '../../frontend/dist'),
+  path.join(__dirname, '../public'),
+  path.join(__dirname, '../../dist'),
+  path.join(process.cwd(), 'frontend/dist'),
+];
+
+let frontendPath = null;
+for (const p of possibleFrontendPaths) {
+  if (fs.existsSync(p)) {
+    frontendPath = p;
+    console.log(`✅ Found frontend at: ${p}`);
+    break;
   }
+}
+
+if (frontendPath) {
+  // Serve static files
+  app.use(express.static(frontendPath));
   
-  // Serve frontend index.html
-  const frontendPath = path.join(__dirname, '../../frontend/dist/index.html');
-  res.sendFile(frontendPath, (err) => {
-    if (err) {
-      console.error('❌ Failed to serve frontend:', err.message);
-      res.status(404).json({ 
-        message: 'Frontend not found',
-        path: req.path 
-      });
+  // ✅ CATCH-ALL: Serve index.html for any non-API route
+  app.get('*', (req, res, next) => {
+    // Skip API routes
+    if (req.path.startsWith('/api')) {
+      return next();
+    }
+    
+    // Skip if the request is for a file with extension (like .css, .js, .png)
+    if (path.extname(req.path) !== '') {
+      return next();
+    }
+    
+    // Serve index.html for all other routes (SPA support)
+    const indexPath = path.join(frontendPath, 'index.html');
+    res.sendFile(indexPath, (err) => {
+      if (err) {
+        console.error('❌ Failed to serve index.html:', err.message);
+        res.status(404).json({ 
+          message: 'Frontend not found',
+          path: req.path 
+        });
+      }
+    });
+  });
+  
+  console.log(`✅ SPA routing enabled for frontend at: ${frontendPath}`);
+} else {
+  console.warn('⚠️ Frontend dist folder not found. SPA routing disabled.');
+  
+  // Fallback: serve a simple message
+  app.get('*', (req, res) => {
+    if (!req.path.startsWith('/api')) {
+      res.send(`
+        <!DOCTYPE html>
+        <html>
+          <head><title>Krynova Technologies</title></head>
+          <body>
+            <h1>Krynova Technologies</h1>
+            <p>API is running. Frontend not found.</p>
+            <p>Visit <a href="/api/health">/api/health</a> to check API status.</p>
+          </body>
+        </html>
+      `);
     }
   });
-});
+}
 
 // ============================================
-// 404 HANDLERS (Fallback)
+// 404 HANDLERS
 // ============================================
 
 // API 404 handler
@@ -264,8 +311,9 @@ app.use((err, req, res, next) => {
 });
 
 // ============================================
-// START THE SERVER
+// START SERVER
 // ============================================
+
 createTables().then(() => {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
