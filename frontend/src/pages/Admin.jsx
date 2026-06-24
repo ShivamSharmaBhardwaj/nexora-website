@@ -1,22 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import toast from 'react-hot-toast';
 import { 
-  FaEdit, 
-  FaTrash, 
-  FaCheck, 
-  FaSpinner,
-  FaPlus,
-  FaTimes,
-  FaProjectDiagram,
-  FaComments,
-  FaEnvelope,
-  FaSignOutAlt
+  FaEdit, FaTrash, FaCheck, FaSpinner, FaPlus, FaTimes,
+  FaProjectDiagram, FaComments, FaEnvelope, FaSignOutAlt
 } from 'react-icons/fa';
-
-// Constants
-const API_BASE_URL = import.meta.env.VITE_API_URL;
+import { api } from '../utils/api';
+import { secureStorage } from '../utils/security';
+import { sanitizeInput } from '../utils/security';
 
 // Initial form state
 const INITIAL_FORM_STATE = {
@@ -107,19 +98,14 @@ const Admin = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const navigate = useNavigate();
-  const token = localStorage.getItem('token');
 
   // Fetch all data
   const fetchData = useCallback(async () => {
     try {
       const [pRes, tRes, cRes] = await Promise.all([
-        axios.get(`${API_BASE_URL}/api/projects`),
-        axios.get(`${API_BASE_URL}/api/testimonials/all`, { 
-          headers: { Authorization: `Bearer ${token}` } 
-        }),
-        axios.get(`${API_BASE_URL}/api/contact`, { 
-          headers: { Authorization: `Bearer ${token}` } 
-        })
+        api.getProjects(),
+        api.getAllTestimonials(),
+        api.getContacts()
       ]);
       
       setProjects(pRes.data);
@@ -131,23 +117,25 @@ const Admin = () => {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, []);
 
   // Check authentication
   useEffect(() => {
+    const token = secureStorage.get('auth_token');
     if (!token) {
       navigate('/login');
       return;
     }
     fetchData();
-  }, [token, navigate, fetchData]);
+  }, [navigate, fetchData]);
 
   // Handle form input changes
   const handleFormChange = (e) => {
     const { name, value, type, checked } = e.target;
+    const sanitizedValue = typeof value === 'string' ? sanitizeInput(value) : value;
     setForm(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === 'checkbox' ? checked : sanitizedValue
     }));
   };
 
@@ -155,7 +143,6 @@ const Admin = () => {
   const handleProjectSubmit = async (e) => {
     e.preventDefault();
     
-    // Validation
     if (!form.title.trim() || !form.category.trim() || !form.description.trim()) {
       toast.error('Please fill in all required fields');
       return;
@@ -171,17 +158,14 @@ const Admin = () => {
           : [] 
       };
       
-      const url = editing 
-        ? `${API_BASE_URL}/api/projects/${editing}`
-        : `${API_BASE_URL}/api/projects`;
+      if (editing) {
+        await api.updateProject(editing, payload);
+        toast.success('Project updated successfully!');
+      } else {
+        await api.createProject(payload);
+        toast.success('Project created successfully!');
+      }
       
-      const method = editing ? 'put' : 'post';
-      
-      await axios[method](url, payload, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      toast.success(editing ? 'Project updated successfully!' : 'Project created successfully!');
       setForm(INITIAL_FORM_STATE);
       setEditing(null);
       fetchData();
@@ -203,10 +187,20 @@ const Admin = () => {
     
     const { type, id } = deleteTarget;
     try {
-      await axios.delete(`${API_BASE_URL}/api/${type}/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      toast.success(`${type.slice(0, -1)} deleted successfully`);
+      switch(type) {
+        case 'projects':
+          await api.deleteProject(id);
+          break;
+        case 'testimonials':
+          await api.deleteTestimonial(id);
+          break;
+        case 'contact':
+          await api.deleteContact(id);
+          break;
+        default:
+          break;
+      }
+      toast.success('Item deleted successfully');
       fetchData();
     } catch (error) {
       toast.error('Error deleting item');
@@ -222,9 +216,7 @@ const Admin = () => {
   // Handle approve testimonial
   const handleApprove = async (id) => {
     try {
-      await axios.put(`${API_BASE_URL}/api/testimonials/${id}/approve`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.approveTestimonial(id);
       toast.success('Testimonial approved');
       fetchData();
     } catch (error) {
@@ -235,9 +227,7 @@ const Admin = () => {
   // Handle mark contact as read
   const handleMarkRead = async (id) => {
     try {
-      await axios.put(`${API_BASE_URL}/api/contact/${id}/read`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.markContactRead(id);
       toast.success('Marked as read');
       fetchData();
     } catch (error) {
@@ -247,7 +237,8 @@ const Admin = () => {
 
   // Handle logout
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    secureStorage.remove('auth_token');
+    secureStorage.remove('user');
     toast.success('Logged out successfully');
     navigate('/login');
   };

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { api } from '../utils/api';
 import axios from 'axios';
 import { 
   FaStar, 
@@ -155,7 +156,7 @@ const Testimonials = () => {
       try {
         setLoading(true);
         setError(null);
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/testimonials`);
+        const response = await api.getTestimonials();
         setTestimonials(response.data);
       } catch (err) {
         console.error('Error fetching testimonials:', err);
@@ -197,7 +198,7 @@ const Testimonials = () => {
 
     setSubmitting(true);
     try {
-      await axios.post(`${import.meta.env.VITE_API_URL}/api/testimonials`, form);
+     await api.submitTestimonial(form);
       setSubmitted(true);
       setForm({ 
         client_name: '', 

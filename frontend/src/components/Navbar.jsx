@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaBars, FaTimes, FaCube } from 'react-icons/fa';
+import { secureStorage } from '../utils/security';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -9,12 +10,13 @@ const Navbar = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = secureStorage.get('auth_token');
     setIsLoggedIn(!!token);
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    secureStorage.remove('auth_token');
+    secureStorage.remove('user');
     setIsLoggedIn(false);
     navigate('/');
   };

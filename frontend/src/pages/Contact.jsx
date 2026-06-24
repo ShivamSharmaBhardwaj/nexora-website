@@ -1,7 +1,14 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import toast from 'react-hot-toast';
 import { FaEnvelope, FaPhone, FaMapMarkerAlt, FaSpinner } from 'react-icons/fa';
+import { api } from '../utils/api';
+import { 
+  sanitizeInput, 
+  isValidEmail, 
+  isValidPhone, 
+  isValidName, 
+  isValidMessage 
+} from '../utils/security';
 
 const Contact = () => {
   const [form, setForm] = useState({
@@ -12,27 +19,100 @@ const Contact = () => {
     message: '',
     type: 'general'
   });
+  const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  const validateField = (name, value) => {
+    const sanitized = sanitizeInput(value);
+    switch (name) {
+      case 'name':
+        if (!sanitized || sanitized.trim().length < 2) return 'Name is required';
+        if (!isValidName(sanitized)) return 'Name contains invalid characters';
+        return null;
+      case 'email':
+        if (!sanitized) return 'Email is required';
+        if (!isValidEmail(sanitized)) return 'Please enter a valid email';
+        return null;
+      case 'phone':
+        if (sanitized && !isValidPhone(sanitized)) return 'Invalid phone number';
+        return null;
+      case 'message':
+        if (!sanitized || sanitized.trim().length < 10) return 'Message must be at least 10 characters';
+        if (sanitized.trim().length > 5000) return 'Message is too long (max 5000 characters)';
+        return null;
+      case 'subject':
+        if (sanitized && sanitized.trim().length > 200) return 'Subject is too long (max 200 characters)';
+        return null;
+      default:
+        return null;
+    }
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    const sanitizedValue = sanitizeInput(value);
+    
+    setForm(prev => ({
+      ...prev,
+      [name]: sanitizedValue
+    }));
+    
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: null
+      }));
+    }
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    const error = validateField(name, value);
+    if (error) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: error
+      }));
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    const fields = ['name', 'email', 'message'];
+    
+    fields.forEach(field => {
+      const error = validateField(field, form[field]);
+      if (error) {
+        newErrors[field] = error;
+      }
+    });
+    
+    const phoneError = validateField('phone', form.phone);
+    if (phoneError) {
+      newErrors.phone = phoneError;
+    }
+    
+    const subjectError = validateField('subject', form.subject);
+    if (subjectError) {
+      newErrors.subject = subjectError;
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Basic validation
-    if (!form.name.trim() || !form.email.trim() || !form.message.trim()) {
-      toast.error('Please fill in all required fields');
+    if (!validateForm()) {
+      toast.error('Please fix all errors before submitting');
       return;
     }
 
     setSubmitting(true);
     try {
-      // FIX: Added /api prefix to the URL
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/contact`, 
-        form
-      );
-      
-      console.log('Contact form submitted:', response.data);
+      await api.submitContact(form);
       toast.success('Message sent successfully! We\'ll get back to you within 24 hours.');
       setSubmitted(true);
       setForm({ 
@@ -43,31 +123,10 @@ const Contact = () => {
         message: '', 
         type: 'general' 
       });
+      setErrors({});
     } catch (error) {
-      console.error('Contact form error:', error);
-      
-      // Better error handling
-      if (error.response) {
-        // The request was made and the server responded with a status code
-        // that falls out of the range of 2xx
-        console.error('Response data:', error.response.data);
-        console.error('Response status:', error.response.status);
-        
-        if (error.response.data?.errors) {
-          // Validation errors
-          const errorMessages = error.response.data.errors.map(e => e.msg).join(', ');
-          toast.error(`Validation error: ${errorMessages}`);
-        } else {
-          toast.error(error.response.data?.message || 'Failed to send message. Please try again.');
-        }
-      } else if (error.request) {
-        // The request was made but no response was received
-        console.error('No response received:', error.request);
-        toast.error('No response from server. Please check your connection.');
-      } else {
-        // Something happened in setting up the request that triggered an Error
-        toast.error('Error sending message. Please try again.');
-      }
+      const message = error.response?.data?.message || 'Failed to send message. Please try again.';
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }
@@ -129,18 +188,10 @@ const Contact = () => {
                 See our products in action with a personalized walkthrough tailored to your business needs.
               </p>
               <div className="flex flex-wrap gap-3">
-                <span className="bg-white px-3 py-1 rounded-full text-sm border border-blue-200 shadow-sm">
-                  HRMS
-                </span>
-                <span className="bg-white px-3 py-1 rounded-full text-sm border border-blue-200 shadow-sm">
-                  TODO
-                </span>
-                <span className="bg-white px-3 py-1 rounded-full text-sm border border-blue-200 shadow-sm">
-                  Estate
-                </span>
-                <span className="bg-white px-3 py-1 rounded-full text-sm border border-blue-200 shadow-sm">
-                  WhatsApp
-                </span>
+                <span className="bg-white px-3 py-1 rounded-full text-sm border border-blue-200 shadow-sm">HRMS</span>
+                <span className="bg-white px-3 py-1 rounded-full text-sm border border-blue-200 shadow-sm">TODO</span>
+                <span className="bg-white px-3 py-1 rounded-full text-sm border border-blue-200 shadow-sm">Estate</span>
+                <span className="bg-white px-3 py-1 rounded-full text-sm border border-blue-200 shadow-sm">WhatsApp</span>
               </div>
             </div>
           </div>
@@ -163,56 +214,95 @@ const Contact = () => {
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid md:grid-cols-2 gap-4">
-                  <input
-                    type="text"
-                    placeholder="Your Name *"
-                    value={form.name}
-                    onChange={e => setForm({...form, name: e.target.value})}
-                    className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                    required
-                  />
-                  <input
-                    type="email"
-                    placeholder="Your Email *"
-                    value={form.email}
-                    onChange={e => setForm({...form, email: e.target.value})}
-                    className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                    required
-                  />
+                  <div>
+                    <input
+                      type="text"
+                      name="name"
+                      placeholder="Your Name *"
+                      value={form.name}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      className={`w-full border p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition ${
+                        errors.name ? 'border-red-500 ring-2 ring-red-500' : 'border-gray-300'
+                      }`}
+                    />
+                    {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+                  </div>
+                  <div>
+                    <input
+                      type="email"
+                      name="email"
+                      placeholder="Your Email *"
+                      value={form.email}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      className={`w-full border p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition ${
+                        errors.email ? 'border-red-500 ring-2 ring-red-500' : 'border-gray-300'
+                      }`}
+                    />
+                    {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+                  </div>
                 </div>
+
                 <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <input
+                      type="text"
+                      name="phone"
+                      placeholder="Phone Number"
+                      value={form.phone}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      className={`w-full border p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition ${
+                        errors.phone ? 'border-red-500 ring-2 ring-red-500' : 'border-gray-300'
+                      }`}
+                    />
+                    {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
+                  </div>
+                  <div>
+                    <select
+                      name="type"
+                      value={form.type}
+                      onChange={handleChange}
+                      className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                    >
+                      <option value="general">General Enquiry</option>
+                      <option value="demo_request">Demo Request</option>
+                      <option value="feedback">Feedback</option>
+                      <option value="support">Technical Support</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
                   <input
                     type="text"
-                    placeholder="Phone Number"
-                    value={form.phone}
-                    onChange={e => setForm({...form, phone: e.target.value})}
-                    className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                    name="subject"
+                    placeholder="Subject"
+                    value={form.subject}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    className={`w-full border p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition ${
+                      errors.subject ? 'border-red-500 ring-2 ring-red-500' : 'border-gray-300'
+                    }`}
                   />
-                  <select
-                    value={form.type}
-                    onChange={e => setForm({...form, type: e.target.value})}
-                    className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                  >
-                    <option value="general">General Enquiry</option>
-                    <option value="demo_request">Demo Request</option>
-                    <option value="feedback">Feedback</option>
-                    <option value="support">Technical Support</option>
-                  </select>
+                  {errors.subject && <p className="text-red-500 text-sm mt-1">{errors.subject}</p>}
                 </div>
-                <input
-                  type="text"
-                  placeholder="Subject"
-                  value={form.subject}
-                  onChange={e => setForm({...form, subject: e.target.value})}
-                  className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                />
-                <textarea
-                  placeholder="Your Message *"
-                  value={form.message}
-                  onChange={e => setForm({...form, message: e.target.value})}
-                  className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition h-32 resize-y"
-                  required
-                ></textarea>
+
+                <div>
+                  <textarea
+                    name="message"
+                    placeholder="Your Message *"
+                    value={form.message}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    className={`w-full border p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition h-32 resize-y ${
+                      errors.message ? 'border-red-500 ring-2 ring-red-500' : 'border-gray-300'
+                    }`}
+                  />
+                  {errors.message && <p className="text-red-500 text-sm mt-1">{errors.message}</p>}
+                </div>
+
                 <button
                   type="submit"
                   disabled={submitting}
