@@ -10,19 +10,13 @@
 export const sanitizeInput = (input) => {
   if (typeof input !== 'string') return input;
   
+  // Only remove dangerous content, preserve spaces
   return input
     .replace(/<[^>]*>/g, '') // Remove HTML tags
     .replace(/javascript:/gi, '') // Remove javascript: protocol
     .replace(/on\w+=/gi, '') // Remove event handlers
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;')
-    .replace(/\//g, '&#x2F;')
-    .trim();
+    .trim(); // Remove leading/trailing spaces only
 };
-
 /**
  * Sanitize entire form data object
  */
