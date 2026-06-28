@@ -178,11 +178,21 @@ const handleProjectSubmit = async (e) => {
       setEditing(null);
       fetchData();
     } catch (error) {
-      const errorMsg = error.response?.data?.errors 
-        ? error.response.data.errors.map(e => e.message || e).join(', ')
-        : error.response?.data?.message || 'Error saving project';
-      toast.error(errorMsg);
-      console.error('Save error:', error.response?.data);
+     let errorMsg = 'Error saving project';
+if (error.response?.data?.errors) {
+    const errors = error.response.data.errors;
+    if (Array.isArray(errors)) {
+        errorMsg = errors.map(e => e.message || e).join(', ');
+    } else if (typeof errors === 'object') {
+        errorMsg = Object.entries(errors).map(([field, msg]) => `${field}: ${msg}`).join(', ');
+    } else {
+        errorMsg = String(errors);
+    }
+} else if (error.response?.data?.message) {
+    errorMsg = error.response.data.message;
+}
+toast.error(errorMsg);
+console.error('Save error:', error.response?.data);
     } finally {
       setIsSubmitting(false);
     }
