@@ -138,9 +138,8 @@ const Admin = () => {
       [name]: type === 'checkbox' ? checked : sanitizedValue
     }));
   };
-
-  // Handle project submit
-  const handleProjectSubmit = async (e) => {
+// Handle project submit
+const handleProjectSubmit = async (e) => {
     e.preventDefault();
     
     if (!form.title.trim() || !form.category.trim() || !form.description.trim()) {
@@ -152,19 +151,20 @@ const Admin = () => {
     
     try {
       const payload = { 
-    title: form.title,
-    category: form.category,
-    description: form.description,
-    short_desc: form.short_desc || '',
-    demo_url: form.demo_url || null,
-    video_url: form.video_url || null,
-    image_url: form.image_url || null,
-    icon: form.icon || 'cube',
-    features: form.features && form.features.trim() 
-      ? form.features.split(',').map(f => f.trim()).filter(Boolean) 
-      : [],
-    is_upcoming: form.is_upcoming || false
-};
+        title: form.title?.trim() || '',
+        category: form.category?.trim() || '',
+        description: form.description?.trim() || '',
+        short_desc: form.short_desc?.trim() || '',
+        demo_url: form.demo_url?.trim() || null,
+        video_url: form.video_url?.trim() || null,
+        image_url: form.image_url?.trim() || null,
+        icon: form.icon?.trim() || 'cube',
+        features: form.features && typeof form.features === 'string' && form.features.trim() 
+          ? form.features.split(',').map(f => f.trim()).filter(Boolean) 
+          : (Array.isArray(form.features) ? form.features : []),
+        is_upcoming: form.is_upcoming || false,
+        is_active: form.is_active !== undefined ? form.is_active : true
+      };
       
       if (editing) {
         await api.updateProject(editing, payload);
@@ -178,8 +178,11 @@ const Admin = () => {
       setEditing(null);
       fetchData();
     } catch (error) {
-      const errorMsg = error.response?.data?.message || 'Error saving project';
+      const errorMsg = error.response?.data?.errors 
+        ? error.response.data.errors.map(e => e.message || e).join(', ')
+        : error.response?.data?.message || 'Error saving project';
       toast.error(errorMsg);
+      console.error('Save error:', error.response?.data);
     } finally {
       setIsSubmitting(false);
     }
