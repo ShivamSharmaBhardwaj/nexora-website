@@ -152,11 +152,19 @@ const Admin = () => {
     
     try {
       const payload = { 
-        ...form, 
-        features: form.features 
-          ? form.features.split(',').map(f => f.trim()).filter(Boolean) 
-          : [] 
-      };
+    title: form.title,
+    category: form.category,
+    description: form.description,
+    short_desc: form.short_desc || '',
+    demo_url: form.demo_url || null,
+    video_url: form.video_url || null,
+    image_url: form.image_url || null,
+    icon: form.icon || 'cube',
+    features: form.features && form.features.trim() 
+      ? form.features.split(',').map(f => f.trim()).filter(Boolean) 
+      : [],
+    is_upcoming: form.is_upcoming || false
+};
       
       if (editing) {
         await api.updateProject(editing, payload);
