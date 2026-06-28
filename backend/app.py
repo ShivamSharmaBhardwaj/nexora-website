@@ -12,9 +12,21 @@ print("🚀 Starting Krynova Backend...", flush=True)
 load_dotenv()
 print("✅ Environment loaded", flush=True)
 
+# Detect if running on PythonAnywhere
+ON_PYTHONANYWHERE = 'PYTHONANYWHERE_DOMAIN' in os.environ
+
+# Set static folder path based on environment
+if ON_PYTHONANYWHERE:
+    STATIC_FOLDER = os.path.join(os.path.dirname(__file__), '..', 'frontend', 'dist')
+else:
+    STATIC_FOLDER = '../frontend/dist'
+
 # Initialize Flask app
-app = Flask(__name__, static_folder='../frontend/dist', static_url_path='')
+app = Flask(__name__, static_folder=STATIC_FOLDER, static_url_path='')
 print("✅ Flask app created", flush=True)
+
+# Get PythonAnywhere username if deployed
+PA_USERNAME = os.environ.get('PYTHONANYWHERE_USERNAME', 'YOURUSERNAME')
 
 # CORS Configuration - Works everywhere
 CORS(app, 
@@ -25,8 +37,7 @@ CORS(app,
          'http://127.0.0.1:5174',
          'https://nexora-website-epts.onrender.com',
          'https://nexora-website-1.onrender.com',
-         # Add your PythonAnywhere URL when ready
-         'https://YOURUSERNAME.pythonanywhere.com'
+         f'https://{PA_USERNAME}.pythonanywhere.com'
      ],
      supports_credentials=True,
      methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
@@ -34,7 +45,7 @@ CORS(app,
      max_age=3600)
 print("✅ CORS configured", flush=True)
 
-# ✅ ADDED: Handle OPTIONS preflight for ALL routes
+# Handle OPTIONS preflight for ALL routes
 @app.before_request
 def handle_preflight():
     if request.method == 'OPTIONS':
@@ -45,7 +56,7 @@ def handle_preflight():
         response.headers['Access-Control-Max-Age'] = '3600'
         return response
 
-# Handle OPTIONS preflight requests
+# After request headers
 @app.after_request
 def after_request(response):
     origin = request.headers.get('Origin', '')
@@ -129,7 +140,6 @@ def serve_static(path):
     try:
         return send_from_directory(app.static_folder, path)
     except:
-        # For SPA - return index.html for all non-api routes
         if os.path.exists(os.path.join(app.static_folder, 'index.html')):
             return send_from_directory(app.static_folder, 'index.html')
         return jsonify({'error': 'Page not found'}), 404
@@ -139,7 +149,6 @@ def serve_static(path):
 def not_found(e):
     if request.path.startswith('/api/'):
         return jsonify({'error': 'Not found'}), 404
-    # For SPA
     if os.path.exists(os.path.join(app.static_folder, 'index.html')):
         return send_from_directory(app.static_folder, 'index.html')
     return jsonify({'error': 'Page not found'}), 404
