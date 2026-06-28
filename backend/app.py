@@ -117,6 +117,13 @@ def health_check():
         'message': 'Krynova API is running',
         'timestamp': datetime.now().isoformat()
     })
+@app.route('/sitemap.xml')
+def sitemap():
+    return send_from_directory(app.static_folder, 'sitemap.xml', mimetype='application/xml')
+
+@app.route('/robots.txt')
+def robots():
+    return send_from_directory(app.static_folder, 'robots.txt', mimetype='text/plain')
 
 # Root
 @app.route('/')
@@ -135,6 +142,8 @@ def root():
                 'contact': '/api/contact'
             }
         })
+    
+    
 
 @app.route('/<path:path>')
 def serve_static(path):
