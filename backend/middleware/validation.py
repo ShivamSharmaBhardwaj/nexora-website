@@ -68,10 +68,13 @@ def validate_project_data(data):
         errors['description'] = 'Description must be at least 10 characters'
     
     # Validate URLs if provided
+        # Validate URLs if provided (allow relative paths like /demos/hrms)
     url_fields = ['demo_url', 'video_url', 'image_url']
     for field in url_fields:
-        if data.get(field):
-            if not re.match(r'^https?://', data[field]):
+        if data.get(field) and data[field].strip():
+            val = data[field].strip()
+            # Accept: http://..., https://..., or /relative/path
+            if not (val.startswith('http://') or val.startswith('https://') or val.startswith('/')):
                 errors[field] = f'Invalid {field} format'
     
     return errors
