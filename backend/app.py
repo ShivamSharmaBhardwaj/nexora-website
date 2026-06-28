@@ -121,17 +121,20 @@ def health_check():
 # Root
 @app.route('/')
 def root():
-    return jsonify({
-        'name': 'Krynova Technologies API',
-        'version': '1.0.0',
-        'endpoints': {
-            'health': '/api/health',
-            'auth': '/api/auth',
-            'projects': '/api/projects',
-            'testimonials': '/api/testimonials',
-            'contact': '/api/contact'
-        }
-    })
+    try:
+        return send_from_directory(app.static_folder, 'index.html')
+    except:
+        return jsonify({
+            'name': 'Krynova Technologies API',
+            'version': '1.0.0',
+            'endpoints': {
+                'health': '/api/health',
+                'auth': '/api/auth',
+                'projects': '/api/projects',
+                'testimonials': '/api/testimonials',
+                'contact': '/api/contact'
+            }
+        })
 
 @app.route('/<path:path>')
 def serve_static(path):
