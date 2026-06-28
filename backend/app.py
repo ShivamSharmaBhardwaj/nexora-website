@@ -23,6 +23,7 @@ else:
 
 # Initialize Flask app
 app = Flask(__name__, static_folder=STATIC_FOLDER, static_url_path='')
+app.url_map.strict_slashes = False 
 print("✅ Flask app created", flush=True)
 
 # Get PythonAnywhere username if deployed
