@@ -2,24 +2,34 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
   server: {
     port: 5174,
-    host: true,
+    host: true, // Listen on all addresses (including localhost and network)
     open: true,
-  },
-  build: {
-    outDir: 'dist',
-    rollupOptions: {
-      output: {
-        manualChunks: undefined
-      }
+    // Add allowed hosts
+    allowedHosts: [
+      'localhost',
+      '127.0.0.1',
+      'https://nexora-website-epts.onrender.com',
+      '.trycloudflare.com' // Allow all cloudflare subdomains
+    ],
+    // For better development experience with tunnels
+    hmr: {
+      protocol: 'ws',
+      host: 'localhost',
+      port: 5174
     }
   },
-  // ✅ Add this for production SPA routing
-  preview: {
-    port: 4173,
-    host: true,
-  },
+  // If you're using API proxy
+  proxy: {
+    '/api': {
+      target: 'http://localhost:5002',
+      changeOrigin: true,
+      secure: false,
+      ws: true
+    }
+  }
 })
