@@ -33,7 +33,11 @@ const ProductDetail = () => {
         setError(null);
         
         // Try to fetch by ID first
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/projects/${id}`);
+        const isNumeric = /^\d+$/.test(id);
+const url = isNumeric 
+  ? `${import.meta.env.VITE_API_URL}/api/projects/${id}`
+  : `${import.meta.env.VITE_API_URL}/api/projects/category/${id}`;
+const response = await axios.get(url);
         setProject(response.data);
         
         // Fetch related projects from same category

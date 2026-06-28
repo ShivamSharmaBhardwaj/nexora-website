@@ -19,6 +19,7 @@ def parse_features(features):
         return [f.strip() for f in features.split(',') if f.strip()]
 
 @projects_bp.route('/', methods=['GET'])
+@projects_bp.route('', methods=['GET'])
 def get_projects():
     """Get all active projects (public)"""
     try:
