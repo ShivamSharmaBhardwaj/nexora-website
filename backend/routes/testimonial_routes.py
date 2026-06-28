@@ -4,6 +4,7 @@ from middleware.auth import token_required
 from middleware.validation import validate_testimonial_data
 
 testimonials_bp = Blueprint('testimonials', __name__)
+testimonials_bp.strict_slashes = False
 
 @testimonials_bp.route('/', methods=['GET'])
 def get_testimonials():

@@ -8,6 +8,7 @@ from middleware.auth import token_blacklist
 from middleware.validation import sanitize_input
 
 auth_bp = Blueprint('auth', __name__)
+auth_bp.strict_slashes = False
 
 @auth_bp.route('/register', methods=['POST'])
 def register():

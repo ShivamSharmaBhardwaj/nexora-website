@@ -5,6 +5,7 @@ from middleware.auth import token_required, admin_required
 from middleware.validation import validate_project_data
 
 projects_bp = Blueprint('projects', __name__)
+projects_bp.strict_slashes = False
 
 def parse_features(features):
     """Parse features from string to list"""

@@ -6,6 +6,7 @@ from middleware.validation import validate_contact_data, sanitize_input
 from utils.email_service import send_contact_email
 
 contact_bp = Blueprint('contact', __name__)
+contact_bp.strict_slashes = False
 
 @contact_bp.route('/', methods=['POST'])
 def submit_contact():

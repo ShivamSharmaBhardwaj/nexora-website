@@ -2,28 +2,11 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { 
-  FaRocket, 
-  FaUsers, 
-  FaCode, 
-  FaShieldAlt, 
-  FaArrowRight, 
-  FaCheckCircle,
-  FaSpinner,
-  FaStar,
-  FaPhone,
-  FaEnvelope,
-  FaMapMarkerAlt,
-  FaLinkedin,
-  FaGithub,
-  FaTwitter,
-  FaAward,
-  FaTrophy,
-  FaMedal,
-  FaBuilding,
-  FaClock,
-  FaHeart,
-  FaBriefcase,
-  FaChartBar
+  FaRocket, FaUsers, FaCode, FaShieldAlt, FaArrowRight, 
+  FaCheckCircle, FaSpinner, FaStar, FaPhone, FaEnvelope,
+  FaMapMarkerAlt, FaLinkedin, FaGithub, FaTwitter,
+  FaAward, FaTrophy, FaMedal, FaBuilding, FaClock,
+  FaHeart, FaBriefcase, FaChartBar, FaChevronDown
 } from 'react-icons/fa';
 
 // Constants
@@ -622,6 +605,56 @@ const Home = () => {
           </div>
         </div>
       </section>
+
+            {/* ============================================ */}
+      {/* AEO/GEO: FAQ Section for Google AI Overviews */}
+      {/* ============================================ */}
+      <section className="py-16 bg-white">
+        <div className="container max-w-4xl mx-auto">
+          <div className="text-center mb-10">
+            <span className="text-blue-600 font-semibold text-sm uppercase tracking-wider">FAQ</span>
+            <h2 className="text-3xl font-bold mt-2">Frequently Asked Questions</h2>
+            <p className="text-gray-600 mt-2">Quick answers about our services</p>
+          </div>
+          <div className="space-y-3">
+            <details className="bg-gray-50 rounded-xl overflow-hidden border border-gray-200 hover:border-blue-200 transition-colors">
+              <summary className="p-4 font-semibold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors">What services does Krynova Technologies offer?</summary>
+              <p className="px-4 pb-4 text-gray-600 text-sm">We provide custom web solutions including HRMS software, property management systems, task management tools, WhatsApp automation bots, and enterprise-grade business applications. All solutions are 100% customizable to your business needs.</p>
+            </details>
+            <details className="bg-gray-50 rounded-xl overflow-hidden border border-gray-200 hover:border-blue-200 transition-colors">
+              <summary className="p-4 font-semibold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors">How much does a custom web solution cost?</summary>
+              <p className="px-4 pb-4 text-gray-600 text-sm">Pricing depends on project complexity. Basic solutions start from ₹25,000. Enterprise systems are custom-quoted. We offer free consultations and competitive pricing with no hidden costs.</p>
+            </details>
+            <details className="bg-gray-50 rounded-xl overflow-hidden border border-gray-200 hover:border-blue-200 transition-colors">
+              <summary className="p-4 font-semibold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors">Where is Krynova Technologies located?</summary>
+              <p className="px-4 pb-4 text-gray-600 text-sm">We are based in Agra, Uttar Pradesh, India. We serve clients nationwide including Torrent Power (Gujarat), Tech Mahindra (Pune), Romsons, Agra Chain, and Anna Infrastructure Limited.</p>
+            </details>
+            <details className="bg-gray-50 rounded-xl overflow-hidden border border-gray-200 hover:border-blue-200 transition-colors">
+              <summary className="p-4 font-semibold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors">How long does it take to develop a web application?</summary>
+              <p className="px-4 pb-4 text-gray-600 text-sm">Simple systems take 2-4 weeks. Enterprise solutions typically take 2-3 months. We provide regular updates and maintain transparent communication throughout the development process.</p>
+            </details>
+            <details className="bg-gray-50 rounded-xl overflow-hidden border border-gray-200 hover:border-blue-200 transition-colors">
+              <summary className="p-4 font-semibold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors">Do you provide support after deployment?</summary>
+              <p className="px-4 pb-4 text-gray-600 text-sm">Yes! We offer 24/7 premium support and maintenance packages. All our solutions come with a warranty period and ongoing support options to ensure your business runs smoothly.</p>
+            </details>
+          </div>
+          {/* FAQPage Schema for Google */}
+          <script type="application/ld+json">
+            {JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "FAQPage",
+              "mainEntity": [
+                { "@type": "Question", "name": "What services does Krynova Technologies offer?", "acceptedAnswer": { "@type": "Answer", "text": "Custom web solutions including HRMS software, property management systems, task management tools, WhatsApp automation bots, and enterprise-grade business applications." } },
+                { "@type": "Question", "name": "How much does a custom web solution cost?", "acceptedAnswer": { "@type": "Answer", "text": "Pricing depends on complexity. Basic solutions from ₹25,000. Enterprise systems custom-quoted. Free consultation available." } },
+                { "@type": "Question", "name": "Where is Krynova Technologies located?", "acceptedAnswer": { "@type": "Answer", "text": "Based in Agra, Uttar Pradesh, India. Serving clients nationwide." } },
+                { "@type": "Question", "name": "How long does development take?", "acceptedAnswer": { "@type": "Answer", "text": "Simple systems: 2-4 weeks. Enterprise: 2-3 months with regular updates." } },
+                { "@type": "Question", "name": "Do you provide post-deployment support?", "acceptedAnswer": { "@type": "Answer", "text": "Yes, 24/7 premium support with warranty and ongoing maintenance." } }
+              ]
+            })}
+          </script>
+        </div>
+      </section>
+      
 
       {/* Final CTA Section */}
       <section className="py-16 bg-gradient-to-r from-blue-900 via-blue-800 to-blue-700 text-white">
