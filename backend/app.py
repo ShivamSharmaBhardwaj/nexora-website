@@ -132,11 +132,8 @@ def root():
         }
     })
 
-# Serve frontend static files
 @app.route('/<path:path>')
 def serve_static(path):
-    if path.startswith('api/'):
-        return jsonify({'error': 'API endpoint not found'}), 404
     try:
         return send_from_directory(app.static_folder, path)
     except:
