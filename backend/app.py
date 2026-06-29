@@ -108,6 +108,14 @@ try:
 except Exception as e:
     print(f"  ❌ Testimonial routes failed: {e}", flush=True)
 
+# ✅ ADD THIS - Tools routes
+try:
+    from routes.tools_routes import tools_bp
+    app.register_blueprint(tools_bp, url_prefix='/api/tools')
+    print("  ✅ Tools routes loaded", flush=True)
+except Exception as e:
+    print(f"  ❌ Tools routes failed: {e}", flush=True)
+
 # Health check
 @app.route('/api/health')
 def health_check():
@@ -117,6 +125,7 @@ def health_check():
         'message': 'Krynova API is running',
         'timestamp': datetime.now().isoformat()
     })
+
 @app.route('/sitemap.xml')
 def sitemap():
     return send_from_directory(app.static_folder, 'sitemap.xml', mimetype='application/xml')
@@ -139,11 +148,10 @@ def root():
                 'auth': '/api/auth',
                 'projects': '/api/projects',
                 'testimonials': '/api/testimonials',
-                'contact': '/api/contact'
+                'contact': '/api/contact',
+                'tools': '/api/tools'
             }
         })
-    
-    
 
 @app.route('/<path:path>')
 def serve_static(path):

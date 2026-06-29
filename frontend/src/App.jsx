@@ -10,6 +10,22 @@ import Testimonials from './pages/Testimonials';
 import Contact from './pages/Contact';
 import Admin from './pages/Admin';
 import Login from './pages/Login';
+
+// Tools Imports
+import Tools from './pages/Tools';
+import ResumeBuilder from './pages/tools/ResumeBuilder';
+import CoverLetterGenerator from './pages/tools/CoverLetterGenerator';
+import QRGenerator from './pages/tools/QRGenerator';
+import PDFToImage from './pages/tools/PDFToImage';
+import PDFToWord from './pages/tools/PDFToWord';
+import PDFToExcel from './pages/tools/PDFToExcel';
+import ImageToPDF from './pages/tools/ImageToPDF';
+import PDFCompressor from './pages/tools/PDFCompressor';
+import MergePDF from './pages/tools/MergePDF';
+import SplitPDF from './pages/tools/SplitPDF';
+import ImageResizer from './pages/tools/ImageResizer';
+import TextToPDF from './pages/tools/TextToPDF';
+
 import { useSecurity } from './hooks/useSecurity';
 
 function App() {
@@ -24,6 +40,7 @@ function App() {
           style: {
             background: '#363636',
             color: '#fff',
+            borderRadius: '12px',
           },
           success: {
             duration: 3000,
@@ -43,6 +60,7 @@ function App() {
       />
       <Navbar />
       <Routes>
+        {/* Main Pages */}
         <Route path="/" element={<Home />} />
         <Route path="/products" element={<Products />} />
         <Route path="/products/:id" element={<ProductDetail />} />
@@ -51,6 +69,21 @@ function App() {
         <Route path="/contact" element={<Contact />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="/login" element={<Login />} />
+        
+        {/* Tools Routes */}
+        <Route path="/tools" element={<Tools />} />
+        <Route path="/tools/resume-builder" element={<ResumeBuilder />} />
+        <Route path="/tools/cover-letter" element={<CoverLetterGenerator />} />
+        <Route path="/tools/qr-generator" element={<QRGenerator />} />
+        <Route path="/tools/pdf-to-image" element={<PDFToImage />} />
+        <Route path="/tools/pdf-to-word" element={<PDFToWord />} />
+        <Route path="/tools/pdf-to-excel" element={<PDFToExcel />} />
+        <Route path="/tools/image-to-pdf" element={<ImageToPDF />} />
+        <Route path="/tools/pdf-compressor" element={<PDFCompressor />} />
+        <Route path="/tools/merge-pdf" element={<MergePDF />} />
+        <Route path="/tools/split-pdf" element={<SplitPDF />} />
+        <Route path="/tools/image-resizer" element={<ImageResizer />} />
+        <Route path="/tools/text-to-pdf" element={<TextToPDF />} />
       </Routes>
       <Footer />
     </>

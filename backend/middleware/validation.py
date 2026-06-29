@@ -56,26 +56,35 @@ def validate_contact_data(data):
 
 def validate_project_data(data):
     """Validate project data"""
-    errors = {}
+    errors = []
     
-    if not data.get('title') or len(data['title'].strip()) < 2:
-        errors['title'] = 'Title is required'
+    if not data.get('title'):
+        errors.append({'field': 'title', 'message': 'Title is required'})
+    elif len(data['title']) < 3:
+        errors.append({'field': 'title', 'message': 'Title must be at least 3 characters'})
     
-    if not data.get('category') or len(data['category'].strip()) < 2:
-        errors['category'] = 'Category is required'
+    if not data.get('category'):
+        errors.append({'field': 'category', 'message': 'Category is required'})
     
-    if not data.get('description') or len(data['description'].strip()) < 10:
-        errors['description'] = 'Description must be at least 10 characters'
+    if not data.get('description'):
+        errors.append({'field': 'description', 'message': 'Description is required'})
+    elif len(data['description']) < 10:
+        errors.append({'field': 'description', 'message': 'Description must be at least 10 characters'})
     
-    # Validate URLs if provided
-        # Validate URLs if provided (allow relative paths like /demos/hrms)
-    url_fields = ['demo_url', 'video_url', 'image_url']
-    for field in url_fields:
-        if data.get(field) and data[field].strip():
-            val = data[field].strip()
-            # Accept: http://..., https://..., or /relative/path
-            if not (val.startswith('http://') or val.startswith('https://') or val.startswith('/')):
-                errors[field] = f'Invalid {field} format'
+    # Status validation
+    if data.get('status'):
+        valid_statuses = ['active', 'upcoming', 'maintenance', 'deprecated', 'archived']
+        if data['status'] not in valid_statuses:
+            errors.append({'field': 'status', 'message': f'Status must be one of: {", ".join(valid_statuses)}'})
+    
+    # Priority validation
+    if data.get('priority'):
+        try:
+            priority = int(data['priority'])
+            if priority < 0 or priority > 10:
+                errors.append({'field': 'priority', 'message': 'Priority must be between 0 and 10'})
+        except ValueError:
+            errors.append({'field': 'priority', 'message': 'Priority must be a number'})
     
     return errors
 

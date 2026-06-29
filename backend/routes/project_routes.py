@@ -18,6 +18,17 @@ def parse_features(features):
     except:
         return [f.strip() for f in features.split(',') if f.strip()]
 
+def parse_tech_stack(tech_stack):
+    """Parse tech stack from string to list"""
+    if not tech_stack:
+        return []
+    try:
+        if isinstance(tech_stack, str):
+            return json.loads(tech_stack)
+        return tech_stack
+    except:
+        return [t.strip() for t in tech_stack.split(',') if t.strip()]
+
 @projects_bp.route('/', methods=['GET'])
 @projects_bp.route('', methods=['GET'])
 def get_projects():
@@ -25,33 +36,19 @@ def get_projects():
     try:
         conn = get_db()
         cursor = conn.cursor()
-        cursor.execute(
-            'SELECT * FROM projects WHERE is_active = 1 ORDER BY created_at DESC'
-        )
+        
+        # Include all projects that are active or featured
+        cursor.execute('''
+            SELECT * FROM projects 
+            WHERE is_active = 1 
+            ORDER BY priority DESC, created_at DESC
+        ''')
+        
         projects = []
         for row in cursor.fetchall():
             project = dict(row)
             project['features'] = parse_features(project.get('features'))
-            projects.append(project)
-        conn.close()
-        return jsonify(projects)
-    except Exception as e:
-        return jsonify({'message': f'Failed to fetch projects: {str(e)}'}), 500
-
-@projects_bp.route('/category/<category>', methods=['GET'])
-def get_projects_by_category(category):
-    """Get projects by category (public)"""
-    try:
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute(
-            'SELECT * FROM projects WHERE LOWER(category) = LOWER(?) AND is_active = 1 ORDER BY created_at DESC',
-            (category,)
-        )
-        projects = []
-        for row in cursor.fetchall():
-            project = dict(row)
-            project['features'] = parse_features(project.get('features'))
+            project['tech_stack'] = parse_tech_stack(project.get('tech_stack'))
             projects.append(project)
         conn.close()
         return jsonify(projects)
@@ -73,6 +70,7 @@ def get_project(id):
         
         project = dict(row)
         project['features'] = parse_features(project.get('features'))
+        project['tech_stack'] = parse_tech_stack(project.get('tech_stack'))
         return jsonify(project)
     except Exception as e:
         return jsonify({'message': f'Failed to fetch project: {str(e)}'}), 500
@@ -101,12 +99,25 @@ def create_project():
         else:
             features_json = json.dumps([])
         
+        # Prepare tech_stack
+        tech_stack = data.get('tech_stack', [])
+        if isinstance(tech_stack, list):
+            tech_stack_json = json.dumps(tech_stack)
+        elif isinstance(tech_stack, str):
+            try:
+                tech_stack_json = json.dumps(json.loads(tech_stack))
+            except:
+                tech_stack_json = json.dumps([t.strip() for t in tech_stack.split(',') if t.strip()])
+        else:
+            tech_stack_json = json.dumps([])
+        
         conn = get_db()
         cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO projects 
-            (title, category, description, short_desc, demo_url, video_url, image_url, icon, features, is_upcoming)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (title, category, description, short_desc, demo_url, video_url, image_url, icon, 
+             features, tech_stack, github_url, status, priority, is_featured, is_active, is_upcoming)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             data['title'],
             data['category'],
@@ -117,15 +128,29 @@ def create_project():
             data.get('image_url', ''),
             data.get('icon', ''),
             features_json,
-            data.get('is_upcoming', False)
+            tech_stack_json,
+            data.get('github_url', ''),
+            data.get('status', 'active'),
+            int(data.get('priority', 0)),
+            int(data.get('is_featured', 0)),
+            int(data.get('is_active', 1)),
+            int(data.get('is_upcoming', 0))
         ))
         
         project_id = cursor.lastrowid
         conn.commit()
+        
+        # Fetch the created project
+        cursor.execute('SELECT * FROM projects WHERE id = ?', (project_id,))
+        project = dict(cursor.fetchone())
         conn.close()
+        
+        project['features'] = parse_features(project.get('features'))
+        project['tech_stack'] = parse_tech_stack(project.get('tech_stack'))
         
         return jsonify({
             'message': 'Project created',
+            'project': project,
             'id': project_id
         }), 201
         
@@ -156,13 +181,27 @@ def update_project(id):
         else:
             features_json = json.dumps([])
         
+        # Prepare tech_stack
+        tech_stack = data.get('tech_stack', [])
+        if isinstance(tech_stack, list):
+            tech_stack_json = json.dumps(tech_stack)
+        elif isinstance(tech_stack, str):
+            try:
+                tech_stack_json = json.dumps(json.loads(tech_stack))
+            except:
+                tech_stack_json = json.dumps([t.strip() for t in tech_stack.split(',') if t.strip()])
+        else:
+            tech_stack_json = json.dumps([])
+        
         conn = get_db()
         cursor = conn.cursor()
         cursor.execute('''
             UPDATE projects SET 
                 title = ?, category = ?, description = ?, short_desc = ?,
                 demo_url = ?, video_url = ?, image_url = ?, icon = ?,
-                features = ?, is_active = ?, is_upcoming = ?,
+                features = ?, tech_stack = ?, github_url = ?,
+                status = ?, priority = ?, is_featured = ?,
+                is_active = ?, is_upcoming = ?,
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         ''', (
@@ -175,8 +214,13 @@ def update_project(id):
             data.get('image_url', ''),
             data.get('icon', ''),
             features_json,
-            data.get('is_active', True),
-            data.get('is_upcoming', False),
+            tech_stack_json,
+            data.get('github_url', ''),
+            data.get('status', 'active'),
+            int(data.get('priority', 0)),
+            int(data.get('is_featured', 0)),
+            int(data.get('is_active', 1)),
+            int(data.get('is_upcoming', 0)),
             id
         ))
         
@@ -185,9 +229,19 @@ def update_project(id):
             return jsonify({'message': 'Project not found'}), 404
         
         conn.commit()
+        
+        # Fetch updated project
+        cursor.execute('SELECT * FROM projects WHERE id = ?', (id,))
+        project = dict(cursor.fetchone())
         conn.close()
         
-        return jsonify({'message': 'Project updated'})
+        project['features'] = parse_features(project.get('features'))
+        project['tech_stack'] = parse_tech_stack(project.get('tech_stack'))
+        
+        return jsonify({
+            'message': 'Project updated',
+            'project': project
+        })
         
     except Exception as e:
         return jsonify({'message': f'Failed to update project: {str(e)}'}), 500
@@ -208,7 +262,45 @@ def delete_project(id):
         conn.commit()
         conn.close()
         
-        return jsonify({'message': 'Project deleted'})
+        return jsonify({
+            'message': 'Project deleted',
+            'id': id
+        })
         
     except Exception as e:
         return jsonify({'message': f'Failed to delete project: {str(e)}'}), 500
+
+# Add bulk update endpoint
+@projects_bp.route('/bulk', methods=['PUT'])
+@token_required
+def bulk_update_projects():
+    """Bulk update projects (admin only)"""
+    data = request.get_json()
+    project_ids = data.get('ids', [])
+    updates = data.get('updates', {})
+    
+    if not project_ids or not updates:
+        return jsonify({'message': 'Missing ids or updates'}), 400
+    
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # Build update query
+        set_clause = ', '.join([f"{key} = ?" for key in updates.keys()])
+        placeholders = [updates[key] for key in updates.keys()] + project_ids
+        
+        query = f"UPDATE projects SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE id IN ({','.join(['?' for _ in project_ids])})"
+        cursor.execute(query, placeholders)
+        
+        updated_count = cursor.rowcount
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'message': f'{updated_count} projects updated',
+            'updated': updated_count
+        })
+        
+    except Exception as e:
+        return jsonify({'message': f'Failed to update projects: {str(e)}'}), 500
