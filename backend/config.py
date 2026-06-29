@@ -133,35 +133,35 @@ def insert_sample_data(conn):
     
     cursor = conn.cursor()
     
-    # Sample projects with new fields
+    # Sample projects with new fields - UPDATED GitHub URLs to krynova
     projects = [
         ('HRMS System', 'HRMS', 'Complete human resource management system with payroll, attendance tracking, employee self-service, leave management, and performance reviews.',
          'Manage your workforce efficiently', '/demos/hrms', 
          'https://www.youtube.com/embed/dQw4w9WgXcQ', 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=400', 'users-cog',
          json.dumps(["Payroll Management", "Attendance Tracking", "Leave Management", "Performance Reviews", "Employee Self-Service"]),
          json.dumps(["React", "Flask", "SQLite", "Bootstrap"]),
-         'https://github.com/nexora/hrms',
+         'https://github.com/krynova/hrms',
          'active', 8, 1, 1, 0),
         ('TODO System', 'Productivity', 'Smart task management system with priority levels, deadlines, team collaboration, progress tracking, and automated reminders.',
          'Stay organized and productive', '/demos/todo',
          'https://www.youtube.com/embed/dQw4w9WgXcQ', 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=400', 'tasks',
          json.dumps(["Task Creation", "Priority Levels", "Deadline Management", "Team Collaboration", "Progress Tracking"]),
          json.dumps(["Vue.js", "Node.js", "MongoDB", "Express"]),
-         'https://github.com/nexora/todo',
+         'https://github.com/krynova/todo',
          'active', 6, 1, 1, 0),
         ('Estate Management', 'Real Estate', 'Complete property management solution with property listings, tenant management, maintenance tracking, rent collection, and financial reporting.',
          'Manage properties effortlessly', '/demos/estate',
          'https://www.youtube.com/embed/dQw4w9WgXcQ', 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400', 'building',
          json.dumps(["Property Listings", "Tenant Management", "Maintenance Tracking", "Rent Collection", "Financial Reports"]),
          json.dumps(["Angular", "Django", "PostgreSQL", "Docker"]),
-         'https://github.com/nexora/estate',
+         'https://github.com/krynova/estate',
          'active', 7, 0, 1, 0),
         ('WhatsApp Bot', 'Communication', 'AI-powered WhatsApp bot for automated communication, lead generation, customer support, order tracking, and appointment scheduling.',
          'Automate your communication', '/demos/whatsapp',
          'https://www.youtube.com/embed/dQw4w9WgXcQ', 'https://images.unsplash.com/photo-1611605698335-8b1569810432?w=400', 'whatsapp',
          json.dumps(["Lead Generation", "Customer Support", "Order Tracking", "Appointment Scheduling", "Analytics"]),
          json.dumps(["Python", "Flask", "Twilio API", "Redis"]),
-         'https://github.com/nexora/whatsapp-bot',
+         'https://github.com/krynova/whatsapp-bot',
          'upcoming', 9, 1, 1, 1),
     ]
     
@@ -173,19 +173,19 @@ def insert_sample_data(conn):
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', project)
     
-    # Sample testimonials
+    # Sample testimonials - UPDATED: Nexora → Krynova
     testimonials = [
         ('Rahul Sharma', 'TechSolutions Pvt Ltd', '',
-         'Nexora delivered an incredible HRMS system that transformed our workforce management. Highly recommended!', 
+         'Krynova delivered an incredible HRMS system that transformed our workforce management. Highly recommended!', 
          5, 1),
         ('Priya Patel', 'EstatePro Realty', '',
-         'The property management solution from Nexora is a game-changer. Our operations are now seamless.',
+         'The property management solution from Krynova is a game-changer. Our operations are now seamless.',
          5, 1),
         ('Amit Kumar', 'StartupIndia', '',
-         'The TODO system helped our team stay organized and productive. Excellent product!',
+         'The TODO system from Krynova helped our team stay organized and productive. Excellent product!',
          4, 1),
         ('Sneha Reddy', 'DigitalMinds', '',
-         'WhatsApp bot integration was smooth and effective. Our customer engagement increased by 40%.',
+         'Krynova\'s WhatsApp bot integration was smooth and effective. Our customer engagement increased by 40%.',
          5, 1),
     ]
     
@@ -195,7 +195,7 @@ def insert_sample_data(conn):
             VALUES (?, ?, ?, ?, ?, ?)
         ''', testimonial)
     
-    # Default admin user (password: admin123)
+    # Default admin user (password: admin123) - KEPT AS admin@nexora.com
     import bcrypt
     hashed = bcrypt.hashpw('admin123'.encode('utf-8'), bcrypt.gensalt())
     cursor.execute('''
