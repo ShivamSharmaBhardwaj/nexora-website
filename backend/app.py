@@ -108,13 +108,16 @@ try:
 except Exception as e:
     print(f"  ❌ Testimonial routes failed: {e}", flush=True)
 
-# ✅ ADD THIS - Tools routes
+# ✅ TOOLS ROUTES - REGISTER WITH URL PREFIX
 try:
     from routes.tools_routes import tools_bp
     app.register_blueprint(tools_bp, url_prefix='/api/tools')
     print("  ✅ Tools routes loaded", flush=True)
+    print("  📋 Tools endpoints available at /api/tools/*")
 except Exception as e:
     print(f"  ❌ Tools routes failed: {e}", flush=True)
+    import traceback
+    traceback.print_exc()
 
 # Health check
 @app.route('/api/health')

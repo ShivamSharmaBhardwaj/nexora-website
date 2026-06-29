@@ -802,94 +802,101 @@ const Home = () => {
         </div>
       </section>
 
-      {/* ========================================== */}
-      {/* FOUNDER SECTION - WITH YOUR PHOTO */}
-      {/* ========================================== */}
-      <section className="py-16 bg-gradient-to-r from-blue-50 to-indigo-50">
-        <div className="container">
-          <div className="max-w-5xl mx-auto">
-            <div className="text-center mb-12">
-              <span className="text-blue-600 font-semibold text-sm uppercase tracking-wider">Leadership</span>
-              <h2 className="text-3xl font-bold mt-2">Meet Our Founder</h2>
-              <p className="text-gray-600 mt-2">Driven by innovation and a passion for technology</p>
+    {/* ========================================== */}
+{/* FOUNDER SECTION - WITH YOUR PHOTO */}
+{/* ========================================== */}
+<section className="py-16 bg-gradient-to-r from-blue-50 to-indigo-50">
+  <div className="container">
+    <div className="max-w-5xl mx-auto">
+      <div className="text-center mb-12">
+        <span className="text-blue-600 font-semibold text-sm uppercase tracking-wider">Leadership</span>
+        <h2 className="text-3xl font-bold mt-2">Meet Our Founder</h2>
+        <p className="text-gray-600 mt-2">Driven by innovation and a passion for technology</p>
+      </div>
+      <div className="bg-white rounded-2xl shadow-xl p-8 md:p-12 border border-gray-100 hover:shadow-2xl transition-shadow duration-300">
+        <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
+          <div className="flex-shrink-0 relative">
+            <div className="w-32 h-32 md:w-48 md:h-48 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-white text-5xl md:text-7xl font-bold shadow-xl ring-4 ring-blue-200 overflow-hidden">
+              {/* ✅ FIXED: Using PNG format */}
+              <img 
+                src="/founder-shivam-sharma.png" 
+                alt="Shivam Sharma - Founder & CEO of Krynova Technologies" 
+                className="w-full h-full rounded-full object-cover hover:scale-105 transition-transform duration-300"
+                onError={(e) => {
+                  // If PNG fails, try without extension
+                  e.target.src = '/founder-shivam-sharma';
+                  e.target.onerror = () => {
+                    // If both fail, show initials
+                    e.target.style.display = 'none';
+                    const parent = e.target.parentElement;
+                    if (parent) {
+                      parent.innerHTML = '';
+                      const initials = document.createElement('span');
+                      initials.textContent = 'SS';
+                      initials.className = 'text-white text-5xl md:text-7xl font-bold';
+                      parent.appendChild(initials);
+                      parent.className = parent.className + ' flex items-center justify-center';
+                    }
+                  };
+                }}
+              />
             </div>
-            <div className="bg-white rounded-2xl shadow-xl p-8 md:p-12 border border-gray-100 hover:shadow-2xl transition-shadow duration-300">
-              <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
-                <div className="flex-shrink-0 relative">
-                  <div className="w-32 h-32 md:w-48 md:h-48 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-white text-5xl md:text-7xl font-bold shadow-xl ring-4 ring-blue-200 overflow-hidden">
-                    {/* ⚠️ IMPORTANT: Place your photo in public folder as "founder-shivam-sharma.jpg" */}
-                    <img 
-                      src="/founder-shivam-sharma.jpg" 
-                      alt="Shivam Sharma - Founder & CEO of Krynova Technologies" 
-                      className="w-full h-full rounded-full object-cover hover:scale-105 transition-transform duration-300"
-                      onError={(e) => {
-                        // If image fails to load, show initials
-                        e.target.style.display = 'none';
-                        const parent = e.target.parentElement;
-                        if (parent) {
-                          parent.innerHTML = 'SS';
-                          parent.className = parent.className + ' flex items-center justify-center';
-                        }
-                      }}
-                    />
-                  </div>
-                  <div className="absolute -bottom-2 -right-2 bg-yellow-400 text-blue-900 px-3 py-1 rounded-full text-xs font-bold shadow-lg">
-                    CEO
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-2xl font-bold text-gray-900">Shivam Sharma</h3>
-                  <p className="text-blue-600 font-semibold">Founder & CEO, Krynova Technologies</p>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-medium">Full Stack Developer</span>
-                    <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium">8+ Years Experience</span>
-                    <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-medium">Enterprise Solutions</span>
-                    <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-medium">50+ Systems Built</span>
-                    <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-medium">Data Analyst</span>
-                  </div>
-                  <p className="text-gray-600 mt-4 leading-relaxed">
-                    Shivam Sharma is an experienced Full Stack Developer and Data Analyst with over 8 years of industry experience. 
-                    He has successfully built and deployed 50+ enterprise systems for leading organizations including
-                    <strong> Torrent Power Limited</strong>, <strong>Tech Mahindra</strong>, <strong>Romsons</strong>,
-                    <strong> Agra Chain</strong>, and <strong>Anna Infrastructure Limited</strong>.
-                    His expertise spans across custom software development, data analytics, and enterprise architecture.
-                  </p>
-                  <p className="text-gray-600 mt-2">
-                    Shivam specializes in <strong>website creation from basic to advanced</strong>, custom web applications, 
-                    and enterprise solutions with modern technologies like React, Node.js, Python, and cloud platforms.
-                  </p>
-                  <div className="flex flex-wrap gap-4 mt-4">
-                    <a 
-                      href="mailto:princeb744@gmail.com" 
-                      className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition"
-                    >
-                      <FaEnvelope /> princeb744@gmail.com
-                    </a>
-                    <a 
-                      href="tel:+918630519082" 
-                      className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition"
-                    >
-                      <FaPhone /> +91 86305 19082
-                    </a>
-                  </div>
-                  <div className="flex gap-3 mt-4">
-                    <a href="#" className="text-gray-500 hover:text-blue-600 transition text-xl" aria-label="LinkedIn">
-                      <FaLinkedin />
-                    </a>
-                    <a href="#" className="text-gray-500 hover:text-gray-900 transition text-xl" aria-label="GitHub">
-                      <FaGithub />
-                    </a>
-                    <a href="#" className="text-gray-500 hover:text-blue-400 transition text-xl" aria-label="Twitter">
-                      <FaTwitter />
-                    </a>
-                  </div>
-                </div>
-              </div>
+            <div className="absolute -bottom-2 -right-2 bg-yellow-400 text-blue-900 px-3 py-1 rounded-full text-xs font-bold shadow-lg">
+              CEO
+            </div>
+          </div>
+          <div className="flex-1">
+            <h3 className="text-2xl font-bold text-gray-900">Shivam Sharma</h3>
+            <p className="text-blue-600 font-semibold">Founder & CEO, Krynova Technologies</p>
+            <div className="flex flex-wrap gap-2 mt-2">
+              <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-medium">Full Stack Developer</span>
+              <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium">8+ Years Experience</span>
+              <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-medium">Enterprise Solutions</span>
+              <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-medium">50+ Systems Built</span>
+              <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-medium">Data Analyst</span>
+            </div>
+            <p className="text-gray-600 mt-4 leading-relaxed">
+              Shivam Sharma is an experienced Full Stack Developer and Data Analyst with over 8 years of industry experience. 
+              He has successfully built and deployed 50+ enterprise systems for leading organizations including
+              <strong> Torrent Power Limited</strong>, <strong>Tech Mahindra</strong>, <strong>Romsons</strong>,
+              <strong> Agra Chain</strong>, and <strong>Anna Infrastructure Limited</strong>.
+              His expertise spans across custom software development, data analytics, and enterprise architecture.
+            </p>
+            <p className="text-gray-600 mt-2">
+              Shivam specializes in <strong>website creation from basic to advanced</strong>, custom web applications, 
+              and enterprise solutions with modern technologies like React, Node.js, Python, and cloud platforms.
+            </p>
+            <div className="flex flex-wrap gap-4 mt-4">
+              <a 
+                href="mailto:princeb744@gmail.com" 
+                className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition"
+              >
+                <FaEnvelope /> princeb744@gmail.com
+              </a>
+              <a 
+                href="tel:+918630519082" 
+                className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition"
+              >
+                <FaPhone /> +91 86305 19082
+              </a>
+            </div>
+            <div className="flex gap-3 mt-4">
+              <a href="#" className="text-gray-500 hover:text-blue-600 transition text-xl" aria-label="LinkedIn">
+                <FaLinkedin />
+              </a>
+              <a href="#" className="text-gray-500 hover:text-gray-900 transition text-xl" aria-label="GitHub">
+                <FaGithub />
+              </a>
+              <a href="#" className="text-gray-500 hover:text-blue-400 transition text-xl" aria-label="Twitter">
+                <FaTwitter />
+              </a>
             </div>
           </div>
         </div>
-      </section>
-
+      </div>
+    </div>
+  </div>
+</section>
       {/* ========================================== */}
       {/* EXPERIENCE & CLIENTS */}
       {/* ========================================== */}
