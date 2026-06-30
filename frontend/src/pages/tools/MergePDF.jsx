@@ -1,13 +1,337 @@
 // src/pages/tools/MergePDF.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   FaSpinner, FaDownload, FaStar, FaLock, FaFilePdf, 
   FaCheckCircle, FaCircle, FaTimes, FaTrash, FaPlus,
   FaCrown, FaRocket, FaShieldAlt, FaGripLines,
-  FaArrowUp, FaArrowDown, FaSort, FaUpload
+  FaArrowUp, FaArrowDown, FaSort, FaUpload, FaClock,
+  FaHistory, FaChevronDown, FaChevronUp, FaCog,
+  FaFile, FaInfoCircle, FaRegFilePdf, FaSlidersH,
+  FaList, FaTh, FaFileSignature, FaCompress, FaSortAmountUp,
+  FaSortAmountDown, FaCheckDouble
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { api } from '../../utils/api';
+import PaymentModal from '../../components/PaymentModal';
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+
+const formatSize = (bytes) => {
+  if (!bytes || bytes === 0) return '0 B';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+};
+
+// ============================================
+// MERGE OPTIONS
+// ============================================
+
+const MergeOptions = ({ options, onChange }) => {
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  return (
+    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+          <FaCog className="text-indigo-500" /> Merge Options
+        </h4>
+        <button
+          type="button"
+          onClick={() => setShowAdvanced(!showAdvanced)}
+          className="text-xs text-indigo-500 hover:text-indigo-700 transition flex items-center gap-1"
+        >
+          {showAdvanced ? 'Hide Advanced' : 'Show Advanced'}
+          {showAdvanced ? <FaChevronUp className="text-xs" /> : <FaChevronDown className="text-xs" />}
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">
+            Page Size
+          </label>
+          <select
+            value={options.pageSize || 'auto'}
+            onChange={(e) => onChange({ ...options, pageSize: e.target.value })}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          >
+            <option value="auto">Auto (Match first page)</option>
+            <option value="A4">A4 (210 × 297 mm)</option>
+            <option value="Letter">Letter (8.5 × 11 in)</option>
+            <option value="Legal">Legal (8.5 × 14 in)</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">
+            Merge Mode
+          </label>
+          <select
+            value={options.mode || 'standard'}
+            onChange={(e) => onChange({ ...options, mode: e.target.value })}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          >
+            <option value="standard">Standard Merge</option>
+            <option value="combine">Combine All Pages</option>
+            <option value="alternate">Alternate Pages</option>
+          </select>
+        </div>
+
+        {showAdvanced && (
+          <div className="space-y-3 pt-2 border-t border-gray-200">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Page Range (Comma separated, e.g., 1-3,5,7-9)
+              </label>
+              <input
+                type="text"
+                value={options.pageRange || ''}
+                onChange={(e) => onChange({ ...options, pageRange: e.target.value })}
+                placeholder="e.g., 1-3,5,7-9"
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="addBookmarks"
+                checked={options.addBookmarks || false}
+                onChange={(e) => onChange({ ...options, addBookmarks: e.target.checked })}
+                className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+              />
+              <label htmlFor="addBookmarks" className="text-xs text-gray-700">
+                Add bookmarks for each file
+              </label>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="compressOutput"
+                checked={options.compressOutput || false}
+                onChange={(e) => onChange({ ...options, compressOutput: e.target.checked })}
+                className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+              />
+              <label htmlFor="compressOutput" className="text-xs text-gray-700">
+                Compress output PDF
+              </label>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="addPageNumbers"
+                checked={options.addPageNumbers || false}
+                onChange={(e) => onChange({ ...options, addPageNumbers: e.target.checked })}
+                className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+              />
+              <label htmlFor="addPageNumbers" className="text-xs text-gray-700">
+                Add page numbers
+              </label>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ============================================
+// MERGE HISTORY
+// ============================================
+
+const MergeHistory = ({ history, onReuse }) => {
+  const [expanded, setExpanded] = useState(false);
+
+  if (history.length === 0) return null;
+
+  const displayedHistory = expanded ? history : history.slice(0, 3);
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition"
+      >
+        <div className="flex items-center gap-2">
+          <FaHistory className="text-indigo-500" />
+          <span className="font-semibold text-gray-700">Merge History</span>
+          <span className="text-xs text-gray-400">({history.length})</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-400">
+            {expanded ? 'Show less' : 'Show more'}
+          </span>
+          {expanded ? <FaChevronUp className="text-gray-400" /> : <FaChevronDown className="text-gray-400" />}
+        </div>
+      </button>
+      
+      {expanded && (
+        <div className="border-t border-gray-200 p-3 space-y-2 max-h-60 overflow-y-auto">
+          {history.map((item, idx) => (
+            <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+              <div className="flex items-center gap-3 min-w-0">
+                <FaFilePdf className="text-red-400 flex-shrink-0" />
+                <span className="text-sm truncate">{item.filename}</span>
+                <span className="text-xs text-gray-400 flex-shrink-0">
+                  {item.fileCount} files
+                </span>
+                <span className="text-xs text-gray-400 flex-shrink-0">
+                  {new Date(item.timestamp).toLocaleDateString()}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {item.status === 'completed' && (
+                  <>
+                    <span className="text-xs text-green-500 flex items-center gap-1">
+                      <FaCheckCircle className="text-xs" /> Done
+                    </span>
+                    <button
+                      onClick={() => onReuse(item)}
+                      className="text-xs text-indigo-500 hover:text-indigo-700 transition"
+                    >
+                      Reuse
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ============================================
+// FILE ITEM COMPONENT - Card View
+// ============================================
+
+const FileCard = ({ file, index, total, onRemove, onMoveUp, onMoveDown, isSelected, onSelect }) => {
+  return (
+    <div className={`bg-white rounded-lg border-2 p-4 hover:shadow-md transition ${
+      isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300'
+    }`}>
+      <div className="flex items-start justify-between">
+        <div className="flex items-start gap-3 flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => onSelect(index)}
+              className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 mt-1"
+            />
+            <span className="text-xs font-medium text-gray-400 w-6">{index + 1}</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <FaFilePdf className="text-red-500 flex-shrink-0" />
+              <span className="truncate text-sm font-medium">{file.name}</span>
+            </div>
+            <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
+              <span>{formatSize(file.size)}</span>
+              <span>•</span>
+              <span className="text-gray-300">Click to reorder</span>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 ml-2">
+          <button
+            type="button"
+            onClick={() => onMoveUp(index)}
+            disabled={index === 0}
+            className="p-1 text-gray-400 hover:text-indigo-600 transition disabled:opacity-30 disabled:cursor-not-allowed"
+            title="Move Up"
+          >
+            <FaArrowUp className="text-xs" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onMoveDown(index)}
+            disabled={index === total - 1}
+            className="p-1 text-gray-400 hover:text-indigo-600 transition disabled:opacity-30 disabled:cursor-not-allowed"
+            title="Move Down"
+          >
+            <FaArrowDown className="text-xs" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onRemove(index)}
+            className="p-1 text-gray-400 hover:text-red-600 transition"
+          >
+            <FaTimes className="text-xs" />
+          </button>
+        </div>
+      </div>
+      <div className="mt-2 w-full bg-gray-200 rounded-full h-1">
+        <div 
+          className="bg-indigo-500 h-1 rounded-full transition-all duration-500"
+          style={{ width: `${((index + 1) / total) * 100}%` }}
+        />
+      </div>
+    </div>
+  );
+};
+
+// ============================================
+// FILE ITEM COMPONENT - List View
+// ============================================
+
+const FileListItem = ({ file, index, total, onRemove, onMoveUp, onMoveDown, isSelected, onSelect }) => {
+  return (
+    <div className={`bg-white px-4 py-2 rounded-lg flex items-center justify-between group hover:shadow-sm transition ${
+      isSelected ? 'bg-indigo-50 border-l-4 border-indigo-500' : 'hover:bg-gray-50'
+    }`}>
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={() => onSelect(index)}
+          className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+        />
+        <span className="text-xs font-medium text-gray-400 w-6">{index + 1}</span>
+        <FaFilePdf className="text-red-500 flex-shrink-0" />
+        <span className="truncate text-sm font-medium flex-1">{file.name}</span>
+        <span className="text-xs text-gray-400 flex-shrink-0">{formatSize(file.size)}</span>
+      </div>
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => onMoveUp(index)}
+          disabled={index === 0}
+          className="p-1 text-gray-400 hover:text-indigo-600 transition opacity-0 group-hover:opacity-100 disabled:opacity-30 disabled:cursor-not-allowed"
+          title="Move Up"
+        >
+          <FaArrowUp className="text-xs" />
+        </button>
+        <button
+          type="button"
+          onClick={() => onMoveDown(index)}
+          disabled={index === total - 1}
+          className="p-1 text-gray-400 hover:text-indigo-600 transition opacity-0 group-hover:opacity-100 disabled:opacity-30 disabled:cursor-not-allowed"
+          title="Move Down"
+        >
+          <FaArrowDown className="text-xs" />
+        </button>
+        <button
+          type="button"
+          onClick={() => onRemove(index)}
+          className="p-1 text-gray-400 hover:text-red-600 transition"
+        >
+          <FaTimes className="text-xs" />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ============================================
+// MAIN MERGE PDF COMPONENT
+// ============================================
 
 const MergePDF = () => {
   const [files, setFiles] = useState([]);
@@ -16,24 +340,179 @@ const MergePDF = () => {
   const [usageInfo, setUsageInfo] = useState(null);
   const [isPremium, setIsPremium] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [mergeHistory, setMergeHistory] = useState([]);
+  const [mergeOptions, setMergeOptions] = useState({
+    pageSize: 'auto',
+    mode: 'standard',
+    pageRange: '',
+    addBookmarks: false,
+    compressOutput: false,
+    addPageNumbers: false,
+  });
+  const [progress, setProgress] = useState(0);
+  const [progressStatus, setProgressStatus] = useState('');
+  const [viewMode, setViewMode] = useState('list');
+  const [sortOrder, setSortOrder] = useState('asc');
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const fileInputRef = useRef(null);
 
-  const handleFileChange = (e) => {
-    const selectedFiles = Array.from(e.target.files);
-    const validFiles = selectedFiles.filter(file => file.type === 'application/pdf');
+  // Check premium status
+  useEffect(() => {
+    const checkPremiumStatus = async () => {
+      try {
+        let response;
+        if (api.checkPremiumStatus) {
+          response = await api.checkPremiumStatus();
+        } else if (api.checkPremium) {
+          response = await api.checkPremium();
+        } else {
+          return;
+        }
+        
+        if (response.data && response.data.is_premium) {
+          setIsPremium(true);
+          toast.success('🎉 Premium activated! Unlimited merges.');
+        }
+      } catch (error) {
+        console.error('Premium check failed:', error);
+      }
+    };
+    checkPremiumStatus();
+  }, []);
+
+  // Load merge history
+  useEffect(() => {
+    try {
+      const savedHistory = localStorage.getItem('pdfMergeHistory');
+      if (savedHistory) {
+        const parsed = JSON.parse(savedHistory);
+        const cleanHistory = parsed.map(item => ({
+          filename: item.filename,
+          fileCount: item.fileCount || 0,
+          timestamp: item.timestamp,
+          status: item.status,
+          result: item.result ? { filename: item.result.filename, pages: item.result.pages } : null
+        }));
+        setMergeHistory(cleanHistory);
+      }
+    } catch (e) {
+      console.error('Failed to load history:', e);
+    }
+  }, []);
+
+  // Save merge history
+  const saveToHistory = (filename, status, resultData) => {
+    const newEntry = {
+      filename,
+      fileCount: files.length,
+      timestamp: new Date().toISOString(),
+      status,
+      result: {
+        filename: resultData.filename || 'merged.pdf',
+        pages: resultData.pages || files.length,
+        file_count: resultData.file_count || files.length,
+      }
+    };
+    
+    const updatedHistory = [newEntry, ...mergeHistory].slice(0, 20);
+    setMergeHistory(updatedHistory);
+    
+    try {
+      localStorage.setItem('pdfMergeHistory', JSON.stringify(updatedHistory));
+    } catch (e) {
+      console.warn('Storage full, storing fewer items');
+      const trimmedHistory = updatedHistory.slice(0, 10);
+      try {
+        localStorage.setItem('pdfMergeHistory', JSON.stringify(trimmedHistory));
+      } catch (e2) {
+        console.error('Could not save history:', e2);
+      }
+    }
+  };
+
+  // Sort files
+  const sortFiles = (order) => {
+    const sorted = [...files];
+    sorted.sort((a, b) => {
+      if (order === 'asc') {
+        return a.name.localeCompare(b.name);
+      } else {
+        return b.name.localeCompare(a.name);
+      }
+    });
+    setFiles(sorted);
+    setSelectedFiles([]);
+  };
+
+  const toggleSort = () => {
+    const newOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+    setSortOrder(newOrder);
+    sortFiles(newOrder);
+    toast.success(`Sorted ${newOrder === 'asc' ? 'A → Z' : 'Z → A'}`);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedFiles.length === files.length) {
+      setSelectedFiles([]);
+    } else {
+      setSelectedFiles(files.map((_, index) => index));
+    }
+  };
+
+  const removeSelected = () => {
+    if (selectedFiles.length === 0) {
+      toast.error('No files selected');
+      return;
+    }
+    const newFiles = files.filter((_, index) => !selectedFiles.includes(index));
+    setFiles(newFiles);
+    setSelectedFiles([]);
+    toast.success(`Removed ${selectedFiles.length} files`);
+  };
+
+  const validateAndAddFiles = (newFiles) => {
+    const validFiles = newFiles.filter(file => file.type === 'application/pdf');
     
     if (validFiles.length === 0) {
       toast.error('Please select valid PDF files');
       return;
     }
     
-    const totalSize = validFiles.reduce((acc, file) => acc + file.size, 0);
-    if (totalSize > 30 * 1024 * 1024) {
-      toast.error('Total file size must be less than 30MB');
+    const totalFiles = files.length + validFiles.length;
+    
+    if (!isPremium && totalFiles > 35) {
+      toast.error(`Free users can merge up to 35 files. You have ${totalFiles} files. Please remove some files or upgrade to premium for unlimited files.`);
+      return;
+    }
+    
+    if (isPremium && totalFiles > 200) {
+      toast.error('Maximum 200 files allowed. Please reduce the number of files.');
+      return;
+    }
+    
+    const MAX_FILE_SIZE = 10 * 1024 * 1024;
+    const largeFiles = validFiles.filter(f => f.size > MAX_FILE_SIZE);
+    if (largeFiles.length > 0) {
+      toast.error(`Some files exceed 10MB limit: ${largeFiles.map(f => f.name).join(', ')}. Please compress them first.`);
+      return;
+    }
+    
+    const totalSize = [...files, ...validFiles].reduce((acc, f) => acc + f.size, 0);
+    const MAX_TOTAL_SIZE = isPremium ? 200 * 1024 * 1024 : 50 * 1024 * 1024;
+    if (totalSize > MAX_TOTAL_SIZE) {
+      toast.error(`Total file size must be less than ${isPremium ? '200MB' : '50MB'}`);
       return;
     }
     
     setFiles(prev => [...prev, ...validFiles]);
     setResult(null);
+    toast.success(`Added ${validFiles.length} PDF(s)`);
+  };
+
+  const handleFileChange = (e) => {
+    const selectedFiles = Array.from(e.target.files);
+    validateAndAddFiles(selectedFiles);
   };
 
   const handleDrag = (e) => {
@@ -52,18 +531,12 @@ const MergePDF = () => {
     setDragActive(false);
     
     const droppedFiles = Array.from(e.dataTransfer.files);
-    const validFiles = droppedFiles.filter(file => file.type === 'application/pdf');
-    
-    if (validFiles.length === 0) {
-      toast.error('Please drop valid PDF files');
-      return;
-    }
-    
-    setFiles(prev => [...prev, ...validFiles]);
+    validateAndAddFiles(droppedFiles);
   };
 
   const removeFile = (index) => {
     setFiles(prev => prev.filter((_, i) => i !== index));
+    setSelectedFiles(prev => prev.filter(i => i !== index));
   };
 
   const moveFileUp = (index) => {
@@ -83,44 +556,116 @@ const MergePDF = () => {
   const clearAll = () => {
     setFiles([]);
     setResult(null);
+    setProgress(0);
+    setProgressStatus('');
+    setSelectedFiles([]);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
     if (files.length < 2) {
       toast.error('Please select at least 2 PDF files to merge');
       return;
     }
+    
+    if (!isPremium && files.length > 35) {
+      toast.error(`Free users can merge up to 35 files. You have ${files.length} files. Please upgrade to premium for unlimited files.`);
+      return;
+    }
+    
+    if (isPremium && files.length > 200) {
+      toast.error('Maximum 200 files allowed. Please reduce the number of files.');
+      return;
+    }
+    
+    const totalSize = files.reduce((acc, f) => acc + f.size, 0);
+    const MAX_TOTAL_SIZE = isPremium ? 200 * 1024 * 1024 : 50 * 1024 * 1024;
+    if (totalSize > MAX_TOTAL_SIZE) {
+      toast.error(`Total file size must be less than ${isPremium ? '200MB' : '50MB'}`);
+      return;
+    }
+
     setLoading(true);
+    setProgress(0);
+    setProgressStatus('Starting merge...');
     
     const formData = new FormData();
     files.forEach(file => formData.append('files', file));
     formData.append('is_premium', isPremium);
+    formData.append('options', JSON.stringify(mergeOptions));
+    formData.append('batch_mode', 'false');
     
     try {
+      setProgress(30);
+      setProgressStatus(`Processing ${files.length} files...`);
+      
+      const loadingToast = toast.loading(`Merging ${files.length} files...`);
+      
       const response = await api.mergePdf(formData);
+      
+      toast.dismiss(loadingToast);
+      
+      setProgress(90);
+      setProgressStatus('Finalizing merged PDF...');
+      
       if (response.data.success) {
         setResult(response.data);
         setUsageInfo({
           used: response.data.usage_count,
           remaining: response.data.remaining_free,
-          isPremium: response.data.is_premium
+          isPremium: response.data.is_premium,
+          maxFilesFree: response.data.max_files_free || 35
         });
-        toast.success(`✅ ${response.data.pages} PDFs merged successfully!`);
+        
+        saveToHistory('merged.pdf', 'completed', response.data);
+        
+        setProgress(100);
+        setProgressStatus('✅ Merge complete!');
+        
+        const fileCount = response.data.file_count || response.data.pages;
+        const totalPages = response.data.total_pages;
+        
+        if (totalPages) {
+          toast.success(`✅ ${fileCount} PDFs merged successfully! (${totalPages} total pages)`);
+        } else {
+          toast.success(`✅ ${fileCount} PDFs merged successfully!`);
+        }
+        
+        if (isPremium) {
+          setTimeout(() => downloadFile(), 1000);
+        }
       }
     } catch (error) {
-      if (error.response?.data?.limit_reached) {
-        toast.error('Free limit reached! Upgrade to premium.');
+      setProgress(0);
+      setProgressStatus('❌ Merge failed');
+      
+      console.error('Merge error:', error);
+      
+      if (error.code === 'ECONNABORTED') {
+        toast.error('Request timed out. Try reducing the number of files.');
+      } else if (error.response?.data?.limit_reached) {
+        const limitType = error.response.data.limit_type;
+        if (limitType === 'file_count') {
+          toast.error(`Free users can merge up to ${error.response.data.max_free || 35} files. You have ${error.response.data.file_count} files. Upgrade to premium for unlimited files.`);
+          setShowPaymentModal(true);
+        } else {
+          toast.error('Daily merge limit reached (3 per day). Upgrade to premium for unlimited merges.');
+          setShowPaymentModal(true);
+        }
         setUsageInfo({
-          used: error.response.data.usage_count,
+          used: error.response.data.usage_count || 0,
           remaining: 0,
           isPremium: false
         });
+      } else if (error.response?.data?.error) {
+        toast.error(error.response.data.error);
       } else {
-        toast.error(error.response?.data?.error || 'Failed to merge PDFs');
+        toast.error('Failed to merge PDFs. Please try again with fewer files.');
       }
     } finally {
       setLoading(false);
+      setTimeout(() => setProgress(0), 3000);
     }
   };
 
@@ -128,22 +673,31 @@ const MergePDF = () => {
     if (!result) return;
     const link = document.createElement('a');
     link.href = `data:application/pdf;base64,${result.file}`;
-    link.download = result.filename;
+    link.download = result.filename || 'merged.pdf';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     toast.success('Merged PDF downloaded!');
   };
 
-  const formatFileSize = (bytes) => {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  const handleUpgrade = () => {
+    setShowPaymentModal(true);
+  };
+
+  const reuseHistory = (item) => {
+    toast.success('Reusing previous merge settings');
+    setFiles([]);
+  };
+
+  const toggleFileSelection = (index) => {
+    setSelectedFiles(prev =>
+      prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]
+    );
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8">
-      <div className="container mx-auto px-4 max-w-5xl">
+      <div className="container mx-auto px-4 max-w-6xl">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 bg-indigo-100 text-indigo-700 px-4 py-2 rounded-full text-sm font-medium mb-4">
@@ -158,13 +712,16 @@ const MergePDF = () => {
           </p>
           <div className="flex flex-wrap justify-center gap-3 mt-3">
             <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm">
-              <FaStar className="text-yellow-400" /> Free: 3/day
+              <FaStar className="text-yellow-400" /> Free: 3/day • 35 files max
             </span>
             <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">
-              <FaLock className="text-green-500" /> Premium: Unlimited
+              <FaCrown className="text-yellow-500" /> Premium: Unlimited • Unlimited files
             </span>
             <span className="inline-flex items-center gap-1 bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-sm">
               <FaGripLines className="text-indigo-500" /> Reorder Pages
+            </span>
+            <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm">
+              <FaCompress className="text-purple-500" /> Compress Output
             </span>
           </div>
         </div>
@@ -172,23 +729,48 @@ const MergePDF = () => {
         {/* Usage Info */}
         {usageInfo && (
           <div className={`mb-6 p-4 rounded-lg flex flex-wrap items-center justify-between ${
+            usageInfo.isPremium ? 'bg-green-50 border border-green-200' :
             usageInfo.remaining > 0 ? 'bg-blue-50 border border-blue-200' : 'bg-yellow-50 border border-yellow-200'
           }`}>
-            <p className="text-sm">
+            <div className="text-sm flex flex-wrap items-center gap-2">
               {usageInfo.isPremium ? (
-                <span className="flex items-center gap-2"><FaCrown className="text-yellow-500" /> Premium: Unlimited merges</span>
+                <><FaCrown className="text-yellow-500" /> <span className="font-semibold">Premium:</span> Unlimited merges • Unlimited files</>
               ) : (
-                `${usageInfo.used} used today • ${usageInfo.remaining} free remaining`
+                <>
+                  <FaClock className="text-blue-500" />
+                  <span>{usageInfo.used || 0} used today • {usageInfo.remaining || 0} remaining</span>
+                  <span className="text-gray-400">|</span>
+                  <span>Max {usageInfo.maxFilesFree || 35} files per merge</span>
+                </>
               )}
-            </p>
-            {!usageInfo.isPremium && usageInfo.remaining === 0 && (
+            </div>
+            {!usageInfo.isPremium && (
               <button
-                onClick={() => window.location.href = '/contact?upgrade=premium'}
-                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition"
+                onClick={handleUpgrade}
+                className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition flex items-center gap-2"
               >
-                Upgrade Now
+                <FaCrown /> Upgrade Now
               </button>
             )}
+          </div>
+        )}
+
+        {/* Progress Bar */}
+        {loading && progress > 0 && (
+          <div className="mb-6 bg-white rounded-xl p-4 border border-indigo-200 shadow-lg">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                <FaSpinner className="animate-spin text-indigo-500" />
+                {progressStatus}
+              </span>
+              <span className="text-sm font-semibold text-indigo-600">{Math.round(progress)}%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+              <div 
+                className="bg-gradient-to-r from-indigo-500 to-purple-600 h-2.5 rounded-full transition-all duration-500"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
           </div>
         )}
 
@@ -209,51 +791,119 @@ const MergePDF = () => {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <p className="font-medium text-gray-900">{files.length} PDFs selected</p>
-                    <button
-                      type="button"
-                      onClick={clearAll}
-                      className="text-red-500 hover:text-red-700 transition text-sm flex items-center gap-1"
-                    >
-                      <FaTrash /> Clear All
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="text-indigo-600 hover:text-indigo-700 transition text-sm flex items-center gap-1"
+                      >
+                        <FaPlus /> Add More
+                      </button>
+                      <button
+                        type="button"
+                        onClick={clearAll}
+                        className="text-red-500 hover:text-red-700 transition text-sm flex items-center gap-1"
+                      >
+                        <FaTrash /> Clear All
+                      </button>
+                    </div>
                   </div>
-                  <div className="max-h-48 overflow-y-auto space-y-2">
+
+                  {/* View Controls */}
+                  <div className="flex items-center justify-between bg-gray-50 p-2 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={toggleSelectAll}
+                        className="text-xs text-indigo-600 hover:text-indigo-800 transition flex items-center gap-1"
+                      >
+                        <FaCheckDouble className="text-xs" />
+                        {selectedFiles.length === files.length ? 'Deselect All' : 'Select All'}
+                      </button>
+                      {selectedFiles.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={removeSelected}
+                          className="text-xs text-red-500 hover:text-red-700 transition flex items-center gap-1"
+                        >
+                          <FaTrash className="text-xs" />
+                          Remove ({selectedFiles.length})
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={toggleSort}
+                        className="text-xs text-gray-500 hover:text-indigo-600 transition flex items-center gap-1"
+                        title={`Sort ${sortOrder === 'asc' ? 'A → Z' : 'Z → A'}`}
+                      >
+                        {sortOrder === 'asc' ? <FaSortAmountUp className="text-xs" /> : <FaSortAmountDown className="text-xs" />}
+                        Sort
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setViewMode('list')}
+                        className={`p-1.5 rounded transition ${
+                          viewMode === 'list' ? 'bg-indigo-500 text-white' : 'text-gray-400 hover:text-gray-600'
+                        }`}
+                        title="List View"
+                      >
+                        <FaList className="text-sm" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setViewMode('card')}
+                        className={`p-1.5 rounded transition ${
+                          viewMode === 'card' ? 'bg-indigo-500 text-white' : 'text-gray-400 hover:text-gray-600'
+                        }`}
+                        title="Card View"
+                      >
+                        <FaTh className="text-sm" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* File List */}
+                  <div className={`max-h-96 overflow-y-auto custom-scrollbar space-y-2 border border-gray-100 rounded-lg p-2 ${
+                    viewMode === 'card' ? 'grid grid-cols-1 md:grid-cols-2 gap-3' : 'space-y-2'
+                  }`}>
                     {files.map((file, index) => (
-                      <div key={index} className="bg-gray-50 px-4 py-2 rounded-lg flex items-center justify-between group hover:bg-indigo-50 transition">
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <span className="text-xs font-medium text-gray-400 w-6">{index + 1}</span>
-                          <FaFilePdf className="text-red-500 flex-shrink-0" />
-                          <span className="truncate text-sm font-medium flex-1">{file.name}</span>
-                          <span className="text-xs text-gray-400">{formatFileSize(file.size)}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => moveFileUp(index)}
-                            className="p-1 text-gray-400 hover:text-blue-600 transition opacity-0 group-hover:opacity-100"
-                            title="Move Up"
-                          >
-                            <FaArrowUp className="text-xs" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => moveFileDown(index)}
-                            className="p-1 text-gray-400 hover:text-blue-600 transition opacity-0 group-hover:opacity-100"
-                            title="Move Down"
-                          >
-                            <FaArrowDown className="text-xs" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => removeFile(index)}
-                            className="p-1 text-gray-400 hover:text-red-600 transition"
-                          >
-                            <FaTimes className="text-xs" />
-                          </button>
-                        </div>
-                      </div>
+                      viewMode === 'card' ? (
+                        <FileCard
+                          key={index}
+                          file={file}
+                          index={index}
+                          total={files.length}
+                          onRemove={removeFile}
+                          onMoveUp={moveFileUp}
+                          onMoveDown={moveFileDown}
+                          isSelected={selectedFiles.includes(index)}
+                          onSelect={toggleFileSelection}
+                        />
+                      ) : (
+                        <FileListItem
+                          key={index}
+                          file={file}
+                          index={index}
+                          total={files.length}
+                          onRemove={removeFile}
+                          onMoveUp={moveFileUp}
+                          onMoveDown={moveFileDown}
+                          isSelected={selectedFiles.includes(index)}
+                          onSelect={toggleFileSelection}
+                        />
+                      )
                     ))}
                   </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf"
+                    multiple
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -266,6 +916,7 @@ const MergePDF = () => {
                   </div>
                   <p className="text-xs text-gray-400">Supports PDF up to 30MB total</p>
                   <input
+                    ref={fileInputRef}
                     type="file"
                     accept=".pdf"
                     multiple
@@ -285,14 +936,18 @@ const MergePDF = () => {
 
             {/* Stats */}
             {files.length > 0 && (
-              <div className="grid grid-cols-3 gap-3 text-center text-sm">
+              <div className="grid grid-cols-4 gap-3 text-center text-sm">
                 <div className="bg-gray-50 p-3 rounded-lg">
                   <p className="font-bold text-gray-900">{files.length}</p>
                   <p className="text-gray-500">Files</p>
                 </div>
                 <div className="bg-gray-50 p-3 rounded-lg">
-                  <p className="font-bold text-gray-900">{formatFileSize(files.reduce((acc, f) => acc + f.size, 0))}</p>
+                  <p className="font-bold text-gray-900">{formatSize(files.reduce((acc, f) => acc + f.size, 0))}</p>
                   <p className="text-gray-500">Total Size</p>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <p className="font-bold text-gray-900">{files.length}</p>
+                  <p className="text-gray-500">Pages to Merge</p>
                 </div>
                 <div className="bg-gray-50 p-3 rounded-lg">
                   <p className="font-bold text-gray-900">PDF</p>
@@ -301,17 +956,28 @@ const MergePDF = () => {
               </div>
             )}
 
+            {/* Merge Options */}
+            <MergeOptions 
+              options={mergeOptions}
+              onChange={setMergeOptions}
+            />
+
             {/* Premium Toggle */}
             <div className="flex items-center gap-3 pt-2">
               <input
                 type="checkbox"
                 checked={isPremium}
                 onChange={(e) => setIsPremium(e.target.checked)}
-                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
               />
               <label className="text-sm text-gray-700 flex items-center gap-1">
-                <FaCrown className="text-yellow-500" /> Premium Mode (Unlimited merges)
+                <FaCrown className="text-yellow-500" /> Premium Mode (Unlimited merges + Advanced options)
               </label>
+              {!isPremium && (
+                <span className="text-xs text-gray-400 ml-2">
+                  (Free: 3/day • 35 files max)
+                </span>
+              )}
             </div>
 
             <button
@@ -334,7 +1000,10 @@ const MergePDF = () => {
                   </div>
                   <div className="flex-1">
                     <p className="font-semibold text-indigo-800">✅ Merge Complete!</p>
-                    <p className="text-sm text-indigo-600">{result.pages} PDFs merged into one document</p>
+                    <p className="text-sm text-indigo-600">
+                      {result.file_count || result.pages} PDF files merged 
+                      {result.total_pages && <span> • {result.total_pages} total pages</span>}
+                    </p>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-3 mt-4">
@@ -346,8 +1015,7 @@ const MergePDF = () => {
                   </button>
                   <button
                     onClick={() => {
-                      setFiles([]);
-                      setResult(null);
+                      clearAll();
                     }}
                     className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg hover:bg-gray-300 transition flex items-center justify-center gap-2 font-semibold"
                   >
@@ -359,8 +1027,16 @@ const MergePDF = () => {
           )}
         </div>
 
+        {/* Merge History */}
+        <div className="mt-6">
+          <MergeHistory 
+            history={mergeHistory} 
+            onReuse={reuseHistory}
+          />
+        </div>
+
         {/* Features Section */}
-        <div className="mt-8 grid md:grid-cols-3 gap-4">
+        <div className="mt-8 grid md:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
             <FaGripLines className="text-3xl text-indigo-500 mx-auto mb-2" />
             <h4 className="font-semibold text-gray-900">Reorder Pages</h4>
@@ -376,8 +1052,44 @@ const MergePDF = () => {
             <h4 className="font-semibold text-gray-900">Fast Processing</h4>
             <p className="text-xs text-gray-500">Merge PDFs in seconds</p>
           </div>
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
+            <FaCompress className="text-3xl text-indigo-500 mx-auto mb-2" />
+            <h4 className="font-semibold text-gray-900">Compress Output</h4>
+            <p className="text-xs text-gray-500">Reduce merged file size (Premium)</p>
+          </div>
         </div>
+
+        {/* Upgrade CTA */}
+        {!isPremium && (
+          <div className="mt-8 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-6 text-white text-center relative overflow-hidden">
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute top-0 -right-20 w-64 h-64 bg-white rounded-full blur-3xl"></div>
+              <div className="absolute -bottom-20 -left-20 w-48 h-48 bg-white rounded-full blur-3xl"></div>
+            </div>
+            <div className="relative z-10 max-w-2xl mx-auto">
+              <FaCrown className="text-4xl text-yellow-400 mx-auto mb-3" />
+              <h3 className="text-xl font-bold mb-2">🚀 Unlock Premium Features</h3>
+              <p className="text-indigo-100 mb-4">
+                Get unlimited merges, advanced options, compress output, and priority support.
+              </p>
+              <button
+                onClick={handleUpgrade}
+                className="bg-white text-indigo-600 px-8 py-3 rounded-xl font-semibold hover:shadow-lg transition hover:-translate-y-0.5"
+              >
+                Upgrade Now — ₹499/month
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Payment Modal */}
+      <PaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        userEmail={localStorage.getItem('userEmail') || ''}
+        userId={localStorage.getItem('userId') || ''}
+      />
 
       <style dangerouslySetInnerHTML={{ __html: `
         .gradient-text {
@@ -386,9 +1098,30 @@ const MergePDF = () => {
           -webkit-text-fill-color: transparent;
           background-clip: text;
         }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+        .animate-pulse {
+          animation: pulse 1.5s ease-in-out infinite;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #c1c1c1;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #a8a8a8;
+        }
       `}} />
     </div>
   );
 };
 
-export default MergePDF;
+export default MergePDF; // ✅ MAKE SURE THIS IS AT THE END

@@ -19,9 +19,10 @@ import base64
 import re
 from docx import Document
 import openpyxl
-from pdf2image import convert_from_bytes
 import img2pdf
 import shutil
+import fitz 
+from io import BytesIO
 
 # Create blueprint WITHOUT url_prefix
 tools_bp = Blueprint('tools_bp', __name__)
@@ -71,28 +72,28 @@ def test_tools():
         'success': True,
         'message': 'Tools API is working!',
         'available_tools': [
-            '/resume-builder/ (POST)',
-            '/cover-letter/ (POST)',
-            '/qr-generator/ (POST)',
-            '/pdf-to-image/ (POST)',
-            '/pdf-to-word/ (POST)',
-            '/pdf-to-excel/ (POST)',
-            '/image-to-pdf/ (POST)',
-            '/pdf-compressor/ (POST)',
-            '/merge-pdf/ (POST)',
-            '/split-pdf/ (POST)',
-            '/image-resizer/ (POST)',
-            '/text-to-pdf/ (POST)',
+            '/resume-builder (POST)',
+            '/cover-letter (POST)',
+            '/qr-generator (POST)',
+            '/pdf-to-image (POST)',
+            '/pdf-to-word (POST)',
+            '/pdf-to-excel (POST)',
+            '/image-to-pdf (POST)',
+            '/pdf-compressor (POST)',
+            '/merge-pdf (POST)',
+            '/split-pdf (POST)',
+            '/image-resizer (POST)',
+            '/text-to-pdf (POST)',
             '/premium/check (GET)',
-            '/premium/subscribe/ (POST)'
+            '/premium/subscribe (POST)'
         ]
     })
 
 # ============================================
-# 1. RESUME BUILDER
+# 1. RESUME BUILDER - FIXED (no trailing slash)
 # ============================================
 
-@tools_bp.route('/resume-builder/', methods=['POST', 'OPTIONS'])
+@tools_bp.route('/resume-builder', methods=['POST', 'OPTIONS'])
 def build_resume():
     """Generate ATS-friendly resume (Free: 3 per day, Premium: Unlimited)"""
     if request.method == 'OPTIONS':
@@ -145,10 +146,10 @@ def build_resume():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # ============================================
-# 2. COVER LETTER GENERATOR
+# 2. COVER LETTER GENERATOR - FIXED (no trailing slash)
 # ============================================
 
-@tools_bp.route('/cover-letter/', methods=['POST', 'OPTIONS'])
+@tools_bp.route('/cover-letter', methods=['POST', 'OPTIONS'])
 def generate_cover_letter():
     """Generate cover letter (Free: 3 per day, Premium: Unlimited)"""
     if request.method == 'OPTIONS':
@@ -199,10 +200,10 @@ def generate_cover_letter():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # ============================================
-# 3. QR CODE GENERATOR
+# 3. QR CODE GENERATOR - FIXED (no trailing slash)
 # ============================================
 
-@tools_bp.route('/qr-generator/', methods=['POST', 'OPTIONS'])
+@tools_bp.route('/qr-generator', methods=['POST', 'OPTIONS'])
 def generate_qr():
     """Generate QR Code (Free: 5 per day, Premium: Unlimited)"""
     if request.method == 'OPTIONS':
@@ -285,13 +286,12 @@ def generate_qr():
         print(f"QR Generator Error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# ============================================
-# 4. PDF TO IMAGE
-# ============================================
+# In tools.py - Replace the existing pdf_to_image function with this:
 
-@tools_bp.route('/pdf-to-image/', methods=['POST', 'OPTIONS'])
+
+@tools_bp.route('/pdf-to-image', methods=['POST', 'OPTIONS'])
 def pdf_to_image():
-    """Convert PDF to Image (Free: 3 pages per day, Premium: Unlimited)"""
+    """Convert PDF to Image using PyMuPDF (Free: 3 pages per day, Premium: Unlimited)"""
     if request.method == 'OPTIONS':
         response = jsonify({'success': True})
         response.headers.add('Access-Control-Allow-Origin', '*')
@@ -319,50 +319,62 @@ def pdf_to_image():
                 'remaining_pages': max(0, 3 - usage_count)
             }), 403
         
+        # Save uploaded file
         filename = secure_filename(file.filename)
         temp_path = os.path.join(tempfile.gettempdir(), filename)
         file.save(temp_path)
         
-        # Convert PDF to images
-        with open(temp_path, 'rb') as f:
-            images = convert_from_bytes(f.read())
+        # Open PDF with PyMuPDF
+        doc = fitz.open(temp_path)
+        total_pages = len(doc)
         
-        # Convert to base64
+        # Determine how many pages to convert
+        limit = total_pages if is_premium else min(3, total_pages)
+        
+        # Convert pages to images
         image_list = []
-        limit = len(images) if is_premium else min(3, len(images))
-        for i, img in enumerate(images[:limit]):
-            buffered = BytesIO()
-            img.save(buffered, format="PNG")
-            img_base64 = base64.b64encode(buffered.getvalue()).decode()
+        for i in range(limit):
+            page = doc[i]
+            # Render page with 2x zoom for better quality
+            mat = fitz.Matrix(2.0, 2.0)
+            pix = page.get_pixmap(matrix=mat)
+            
+            # Convert to PNG bytes
+            img_data = pix.tobytes("png")
+            img_base64 = base64.b64encode(img_data).decode()
+            
             image_list.append({
                 'page': i + 1,
                 'image': f"data:image/png;base64,{img_base64}"
             })
         
+        # Clean up
+        doc.close()
         os.remove(temp_path)
         
+        # Increment usage for each page converted
         for _ in range(len(image_list)):
             increment_usage('pdf_to_image', ip_address)
         
         return jsonify({
             'success': True,
             'images': image_list,
-            'total_pages': len(images),
+            'total_pages': total_pages,
             'converted': len(image_list),
             'usage_count': get_usage_count('pdf_to_image', ip_address),
-            'remaining_free': max(0, 3 - get_usage_count('pdf_to_image', ip_address)),
+            'remaining_free': max(0, 3 - get_usage_count('pdf_to_image', ip_address)) if not is_premium else "Unlimited",
             'is_premium': is_premium
         })
         
     except Exception as e:
         print(f"PDF to Image Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500# ============================================
+# 5. PDF TO WORD - FIXED (no trailing slash)
 # ============================================
-# 5. PDF TO WORD
-# ============================================
 
-@tools_bp.route('/pdf-to-word/', methods=['POST', 'OPTIONS'])
+@tools_bp.route('/pdf-to-word', methods=['POST', 'OPTIONS'])
 def pdf_to_word():
     """Convert PDF to Word (Free: 2 per day, Premium: Unlimited)"""
     if request.method == 'OPTIONS':
@@ -424,10 +436,10 @@ def pdf_to_word():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # ============================================
-# 6. PDF TO EXCEL
+# 6. PDF TO EXCEL - FIXED (no trailing slash)
 # ============================================
 
-@tools_bp.route('/pdf-to-excel/', methods=['POST', 'OPTIONS'])
+@tools_bp.route('/pdf-to-excel', methods=['POST', 'OPTIONS'])
 def pdf_to_excel():
     """Convert PDF to Excel (Free: 2 per day, Premium: Unlimited)"""
     if request.method == 'OPTIONS':
@@ -493,13 +505,11 @@ def pdf_to_excel():
         print(f"PDF to Excel Error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# ============================================
-# 7. IMAGE TO PDF
-# ============================================
+# In tools.py - Update the image_to_pdf function
 
-@tools_bp.route('/image-to-pdf/', methods=['POST', 'OPTIONS'])
+@tools_bp.route('/image-to-pdf', methods=['POST', 'OPTIONS'])
 def image_to_pdf():
-    """Convert Images to PDF (Free: 3 images per day, Premium: Unlimited)"""
+    """Convert Images to PDF (Free: Single images unlimited, Bulk: 2 per day, Premium: Unlimited)"""
     if request.method == 'OPTIONS':
         response = jsonify({'success': True})
         response.headers.add('Access-Control-Allow-Origin', '*')
@@ -515,55 +525,98 @@ def image_to_pdf():
         ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
         is_premium = request.form.get('is_premium', 'false').lower() == 'true'
         
+        # Get options from request
+        options = {}
+        try:
+            options = json.loads(request.form.get('options', '{}'))
+        except:
+            pass
+        
+        # ✅ FIX: Single image = unlimited, Bulk = limited
+        is_bulk = len(files) > 1
+        
+        # Track bulk usage for free users
+        bulk_key = f"bulk_image_to_pdf:{ip_address}"
+        today = datetime.now().strftime('%Y-%m-%d')
+        
+        if not is_premium and is_bulk:
+            # Check bulk usage
+            bulk_data = usage_tracking.get(bulk_key, {'date': '', 'count': 0})
+            if bulk_data['date'] != today:
+                bulk_data = {'date': today, 'count': 0}
+            
+            if bulk_data['count'] >= 2:
+                return jsonify({
+                    'success': False,
+                    'error': 'Bulk conversion limit reached. Free users can convert 2 bulk (2+ images) per day. Upgrade to premium for unlimited.',
+                    'limit_reached': True,
+                    'limit_type': 'bulk',
+                    'max_free': 2,
+                    'used_today': bulk_data['count']
+                }), 403
+            
+            # Increment bulk usage
+            bulk_data['count'] += 1
+            usage_tracking[bulk_key] = bulk_data
+        
+        # For single images, only track total usage for display purposes
+        usage_key = f"image_to_pdf:{ip_address}"
         usage_count = get_usage_count('image_to_pdf', ip_address)
         
-        if not is_premium and usage_count + len(files) > 3:
-            return jsonify({
-                'success': False,
-                'error': f'Free limit reached. You can convert {3 - usage_count} more images today.',
-                'limit_reached': True,
-                'usage_count': usage_count,
-                'max_free': 3
-            }), 403
-        
+        # Process images
         images_paths = []
-        limit = len(files) if is_premium else min(3, len(files))
-        for file in files[:limit]:
+        for file in files:
             filename = secure_filename(file.filename)
             temp_path = os.path.join(tempfile.gettempdir(), filename)
             file.save(temp_path)
             images_paths.append(temp_path)
         
+        # Convert to PDF
         pdf_bytes = img2pdf.convert(images_paths)
         pdf_base64 = base64.b64encode(pdf_bytes).decode()
         
+        # Clean up
         for path in images_paths:
             os.remove(path)
         
-        for _ in range(len(images_paths)):
+        # Increment usage (for display only)
+        if not is_premium:
             increment_usage('image_to_pdf', ip_address)
+            current_usage = get_usage_count('image_to_pdf', ip_address)
+            remaining = max(0, 999 - current_usage)  # Virtual unlimited for single
+        else:
+            current_usage = 0
+            remaining = "Unlimited"
+        
+        # Get bulk remaining for response
+        bulk_remaining = 2
+        if not is_premium and is_bulk:
+            bulk_data = usage_tracking.get(bulk_key, {'date': today, 'count': 0})
+            bulk_remaining = max(0, 2 - bulk_data['count'])
         
         return jsonify({
             'success': True,
             'file': pdf_base64,
-            'filename': 'converted.pdf',
+            'filename': f'converted_{datetime.now().strftime("%Y%m%d")}.pdf',
             'pages': len(images_paths),
-            'usage_count': get_usage_count('image_to_pdf', ip_address),
-            'remaining_free': max(0, 3 - get_usage_count('image_to_pdf', ip_address)),
-            'is_premium': is_premium
+            'usage_count': current_usage,
+            'remaining_free': remaining,
+            'is_premium': is_premium,
+            'is_bulk': is_bulk,
+            'bulk_remaining': bulk_remaining,
+            'bulk_used': bulk_data['count'] if not is_premium and is_bulk else 0
         })
         
     except Exception as e:
         print(f"Image to PDF Error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
-
 # ============================================
-# 8. PDF COMPRESSOR
+# 8. PDF COMPRESSOR - WITH PROPER COMPRESSION
 # ============================================
 
-@tools_bp.route('/pdf-compressor/', methods=['POST', 'OPTIONS'])
+@tools_bp.route('/pdf-compressor', methods=['POST', 'OPTIONS'])
 def compress_pdf():
-    """Compress PDF (Free: 3 per day, Premium: Unlimited)"""
+    """Compress PDF (Free: Single files unlimited, Batch: 3 per day, Premium: Unlimited)"""
     if request.method == 'OPTIONS':
         response = jsonify({'success': True})
         response.headers.add('Access-Control-Allow-Origin', '*')
@@ -579,17 +632,39 @@ def compress_pdf():
         ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
         is_premium = request.form.get('is_premium', 'false').lower() == 'true'
         
-        usage_count = get_usage_count('pdf_compressor', ip_address)
+        # Check if this is a batch request
+        is_batch = request.form.get('batch_mode', 'false').lower() == 'true'
         
-        if not is_premium and usage_count >= 3:
-            return jsonify({
-                'success': False,
-                'error': 'Free limit reached. Please upgrade to premium for unlimited access.',
-                'limit_reached': True,
-                'usage_count': usage_count,
-                'max_free': 3
-            }), 403
+        # Track batch usage for free users
+        batch_key = f"batch_pdf_compressor:{ip_address}"
+        today = datetime.now().strftime('%Y-%m-%d')
         
+        if not is_premium and is_batch:
+            batch_data = usage_tracking.get(batch_key, {'date': '', 'count': 0})
+            if batch_data['date'] != today:
+                batch_data = {'date': today, 'count': 0}
+            
+            if batch_data['count'] >= 3:
+                return jsonify({
+                    'success': False,
+                    'error': 'Batch compression limit reached. Free users can compress 3 batches per day. Upgrade to premium for unlimited.',
+                    'limit_reached': True,
+                    'limit_type': 'batch',
+                    'max_free': 3,
+                    'used_today': batch_data['count']
+                }), 403
+            
+            batch_data['count'] += 1
+            usage_tracking[batch_key] = batch_data
+        
+        # Get compression options
+        options = {}
+        try:
+            options = json.loads(request.form.get('options', '{}'))
+        except:
+            pass
+        
+        # Save uploaded file
         filename = secure_filename(file.filename)
         temp_path = os.path.join(tempfile.gettempdir(), filename)
         file.save(temp_path)
@@ -597,41 +672,137 @@ def compress_pdf():
         # Read original size
         original_size = os.path.getsize(temp_path)
         
-        # Compress PDF (simplified - read and write back)
-        with open(temp_path, 'rb') as f:
-            pdf_data = f.read()
+        # ============================================
+        # PROPER PDF COMPRESSION USING PyMuPDF
+        # ============================================
         
-        # Convert to base64
-        pdf_base64 = base64.b64encode(pdf_data).decode()
-        compressed_size = len(pdf_data)
+        try:
+            import fitz  # PyMuPDF
+            
+            # Open the PDF
+            doc = fitz.open(temp_path)
+            
+            # Create a new PDF for compression
+            compressed_doc = fitz.open()
+            
+            # Compression level (1-9, default 5)
+            compression_level = options.get('compressionLevel', 5)
+            
+            # Copy all pages with compression
+            for page_num in range(len(doc)):
+                page = doc[page_num]
+                compressed_doc.insert_pdf(doc, from_page=page_num, to_page=page_num)
+            
+            # Save with compression options
+            compressed_buffer = BytesIO()
+            compressed_doc.save(
+                compressed_buffer,
+                garbage=compression_level,  # Garbage collection level
+                deflate=True,               # Use deflate compression
+                clean=True,                 # Clean up unused objects
+                pretty=False                # Don't pretty print (smaller file)
+            )
+            
+            compressed_doc.close()
+            doc.close()
+            
+            compressed_data = compressed_buffer.getvalue()
+            compressed_size = len(compressed_data)
+            
+        except Exception as e:
+            # Fallback to PyPDF2 if PyMuPDF fails
+            print(f"PyMuPDF compression failed, using PyPDF2: {str(e)}")
+            
+            with open(temp_path, 'rb') as f:
+                pdf_reader = PyPDF2.PdfReader(f)
+                pdf_writer = PyPDF2.PdfWriter()
+                
+                for page in pdf_reader.pages:
+                    page.compress_content_streams()
+                    pdf_writer.add_page(page)
+                
+                # Remove metadata to reduce size
+                pdf_writer.add_metadata({
+                    '/Creator': 'Krynova PDF Compressor',
+                    '/Producer': 'Krynova'
+                })
+                
+                compressed_buffer = BytesIO()
+                pdf_writer.write(compressed_buffer)
+                compressed_data = compressed_buffer.getvalue()
+                compressed_size = len(compressed_data)
         
-        os.remove(temp_path)
+        # Calculate saved percentage
+        if original_size > 0 and compressed_size > 0:
+            saved_percentage = int((1 - compressed_size / original_size) * 100)
+            # If saved_percentage is negative (compressed file is larger), set to 0
+            if saved_percentage < 0:
+                saved_percentage = 0
+        else:
+            saved_percentage = 0
         
-        increment_usage('pdf_compressor', ip_address)
+        # Clean up temp file
+        try:
+            os.remove(temp_path)
+        except:
+            pass
+        
+        # For single files, we don't enforce any limit
+        usage_count = get_usage_count('pdf_compressor', ip_address)
+        
+        if not is_premium:
+            increment_usage('pdf_compressor', ip_address)
+            current_usage = get_usage_count('pdf_compressor', ip_address)
+            if is_batch:
+                remaining = max(0, 3 - batch_data['count'])
+            else:
+                remaining = "Unlimited"
+        else:
+            current_usage = 0
+            remaining = "Unlimited"
+        
+        # If compression didn't reduce size, use original file (but with our compression)
+        # Only use compressed if it's smaller
+        if compressed_size < original_size:
+            final_data = compressed_data
+            final_size = compressed_size
+            final_saved = saved_percentage
+        else:
+            # If compression made it larger, return original
+            with open(temp_path, 'rb') as f:
+                final_data = f.read()
+            final_size = original_size
+            final_saved = 0
+        
+        # Return compressed file
+        pdf_base64 = base64.b64encode(final_data).decode()
         
         return jsonify({
             'success': True,
             'file': pdf_base64,
             'filename': f'compressed_{filename}',
             'original_size': original_size,
-            'compressed_size': compressed_size,
-            'saved_percentage': int((1 - compressed_size/original_size) * 100) if original_size > 0 else 0,
-            'usage_count': get_usage_count('pdf_compressor', ip_address),
-            'remaining_free': max(0, 3 - get_usage_count('pdf_compressor', ip_address)),
-            'is_premium': is_premium
+            'compressed_size': final_size,
+            'saved_percentage': final_saved,
+            'usage_count': current_usage,
+            'remaining_free': remaining,
+            'is_premium': is_premium,
+            'is_batch': is_batch,
+            'batch_remaining': max(0, 3 - batch_data['count']) if not is_premium and is_batch else "Unlimited"
         })
         
     except Exception as e:
         print(f"PDF Compressor Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
-
 # ============================================
-# 9. MERGE PDF
+# 9. MERGE PDF - UPDATED (Free: Up to 35 files, Premium: Unlimited)
 # ============================================
 
-@tools_bp.route('/merge-pdf/', methods=['POST', 'OPTIONS'])
+@tools_bp.route('/merge-pdf', methods=['POST', 'OPTIONS'])
 def merge_pdf():
-    """Merge PDFs (Free: 3 per day, Premium: Unlimited)"""
+    """Merge PDFs (Free: Up to 35 files, Premium: Unlimited)"""
     if request.method == 'OPTIONS':
         response = jsonify({'success': True})
         response.headers.add('Access-Control-Allow-Origin', '*')
@@ -644,60 +815,181 @@ def merge_pdf():
     
     try:
         files = request.files.getlist('files')
+        print(f"📄 Received {len(files)} files for merging")
+        
         ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
         is_premium = request.form.get('is_premium', 'false').lower() == 'true'
         
+        # ✅ Check file count limit: Free = 35 max, Premium = Unlimited
+        MAX_FILES_FREE = 35
+        if not is_premium and len(files) > MAX_FILES_FREE:
+            return jsonify({
+                'success': False,
+                'error': f'Free users can merge up to {MAX_FILES_FREE} files. You have {len(files)} files. Please upgrade to premium for unlimited files.',
+                'limit_reached': True,
+                'limit_type': 'file_count',
+                'max_free': MAX_FILES_FREE,
+                'file_count': len(files)
+            }), 403
+        
+        # Check each file size (same for both free and premium)
+        MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB per file
+        for file in files:
+            if file.content_length and file.content_length > MAX_FILE_SIZE:
+                return jsonify({
+                    'success': False,
+                    'error': f'File "{file.filename}" exceeds 10MB limit. Please compress it first.'
+                }), 400
+        
+        # Check daily usage limit (3 per day for free)
         usage_count = get_usage_count('merge_pdf', ip_address)
         
         if not is_premium and usage_count >= 3:
             return jsonify({
                 'success': False,
-                'error': 'Free limit reached. Please upgrade to premium for unlimited access.',
+                'error': 'Daily merge limit reached (3 per day). Please upgrade to premium for unlimited merges.',
                 'limit_reached': True,
+                'limit_type': 'daily',
                 'usage_count': usage_count,
                 'max_free': 3
             }), 403
         
+        # Get options
+        options = {}
+        try:
+            options = json.loads(request.form.get('options', '{}'))
+        except:
+            pass
+        
+        print(f"📄 Options: {options}")
+        
+        # Create merger
         merger = PyPDF2.PdfMerger()
         temp_paths = []
+        file_names = []
         
-        for file in files:
+        # Process files one by one
+        for idx, file in enumerate(files):
             filename = secure_filename(file.filename)
-            temp_path = os.path.join(tempfile.gettempdir(), filename)
+            file_names.append(filename)
+            temp_path = os.path.join(tempfile.gettempdir(), f"merge_{uuid.uuid4().hex}_{filename}")
             file.save(temp_path)
             temp_paths.append(temp_path)
-            merger.append(temp_path)
+            print(f"📄 Processing file {idx + 1}/{len(files)}: {filename}")
+            
+            try:
+                with open(temp_path, 'rb') as f:
+                    reader = PyPDF2.PdfReader(f)
+                    page_count = len(reader.pages)
+                    print(f"   📄 Pages in {filename}: {page_count}")
+                merger.append(temp_path)
+            except Exception as e:
+                print(f"❌ Error processing file {filename}: {str(e)}")
+                for path in temp_paths:
+                    try:
+                        os.remove(path)
+                    except:
+                        pass
+                return jsonify({
+                    'success': False,
+                    'error': f'Error processing file "{filename}". Please check if it\'s a valid PDF.'
+                }), 400
         
+        # Write merged PDF
+        print("📄 Writing merged PDF...")
         output_bytes = BytesIO()
         merger.write(output_bytes)
         merger.close()
         
-        pdf_base64 = base64.b64encode(output_bytes.getvalue()).decode()
+        merged_data = output_bytes.getvalue()
+        print(f"📄 Merged PDF size: {len(merged_data)} bytes")
         
+        # Count total pages in merged PDF
+        try:
+            with BytesIO(merged_data) as f:
+                reader = PyPDF2.PdfReader(f)
+                total_pages = len(reader.pages)
+        except:
+            total_pages = len(files)
+        
+        print(f"📄 Total pages in merged PDF: {total_pages}")
+        
+        # Compress output if requested (Premium feature)
+        if options.get('compressOutput', False) and is_premium:
+            try:
+                print("📄 Compressing merged PDF...")
+                import fitz
+                
+                temp_merged_path = os.path.join(tempfile.gettempdir(), f"merged_{uuid.uuid4().hex}.pdf")
+                with open(temp_merged_path, 'wb') as f:
+                    f.write(merged_data)
+                
+                doc = fitz.open(temp_merged_path)
+                compressed_doc = fitz.open()
+                
+                for page_num in range(len(doc)):
+                    page = doc[page_num]
+                    compressed_doc.insert_pdf(doc, from_page=page_num, to_page=page_num)
+                
+                compressed_buffer = BytesIO()
+                compressed_doc.save(
+                    compressed_buffer,
+                    garbage=4,
+                    deflate=True,
+                    clean=True,
+                    pretty=False
+                )
+                
+                compressed_doc.close()
+                doc.close()
+                os.remove(temp_merged_path)
+                
+                merged_data = compressed_buffer.getvalue()
+                print(f"📄 Compressed PDF size: {len(merged_data)} bytes")
+            except Exception as e:
+                print(f"❌ Compression failed: {str(e)}")
+        
+        pdf_base64 = base64.b64encode(merged_data).decode()
+        
+        # Clean up temp files
         for path in temp_paths:
-            os.remove(path)
+            try:
+                os.remove(path)
+            except:
+                pass
         
-        increment_usage('merge_pdf', ip_address)
+        # Only increment usage for free users
+        if not is_premium:
+            increment_usage('merge_pdf', ip_address)
+            remaining_free = max(0, 3 - get_usage_count('merge_pdf', ip_address))
+        else:
+            remaining_free = "Unlimited"
+        
+        print("✅ Merge completed successfully!")
         
         return jsonify({
             'success': True,
             'file': pdf_base64,
-            'filename': 'merged.pdf',
+            'filename': f'merged_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf',
             'pages': len(files),
-            'usage_count': get_usage_count('merge_pdf', ip_address),
-            'remaining_free': max(0, 3 - get_usage_count('merge_pdf', ip_address)),
+            'total_pages': total_pages,
+            'file_count': len(files),
+            'file_names': file_names,
+            'usage_count': get_usage_count('merge_pdf', ip_address) if not is_premium else 0,
+            'remaining_free': remaining_free,
+            'max_files_free': MAX_FILES_FREE,
             'is_premium': is_premium
         })
         
     except Exception as e:
-        print(f"Merge PDF Error: {str(e)}")
+        print(f"❌ Merge PDF Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
-
-# ============================================
-# 10. SPLIT PDF
+# 10. SPLIT PDF - FIXED (no trailing slash)
 # ============================================
 
-@tools_bp.route('/split-pdf/', methods=['POST', 'OPTIONS'])
+@tools_bp.route('/split-pdf', methods=['POST', 'OPTIONS'])
 def split_pdf():
     """Split PDF (Free: 3 per day, Premium: Unlimited)"""
     if request.method == 'OPTIONS':
@@ -761,12 +1053,12 @@ def split_pdf():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # ============================================
-# 11. IMAGE RESIZER
+# 11. IMAGE RESIZER - UPDATED (Free: Unlimited but limited size, Premium: Unlimited + Advanced)
 # ============================================
 
-@tools_bp.route('/image-resizer/', methods=['POST', 'OPTIONS'])
+@tools_bp.route('/image-resizer', methods=['POST', 'OPTIONS'])
 def resize_image():
-    """Resize Image (Free: 5 per day, Premium: Unlimited)"""
+    """Resize Image (Free: Unlimited, max 1200x1200, Premium: Unlimited, up to 8000x8000)"""
     if request.method == 'OPTIONS':
         response = jsonify({'success': True})
         response.headers.add('Access-Control-Allow-Origin', '*')
@@ -782,57 +1074,120 @@ def resize_image():
         ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
         is_premium = request.form.get('is_premium', 'false').lower() == 'true'
         
-        usage_count = get_usage_count('image_resizer', ip_address)
-        
-        if not is_premium and usage_count >= 5:
-            return jsonify({
-                'success': False,
-                'error': 'Free limit reached. Please upgrade to premium for unlimited access.',
-                'limit_reached': True,
-                'usage_count': usage_count,
-                'max_free': 5
-            }), 403
-        
         width = int(request.form.get('width', 800))
         height = int(request.form.get('height', 600))
         
+        # ✅ Free: Max 1200x1200, Premium: Up to 8000x8000
+        max_dimension = 8000 if is_premium else 1200
+        
         if width < 10 or height < 10:
             return jsonify({'success': False, 'error': 'Width and height must be at least 10px'}), 400
+        
+        if width > max_dimension or height > max_dimension:
+            return jsonify({
+                'success': False, 
+                'error': f'Maximum dimension is {max_dimension}px. {"Upgrade to premium for larger sizes." if not is_premium else ""}',
+                'limit_reached': True if not is_premium else False,
+                'max_dimension': max_dimension,
+                'is_premium': is_premium
+            }), 400
+        
+        # Get options (for premium features)
+        options = {}
+        try:
+            options = json.loads(request.form.get('options', '{}'))
+        except:
+            pass
         
         filename = secure_filename(file.filename)
         temp_path = os.path.join(tempfile.gettempdir(), filename)
         file.save(temp_path)
         
+        # Open image
         img = Image.open(temp_path)
-        img_resized = img.resize((width, height), Image.Resampling.LANCZOS)
+        original_size = img.size
         
+        # ✅ Quality settings: Premium gets better quality
+        quality = options.get('quality', 'medium')
+        quality_map = {
+            'high': 95,
+            'medium': 85,
+            'low': 70
+        }
+        quality_value = quality_map.get(quality, 85)
+        
+        # ✅ Premium gets advanced resizing options
+        if is_premium:
+            # Premium: Better resampling algorithm
+            resample = Image.Resampling.LANCZOS
+            # Premium: Format options
+            output_format = options.get('format', 'PNG')
+            # Premium: Background color for transparent images
+            background = options.get('background', None)
+        else:
+            # Free: Standard resampling
+            resample = Image.Resampling.BICUBIC
+            output_format = 'PNG'
+            background = None
+        
+        # Resize image
+        img_resized = img.resize((width, height), resample)
+        
+        # Convert to appropriate format
         buffered = BytesIO()
-        img_resized.save(buffered, format=img.format or 'PNG')
+        save_kwargs = {'format': output_format, 'quality': quality_value, 'optimize': True}
+        
+        # Handle transparency
+        if output_format == 'PNG' and img_resized.mode == 'RGBA':
+            save_kwargs['format'] = 'PNG'
+        elif output_format in ['JPEG', 'JPG']:
+            if img_resized.mode == 'RGBA':
+                # Convert to RGB for JPEG
+                if background:
+                    # Use specified background color
+                    bg = Image.new('RGB', img_resized.size, background)
+                    bg.paste(img_resized, mask=img_resized.split()[3] if len(img_resized.split()) > 3 else None)
+                    img_resized = bg
+                else:
+                    img_resized = img_resized.convert('RGB')
+            save_kwargs['format'] = 'JPEG'
+        
+        img_resized.save(buffered, **save_kwargs)
         img_base64 = base64.b64encode(buffered.getvalue()).decode()
         
         os.remove(temp_path)
         
+        # ✅ Free: Unlimited but tracked for display
         increment_usage('image_resizer', ip_address)
+        current_usage = get_usage_count('image_resizer', ip_address)
+        
+        # ✅ Free: Unlimited (no limit), Premium: Unlimited
+        remaining = "Unlimited" if is_premium else "Unlimited"
         
         return jsonify({
             'success': True,
-            'image': f"data:image/png;base64,{img_base64}",
-            'original_size': img.size,
+            'image': f"data:image/{output_format.lower()};base64,{img_base64}",
+            'original_size': original_size,
             'new_size': (width, height),
-            'usage_count': get_usage_count('image_resizer', ip_address),
-            'remaining_free': max(0, 5 - get_usage_count('image_resizer', ip_address)),
-            'is_premium': is_premium
+            'usage_count': current_usage,
+            'remaining_free': remaining,
+            'is_premium': is_premium,
+            'max_dimension': max_dimension,
+            'format': output_format,
+            'quality': quality_value
         })
         
     except Exception as e:
         print(f"Image Resizer Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # ============================================
-# 12. TEXT TO PDF
+# 12. TEXT TO PDF - FIXED (no trailing slash)
 # ============================================
 
-@tools_bp.route('/text-to-pdf/', methods=['POST', 'OPTIONS'])
+@tools_bp.route('/text-to-pdf', methods=['POST', 'OPTIONS'])
 def text_to_pdf():
     """Convert Text to PDF (Free: 5 per day, Premium: Unlimited)"""
     if request.method == 'OPTIONS':
@@ -911,14 +1266,22 @@ def text_to_pdf():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # ============================================
-# PREMIUM SUBSCRIPTION
+# PREMIUM SUBSCRIPTION - FIXED
 # ============================================
 
 @tools_bp.route('/premium/check', methods=['GET'])
 def check_premium_status():
     """Check if user has premium access"""
+    # Get user_id from query params or headers
+    user_id = request.args.get('user_id')
+    
+    # In production, check from database
+    # For now, return false (free user)
+    is_premium = False
+    
     return jsonify({
-        'is_premium': False,
+        'success': True,
+        'is_premium': is_premium,
         'features': {
             'resume_builder': {'free_limit': 3, 'premium_unlimited': True},
             'cover_letter': {'free_limit': 3, 'premium_unlimited': True},
@@ -935,7 +1298,7 @@ def check_premium_status():
         }
     })
 
-@tools_bp.route('/premium/subscribe/', methods=['POST', 'OPTIONS'])
+@tools_bp.route('/premium/subscribe', methods=['POST', 'OPTIONS'])
 def subscribe_premium():
     """Subscribe to premium"""
     if request.method == 'OPTIONS':

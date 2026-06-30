@@ -10,7 +10,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5002';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000, // Increased timeout for file processing
+  timeout: 120000,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -45,21 +45,18 @@ apiClient.interceptors.response.use(
   }
 );
 
-
 // ============================================
 // PUBLIC API CLIENT (NO INTERCEPTORS)
 // ============================================
 
 const publicApiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000,
+  timeout: 1200000,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
 });
-
-
 
 // ============================================
 // API HELPER FUNCTIONS
@@ -103,7 +100,7 @@ export const api = {
     return apiClient.delete(`/api/projects/${id}`);
   },
 
-    // ✅ ADD THIS - Service Pages API
+  // Service Pages API
   getServiceData: async (serviceId) => {
     const response = await publicApiClient.get(`/api/services/${serviceId}`);
     return response.data;
@@ -113,6 +110,7 @@ export const api = {
     const response = await publicApiClient.get('/api/services/list');
     return response.data;
   },
+  
   // Testimonials
   getTestimonials: () => {
     return apiClient.get('/api/testimonials');
@@ -144,77 +142,109 @@ export const api = {
     return apiClient.delete(`/api/contact/${id}`);
   },
 
-  // ✅ ADDED: Tools
+  // ============================================
+  // TOOLS
+  // ============================================
+  
   // Resume Builder
   buildResume: (data) => {
     return apiClient.post('/api/tools/resume-builder', data);
   },
+  
   // Cover Letter
   generateCoverLetter: (data) => {
     return apiClient.post('/api/tools/cover-letter', data);
   },
+  
   // QR Generator
   generateQR: (data) => {
     return apiClient.post('/api/tools/qr-generator', data);
   },
+  
   // PDF to Image
   pdfToImage: (formData) => {
     return apiClient.post('/api/tools/pdf-to-image', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
+  
   // PDF to Word
   pdfToWord: (formData) => {
     return apiClient.post('/api/tools/pdf-to-word', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
+  
   // PDF to Excel
   pdfToExcel: (formData) => {
     return apiClient.post('/api/tools/pdf-to-excel', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
+  
   // Image to PDF
   imageToPdf: (formData) => {
     return apiClient.post('/api/tools/image-to-pdf', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
+  
   // PDF Compressor
   compressPdf: (formData) => {
     return apiClient.post('/api/tools/pdf-compressor', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
+  
   // Merge PDF
   mergePdf: (formData) => {
     return apiClient.post('/api/tools/merge-pdf', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
+  
   // Split PDF
   splitPdf: (formData) => {
     return apiClient.post('/api/tools/split-pdf', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
+  
   // Image Resizer
   imageResizer: (formData) => {
     return apiClient.post('/api/tools/image-resizer', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
+  
   // Text to PDF
   textToPdf: (data) => {
     return apiClient.post('/api/tools/text-to-pdf', data);
   },
-  // Premium Check
+  
+  // Premium Check - ADD THIS (both names for compatibility)
   checkPremium: () => {
     return apiClient.get('/api/tools/premium/check');
   },
-  subscribePremium: (data) => {
-    return apiClient.post('/api/tools/premium/subscribe', data);
+  
+  // ✅ ADD THIS - for compatibility with ResumeBuilder
+  checkPremiumStatus: () => {
+    return apiClient.get('/api/tools/premium/check');
+  },
+  // ============================================
+  // PAYMENT METHODS (NEW - Add these)
+  // ============================================
+  
+  createCheckoutSession: (data) => {
+    return apiClient.post('/api/payment/create-checkout-session', data);
+  },
+  
+  getPaymentStatus: (sessionId) => {
+    return apiClient.get(`/api/payment/payment-status/${sessionId}`);
+  },
+  
+  cancelSubscription: (data) => {
+    return apiClient.post('/api/payment/cancel-subscription', data);
   },
 
   // Health

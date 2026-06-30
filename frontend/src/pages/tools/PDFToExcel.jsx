@@ -1,36 +1,191 @@
 // src/pages/tools/PDFToExcel.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   FaSpinner, FaDownload, FaStar, FaLock, FaFilePdf, 
   FaFileExcel, FaCheckCircle, FaCircle, FaTimes, 
   FaEye, FaFileAlt, FaArrowRight, FaTrash, FaPlus,
-  FaCrown, FaRocket, FaShieldAlt, FaTable
+  FaCrown, FaRocket, FaShieldAlt, FaTable, FaClock,
+  FaHistory, FaChevronDown, FaChevronUp,
+  FaInfoCircle, FaFile, FaCog, FaRegFileExcel,
+  FaUpload, FaEdit, FaEye as FaEyeIcon
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { api } from '../../utils/api';
+import PaymentModal from '../../components/PaymentModal';
+import * as XLSX from 'xlsx';
+
+// ============================================
+// TABLE PREVIEW COMPONENT
+// ============================================
+
+const TablePreview = ({ data, title }) => {
+  if (!data || data.length === 0) return null;
+
+  // Get headers from first row
+  const headers = Object.keys(data[0]);
+  
+  // Limit preview to first 5 rows
+  const previewData = data.slice(0, 5);
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      {title && (
+        <div className="px-4 py-2 bg-gray-50 border-b border-gray-200">
+          <h4 className="text-sm font-semibold text-gray-700">{title}</h4>
+        </div>
+      )}
+      <div className="overflow-x-auto p-2">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-gray-50">
+              {headers.map((header, idx) => (
+                <th key={idx} className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                  {header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {previewData.map((row, rowIdx) => (
+              <tr key={rowIdx} className={rowIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                {headers.map((header, colIdx) => (
+                  <td key={colIdx} className="px-3 py-2 text-gray-700 border-b border-gray-100">
+                    {row[header] !== undefined && row[header] !== null ? String(row[header]) : ''}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {data.length > 5 && (
+          <div className="px-3 py-2 text-xs text-gray-400 border-t border-gray-200">
+            + {data.length - 5} more rows
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ============================================
+// MAIN PDF TO EXCEL COMPONENT
+// ============================================
 
 const PDFToExcel = () => {
   const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [usageInfo, setUsageInfo] = useState(null);
   const [isPremium, setIsPremium] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [conversionHistory, setConversionHistory] = useState([]);
+  const [conversionOptions, setConversionOptions] = useState({
+    format: 'xlsx',
+    tableDetection: 'auto',
+    extractionMode: 'standard',
+    preserveFormatting: true,
+    includeHeaders: true,
+    combineTables: false,
+    detectTables: true,
+    mergeCells: false,
+  });
+  const [batchMode, setBatchMode] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [progressStatus, setProgressStatus] = useState('');
+  const [conversionResults, setConversionResults] = useState([]);
+  const [extractedTables, setExtractedTables] = useState([]);
+  const [showTablePreview, setShowTablePreview] = useState(false);
+  const fileInputRef = useRef(null);
+
+  // Check premium status
+  useEffect(() => {
+    const checkPremiumStatus = async () => {
+      try {
+        let response;
+        if (api.checkPremiumStatus) {
+          response = await api.checkPremiumStatus();
+        } else if (api.checkPremium) {
+          response = await api.checkPremium();
+        } else {
+          return;
+        }
+        
+        if (response.data && response.data.is_premium) {
+          setIsPremium(true);
+          toast.success('🎉 Premium activated! Unlimited conversions.');
+        }
+      } catch (error) {
+        console.error('Premium check failed:', error);
+      }
+    };
+    checkPremiumStatus();
+  }, []);
+
+  // Load conversion history from localStorage
+  useEffect(() => {
+    const savedHistory = localStorage.getItem('pdfExcelConversionHistory');
+    if (savedHistory) {
+      try {
+        setConversionHistory(JSON.parse(savedHistory));
+      } catch (e) {
+        console.error('Failed to load history:', e);
+      }
+    }
+  }, []);
+
+  // Save conversion history
+  const saveToHistory = (filename, status, resultData) => {
+    const newEntry = {
+      filename,
+      timestamp: new Date().toISOString(),
+      status,
+      result: resultData,
+    };
+    const updatedHistory = [newEntry, ...conversionHistory].slice(0, 20);
+    setConversionHistory(updatedHistory);
+    localStorage.setItem('pdfExcelConversionHistory', JSON.stringify(updatedHistory));
+  };
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
     if (selectedFile) {
-      if (selectedFile.type !== 'application/pdf') {
-        toast.error('Please select a PDF file');
-        return;
-      }
-      if (selectedFile.size > 15 * 1024 * 1024) {
-        toast.error('File size must be less than 15MB');
-        return;
-      }
+      validateAndAddFile(selectedFile);
+    }
+  };
+
+  const handleBatchFileChange = (e) => {
+    const newFiles = Array.from(e.target.files);
+    newFiles.forEach(file => validateAndAddFile(file, true));
+  };
+
+  const validateAndAddFile = (selectedFile, batch = false) => {
+    if (selectedFile.type !== 'application/pdf') {
+      toast.error(`${selectedFile.name} is not a PDF file`);
+      return;
+    }
+    if (selectedFile.size > 15 * 1024 * 1024) {
+      toast.error(`${selectedFile.name} exceeds 15MB limit`);
+      return;
+    }
+    
+    if (batch) {
+      setFiles(prev => [...prev, selectedFile]);
+      toast.success(`Added ${selectedFile.name} to queue`);
+    } else {
       setFile(selectedFile);
       setResult(null);
+      setExtractedTables([]);
     }
+  };
+
+  const removeBatchFile = (index) => {
+    setFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const clearAllBatchFiles = () => {
+    setFiles([]);
   };
 
   const handleDrag = (e) => {
@@ -48,35 +203,58 @@ const PDFToExcel = () => {
     e.stopPropagation();
     setDragActive(false);
     
-    const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile) {
-      if (droppedFile.type !== 'application/pdf') {
-        toast.error('Please drop a PDF file');
-        return;
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    if (batchMode) {
+      droppedFiles.forEach(file => validateAndAddFile(file, true));
+    } else {
+      const droppedFile = droppedFiles[0];
+      if (droppedFile) {
+        validateAndAddFile(droppedFile, false);
       }
-      if (droppedFile.size > 15 * 1024 * 1024) {
-        toast.error('File size must be less than 15MB');
-        return;
-      }
-      setFile(droppedFile);
-      setResult(null);
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!file) {
-      toast.error('Please select a PDF file');
-      return;
+    
+    if (batchMode) {
+      if (files.length === 0) {
+        toast.error('Please add at least one PDF file');
+        return;
+      }
+      await handleBatchSubmit();
+    } else {
+      if (!file) {
+        toast.error('Please select a PDF file');
+        return;
+      }
+      await handleSingleSubmit();
     }
+  };
+
+  const handleSingleSubmit = async () => {
     setLoading(true);
+    setProgress(0);
+    setProgressStatus('Starting extraction...');
+    setExtractedTables([]);
     
     const formData = new FormData();
     formData.append('file', file);
     formData.append('is_premium', isPremium);
+    formData.append('options', JSON.stringify({
+      ...conversionOptions,
+      detectTables: true,
+    }));
     
     try {
+      setProgress(20);
+      setProgressStatus('Reading PDF file...');
+      
       const response = await api.pdfToExcel(formData);
+      
+      setProgress(60);
+      setProgressStatus('Extracting tables and data...');
+      
       if (response.data.success) {
         setResult(response.data);
         setUsageInfo({
@@ -84,9 +262,28 @@ const PDFToExcel = () => {
           remaining: response.data.remaining_free,
           isPremium: response.data.is_premium
         });
-        toast.success('✅ PDF converted to Excel successfully!');
+        
+        // Parse the extracted data
+        if (response.data.tables) {
+          setExtractedTables(response.data.tables);
+        } else if (response.data.data) {
+          setExtractedTables([response.data.data]);
+        }
+        
+        saveToHistory(file.name, 'completed', response.data);
+        
+        setProgress(100);
+        setProgressStatus('✅ Extraction complete!');
+        toast.success(`✅ Extracted ${response.data.tables?.length || 1} table(s) from PDF!`);
+        setShowTablePreview(true);
+        
+        if (isPremium) {
+          setTimeout(() => downloadFile(), 1000);
+        }
       }
     } catch (error) {
+      setProgress(0);
+      setProgressStatus('❌ Extraction failed');
       if (error.response?.data?.limit_reached) {
         toast.error('Free limit reached! Upgrade to premium for unlimited access.');
         setUsageInfo({
@@ -94,28 +291,221 @@ const PDFToExcel = () => {
           remaining: 0,
           isPremium: false
         });
+        setShowPaymentModal(true);
       } else {
-        toast.error(error.response?.data?.error || 'Failed to convert PDF');
+        toast.error(error.response?.data?.error || 'Failed to extract data from PDF');
       }
     } finally {
       setLoading(false);
+      setTimeout(() => setProgress(0), 3000);
     }
+  };
+
+  const handleBatchSubmit = async () => {
+    setLoading(true);
+    setProgress(0);
+    setProgressStatus('Starting batch extraction...');
+    setConversionResults([]);
+    setExtractedTables([]);
+
+    const results = [];
+    const total = files.length;
+
+    for (let i = 0; i < files.length; i++) {
+      const currentFile = files[i];
+      setProgressStatus(`Extracting ${i + 1} of ${total}: ${currentFile.name}`);
+      
+      const formData = new FormData();
+      formData.append('file', currentFile);
+      formData.append('is_premium', isPremium);
+      formData.append('options', JSON.stringify({
+        ...conversionOptions,
+        detectTables: true,
+      }));
+
+      try {
+        const response = await api.pdfToExcel(formData);
+        
+        if (response.data.success) {
+          results.push({
+            filename: currentFile.name,
+            result: response.data,
+            tables: response.data.tables || [response.data.data],
+            success: true
+          });
+          saveToHistory(currentFile.name, 'completed', response.data);
+        } else {
+          results.push({
+            filename: currentFile.name,
+            error: response.data.error || 'Extraction failed',
+            success: false
+          });
+        }
+      } catch (error) {
+        results.push({
+          filename: currentFile.name,
+          error: error.response?.data?.error || 'Extraction failed',
+          success: false
+        });
+      }
+
+      setProgress(((i + 1) / total) * 100);
+    }
+
+    setConversionResults(results);
+    setProgress(100);
+    setProgressStatus(`✅ Batch extraction complete! (${results.filter(r => r.success).length}/${total} succeeded)`);
+    
+    const successCount = results.filter(r => r.success).length;
+    if (successCount > 0) {
+      toast.success(`✅ ${successCount} files processed successfully!`);
+    }
+    if (successCount < total) {
+      toast.warning(`⚠️ ${total - successCount} files failed to process`);
+    }
+
+    setLoading(false);
+    setTimeout(() => setProgress(0), 3000);
   };
 
   const downloadFile = () => {
     if (!result) return;
-    const link = document.createElement('a');
-    link.href = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${result.file}`;
-    link.download = result.filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success('Excel file downloaded!');
+    
+    try {
+      let excelData = [];
+      
+      // If we have extracted tables, combine them
+      if (extractedTables && extractedTables.length > 0) {
+        if (conversionOptions.combineTables) {
+          // Combine all tables into one sheet
+          extractedTables.forEach((table, index) => {
+            if (index === 0) {
+              excelData = table;
+            } else {
+              // Add separator row
+              excelData.push({});
+              excelData.push({ '---': `Table ${index + 1} ---` });
+              excelData.push({});
+              excelData = [...excelData, ...table];
+            }
+          });
+        } else {
+          // Multiple sheets - we'll handle this by creating multiple sheets in the workbook
+          const wb = XLSX.utils.book_new();
+          
+          extractedTables.forEach((table, index) => {
+            const ws = XLSX.utils.json_to_sheet(table);
+            const sheetName = `Table ${index + 1}`;
+            XLSX.utils.book_append_sheet(wb, ws, sheetName.slice(0, 31));
+          });
+          
+          // Generate Excel file
+          const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+          const blob = new Blob([wbout], { type: 'application/octet-stream' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.download = result.filename || `${file.name.replace('.pdf', '.xlsx')}`;
+          link.href = url;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          
+          toast.success('Excel file downloaded with multiple sheets!');
+          return;
+        }
+      } else if (result.data) {
+        excelData = result.data;
+      } else if (result.file) {
+        // Direct file download
+        const link = document.createElement('a');
+        link.href = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${result.file}`;
+        link.download = result.filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success('Excel file downloaded!');
+        return;
+      }
+      
+      // Single sheet download
+      if (excelData && excelData.length > 0) {
+        const ws = XLSX.utils.json_to_sheet(excelData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Extracted Data');
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([wbout], { type: 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = result.filename || `${file.name.replace('.pdf', '.xlsx')}`;
+        link.href = url;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        toast.success('Excel file downloaded!');
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Failed to download Excel file');
+    }
+  };
+
+  const downloadBatchFile = (resultData, filename) => {
+    try {
+      let data = [];
+      if (resultData.tables) {
+        data = resultData.tables.flat();
+      } else if (resultData.data) {
+        data = resultData.data;
+      }
+      
+      if (data && data.length > 0) {
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Extracted Data');
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([wbout], { type: 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = filename.replace('.pdf', '.xlsx');
+        link.href = url;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error('Batch download error:', error);
+    }
+  };
+
+  const downloadAllBatch = () => {
+    const successful = conversionResults.filter(r => r.success);
+    if (successful.length === 0) {
+      toast.error('No successful conversions to download');
+      return;
+    }
+    
+    successful.forEach((item, index) => {
+      setTimeout(() => {
+        downloadBatchFile(item.result, item.filename);
+      }, index * 500);
+    });
+    toast.success(`Downloading ${successful.length} files...`);
   };
 
   const clearFile = () => {
     setFile(null);
     setResult(null);
+    setExtractedTables([]);
+    setProgress(0);
+    setProgressStatus('');
+    setShowTablePreview(false);
+  };
+
+  const handleUpgrade = () => {
+    setShowPaymentModal(true);
   };
 
   const formatFileSize = (bytes) => {
@@ -124,30 +514,38 @@ const PDFToExcel = () => {
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
+  const reuseHistory = (item) => {
+    toast.success('Reusing previous extraction settings');
+    setFile(null);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8">
-      <div className="container mx-auto px-4 max-w-5xl">
+      <div className="container mx-auto px-4 max-w-6xl">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 bg-green-100 text-green-700 px-4 py-2 rounded-full text-sm font-medium mb-4">
-            <FaFilePdf className="text-green-500" />
+            <FaTable className="text-green-500" />
             PDF to Excel Converter
           </div>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
             PDF to <span className="gradient-text">Excel Converter</span>
           </h1>
           <p className="text-gray-600 max-w-2xl mx-auto">
-            Extract tables and data from PDFs to Excel spreadsheets for analysis and reporting
+            Extract tables and data from any PDF and convert to editable Excel spreadsheets
           </p>
           <div className="flex flex-wrap justify-center gap-3 mt-3">
             <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm">
-              <FaStar className="text-yellow-400" /> Free: 2/day
+              <FaStar className="text-yellow-400" /> Free: 5/day
             </span>
             <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">
-              <FaLock className="text-green-500" /> Premium: Unlimited
+              <FaCrown className="text-yellow-500" /> Premium: Unlimited
             </span>
             <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm">
               <FaTable className="text-purple-500" /> Table Extraction
+            </span>
+            <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-sm">
+              <FaUpload className="text-orange-500" /> Batch Mode
             </span>
           </div>
         </div>
@@ -155,28 +553,85 @@ const PDFToExcel = () => {
         {/* Usage Info */}
         {usageInfo && (
           <div className={`mb-6 p-4 rounded-lg flex flex-wrap items-center justify-between ${
+            usageInfo.isPremium ? 'bg-green-50 border border-green-200' :
             usageInfo.remaining > 0 ? 'bg-blue-50 border border-blue-200' : 'bg-yellow-50 border border-yellow-200'
           }`}>
-            <p className="text-sm">
+            <p className="text-sm flex items-center gap-2">
               {usageInfo.isPremium ? (
-                <span className="flex items-center gap-2"><FaCrown className="text-yellow-500" /> Premium: Unlimited conversions</span>
+                <><FaCrown className="text-yellow-500" /> <span className="font-semibold">Premium:</span> Unlimited conversions</>
               ) : (
-                `${usageInfo.used} used today • ${usageInfo.remaining} free remaining`
+                <><FaClock className="text-blue-500" /> {usageInfo.used} used today • {usageInfo.remaining} free remaining</>
               )}
             </p>
-            {!usageInfo.isPremium && usageInfo.remaining === 0 && (
+            {!usageInfo.isPremium && (
               <button
-                onClick={() => window.location.href = '/contact?upgrade=premium'}
-                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition"
+                onClick={handleUpgrade}
+                className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition flex items-center gap-2"
               >
-                Upgrade Now
+                <FaCrown /> Upgrade Now
               </button>
             )}
           </div>
         )}
 
+        {/* Progress Bar */}
+        {loading && progress > 0 && (
+          <div className="mb-6 bg-white rounded-xl p-4 border border-green-200 shadow-lg">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                <FaSpinner className="animate-spin text-green-500" />
+                {progressStatus}
+              </span>
+              <span className="text-sm font-semibold text-green-600">{Math.round(progress)}%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+              <div 
+                className="bg-gradient-to-r from-green-500 to-emerald-600 h-2.5 rounded-full transition-all duration-500"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Main Card */}
         <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
+          {/* Batch Mode Toggle */}
+          <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={batchMode}
+                  onChange={(e) => {
+                    setBatchMode(e.target.checked);
+                    if (e.target.checked) {
+                      setFile(null);
+                      setResult(null);
+                      setExtractedTables([]);
+                    }
+                  }}
+                  className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
+                />
+                <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <FaUpload className="text-green-500" /> Batch Mode
+                </label>
+              </div>
+              {batchMode && isPremium && (
+                <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full">
+                  Unlimited
+                </span>
+              )}
+            </div>
+            {batchMode && !isPremium && (
+              <button
+                onClick={handleUpgrade}
+                className="text-xs text-green-600 hover:text-green-800 transition flex items-center gap-1"
+              >
+                <FaCrown className="text-yellow-500" /> Upgrade for Batch
+              </button>
+            )}
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* File Upload Area */}
             <div 
@@ -188,7 +643,7 @@ const PDFToExcel = () => {
               onDragOver={handleDrag}
               onDrop={handleDrop}
             >
-              {file ? (
+              {!batchMode && file ? (
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-red-50 rounded-lg flex items-center justify-center text-red-500 text-2xl">
@@ -207,50 +662,152 @@ const PDFToExcel = () => {
                     <FaTrash />
                   </button>
                 </div>
+              ) : batchMode && files.length > 0 ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-center gap-2 text-green-600">
+                    <FaCheckCircle className="text-2xl" />
+                    <span className="font-medium">{files.length} PDF(s) added to queue</span>
+                  </div>
+                  <div className="max-h-32 overflow-y-auto space-y-1">
+                    {files.map((f, idx) => (
+                      <div key={idx} className="flex items-center justify-between text-sm bg-gray-50 p-2 rounded">
+                        <span className="truncate">{f.name}</span>
+                        <span className="text-gray-400 text-xs ml-2">{formatFileSize(f.size)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => document.getElementById('batch-upload-input')?.click()}
+                    className="text-sm text-green-600 hover:text-green-800 transition"
+                  >
+                    <FaPlus className="inline mr-1" /> Add more files
+                  </button>
+                  <input
+                    id="batch-upload-input"
+                    type="file"
+                    accept=".pdf"
+                    multiple
+                    onChange={handleBatchFileChange}
+                    className="hidden"
+                  />
+                </div>
               ) : (
                 <div className="space-y-4">
                   <div className="text-6xl text-green-400 mx-auto">
                     <FaFileExcel className="mx-auto" />
                   </div>
                   <div>
-                    <p className="text-gray-600 text-lg">Drop your PDF here</p>
+                    <p className="text-gray-600 text-lg">
+                      {batchMode ? 'Drop PDFs here for batch extraction' : 'Drop your PDF here'}
+                    </p>
                     <p className="text-sm text-gray-400">or click to browse</p>
                   </div>
-                  <p className="text-xs text-gray-400">Supports PDF up to 15MB</p>
+                  <p className="text-xs text-gray-400">
+                    {batchMode ? 'Multiple PDFs up to 15MB each' : 'Supports PDF up to 15MB'}
+                  </p>
                   <input
+                    ref={fileInputRef}
                     type="file"
                     accept=".pdf"
                     onChange={handleFileChange}
                     className="hidden"
                     id="pdf-upload"
+                    multiple={batchMode}
                   />
                   <label
                     htmlFor="pdf-upload"
                     className="inline-block px-6 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:shadow-lg transition cursor-pointer"
                   >
-                    Choose PDF File
+                    {batchMode ? 'Choose PDF Files' : 'Choose PDF File'}
                   </label>
                 </div>
               )}
             </div>
 
-            {/* Features */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center text-sm">
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <FaShieldAlt className="text-green-500 mx-auto mb-1" />
-                <span className="text-gray-600">Secure</span>
+            {/* Conversion Options */}
+            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <FaCog className="text-green-500" /> Extraction Options
+                </h4>
               </div>
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <FaRocket className="text-blue-500 mx-auto mb-1" />
-                <span className="text-gray-600">Fast</span>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Output Format
+                  </label>
+                  <select
+                    value={conversionOptions.format || 'xlsx'}
+                    onChange={(e) => setConversionOptions({ ...conversionOptions, format: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  >
+                    <option value="xlsx">Excel (.xlsx)</option>
+                    <option value="xls">Excel 97-2003 (.xls)</option>
+                    <option value="csv">CSV (.csv)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Table Detection
+                  </label>
+                  <select
+                    value={conversionOptions.tableDetection || 'auto'}
+                    onChange={(e) => setConversionOptions({ ...conversionOptions, tableDetection: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  >
+                    <option value="auto">Auto Detect</option>
+                    <option value="all">All Tables</option>
+                    <option value="first">First Table Only</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Extraction Mode
+                  </label>
+                  <select
+                    value={conversionOptions.extractionMode || 'standard'}
+                    onChange={(e) => setConversionOptions({ ...conversionOptions, extractionMode: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  >
+                    <option value="standard">Standard</option>
+                    <option value="exact">Exact (Slower)</option>
+                    <option value="text">Text Only</option>
+                  </select>
+                </div>
               </div>
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <FaTable className="text-green-500 mx-auto mb-1" />
-                <span className="text-gray-600">Table Extraction</span>
-              </div>
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <FaFileExcel className="text-green-500 mx-auto mb-1" />
-                <span className="text-gray-600">Editable</span>
+
+              <div className="mt-3 flex flex-wrap gap-4">
+                <label className="flex items-center gap-2 text-xs text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={conversionOptions.includeHeaders !== false}
+                    onChange={(e) => setConversionOptions({ ...conversionOptions, includeHeaders: e.target.checked })}
+                    className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
+                  />
+                  Include Headers
+                </label>
+                <label className="flex items-center gap-2 text-xs text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={conversionOptions.combineTables || false}
+                    onChange={(e) => setConversionOptions({ ...conversionOptions, combineTables: e.target.checked })}
+                    className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
+                  />
+                  Combine Tables
+                </label>
+                <label className="flex items-center gap-2 text-xs text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={conversionOptions.preserveFormatting !== false}
+                    onChange={(e) => setConversionOptions({ ...conversionOptions, preserveFormatting: e.target.checked })}
+                    className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
+                  />
+                  Preserve Formatting
+                </label>
               </div>
             </div>
 
@@ -260,25 +817,104 @@ const PDFToExcel = () => {
                 type="checkbox"
                 checked={isPremium}
                 onChange={(e) => setIsPremium(e.target.checked)}
-                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
               />
               <label className="text-sm text-gray-700 flex items-center gap-1">
-                <FaCrown className="text-yellow-500" /> Premium Mode (Unlimited conversions)
+                <FaCrown className="text-yellow-500" /> Premium Mode (Unlimited + Batch)
               </label>
+              {!isPremium && (
+                <span className="text-xs text-gray-400 ml-2">
+                  (Free: 5/day)
+                </span>
+              )}
             </div>
 
             <button
               type="submit"
-              disabled={loading || !file}
+              disabled={loading || (batchMode ? files.length === 0 : !file)}
               className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3.5 rounded-xl font-semibold hover:shadow-lg hover:shadow-green-500/30 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-lg"
             >
               {loading ? <FaSpinner className="animate-spin" /> : <FaFileExcel />}
-              {loading ? 'Converting...' : 'Convert to Excel'}
+              {loading 
+                ? batchMode ? `Extracting... ${Math.round(progress)}%` : 'Extracting...'
+                : batchMode ? `Extract ${files.length} Files to Excel` : 'Extract to Excel'
+              }
             </button>
           </form>
 
-          {/* Results */}
-          {result && (
+          {/* Extracted Tables Preview */}
+          {extractedTables.length > 0 && !loading && showTablePreview && (
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-semibold text-gray-700 flex items-center gap-2">
+                  <FaTable className="text-green-500" /> Extracted Data Preview
+                </h4>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowTablePreview(!showTablePreview)}
+                    className="text-sm text-gray-500 hover:text-gray-700 transition"
+                  >
+                    {showTablePreview ? 'Hide Preview' : 'Show Preview'}
+                  </button>
+                </div>
+              </div>
+              
+              {extractedTables.map((table, index) => (
+                <TablePreview 
+                  key={index} 
+                  data={table} 
+                  title={`Table ${index + 1} (${table.length} rows)`} 
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Batch Results */}
+          {conversionResults.length > 0 && !loading && (
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-semibold text-gray-700 flex items-center gap-2">
+                  <FaCheckCircle className="text-green-500" /> Extraction Results
+                </h4>
+                {conversionResults.filter(r => r.success).length > 0 && (
+                  <button
+                    onClick={downloadAllBatch}
+                    className="text-sm bg-green-500 text-white px-4 py-1.5 rounded-lg hover:bg-green-600 transition flex items-center gap-2"
+                  >
+                    <FaDownload /> Download All
+                  </button>
+                )}
+              </div>
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {conversionResults.map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {item.success ? (
+                        <FaCheckCircle className="text-green-500 flex-shrink-0" />
+                      ) : (
+                        <FaTimes className="text-red-500 flex-shrink-0" />
+                      )}
+                      <span className="text-sm truncate">{item.filename}</span>
+                      <span className={`text-xs ${item.success ? 'text-green-500' : 'text-red-500'}`}>
+                        {item.success ? `${item.tables?.length || 1} table(s)` : item.error}
+                      </span>
+                    </div>
+                    {item.success && (
+                      <button
+                        onClick={() => downloadBatchFile(item.result, item.filename)}
+                        className="text-green-500 hover:text-green-700 transition text-sm flex items-center gap-1 flex-shrink-0"
+                      >
+                        <FaDownload /> Download
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Single Result */}
+          {result && !batchMode && (
             <div className="mt-6 pt-6 border-t border-gray-200">
               <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
                 <div className="flex items-center gap-3">
@@ -286,8 +922,10 @@ const PDFToExcel = () => {
                     <FaCheckCircle />
                   </div>
                   <div className="flex-1">
-                    <p className="font-semibold text-green-800">✅ Conversion Complete!</p>
-                    <p className="text-sm text-green-600">Your PDF has been converted to Excel format</p>
+                    <p className="font-semibold text-green-800">✅ Extraction Complete!</p>
+                    <p className="text-sm text-green-600">
+                      {extractedTables.length} table(s) extracted from PDF
+                    </p>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-3 mt-4">
@@ -299,12 +937,14 @@ const PDFToExcel = () => {
                   </button>
                   <button
                     onClick={() => {
-                      setFile(null);
-                      setResult(null);
+                      clearFile();
+                      if (batchMode) {
+                        clearAllBatchFiles();
+                      }
                     }}
                     className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg hover:bg-gray-300 transition flex items-center justify-center gap-2 font-semibold"
                   >
-                    <FaPlus /> Convert Another
+                    <FaPlus /> Extract Another
                   </button>
                 </div>
               </div>
@@ -312,25 +952,100 @@ const PDFToExcel = () => {
           )}
         </div>
 
+        {/* Conversion History */}
+        <div className="mt-6">
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+              <div className="flex items-center gap-2">
+                <FaHistory className="text-green-500" />
+                <span className="font-semibold text-gray-700">Extraction History</span>
+                <span className="text-xs text-gray-400">({conversionHistory.length})</span>
+              </div>
+            </div>
+            {conversionHistory.length > 0 ? (
+              <div className="p-3 space-y-2 max-h-40 overflow-y-auto">
+                {conversionHistory.slice(0, 5).map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <FaFilePdf className="text-red-400 flex-shrink-0" />
+                      <span className="text-sm truncate">{item.filename}</span>
+                      <span className="text-xs text-gray-400 flex-shrink-0">
+                        {new Date(item.timestamp).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {item.status === 'completed' && (
+                        <span className="text-xs text-green-500 flex items-center gap-1">
+                          <FaCheckCircle className="text-xs" /> Done
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-4 text-center text-gray-400 text-sm">
+                No extraction history yet
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Features Section */}
-        <div className="mt-8 grid md:grid-cols-3 gap-4">
+        <div className="mt-8 grid md:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
             <FaShieldAlt className="text-3xl text-green-500 mx-auto mb-2" />
-            <h4 className="font-semibold text-gray-900">Secure Conversion</h4>
+            <h4 className="font-semibold text-gray-900">Secure Extraction</h4>
             <p className="text-xs text-gray-500">Files are encrypted and automatically deleted</p>
           </div>
           <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
             <FaTable className="text-3xl text-green-500 mx-auto mb-2" />
-            <h4 className="font-semibold text-gray-900">Table Extraction</h4>
-            <p className="text-xs text-gray-500">Accurately extracts tables from PDFs</p>
+            <h4 className="font-semibold text-gray-900">Smart Table Detection</h4>
+            <p className="text-xs text-gray-500">Automatically detects and extracts tables</p>
           </div>
           <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
             <FaFileExcel className="text-3xl text-green-500 mx-auto mb-2" />
             <h4 className="font-semibold text-gray-900">Editable Excel</h4>
             <p className="text-xs text-gray-500">Get fully editable Excel spreadsheets</p>
           </div>
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
+            <FaUpload className="text-3xl text-green-500 mx-auto mb-2" />
+            <h4 className="font-semibold text-gray-900">Batch Processing</h4>
+            <p className="text-xs text-gray-500">Convert multiple PDFs at once (Premium)</p>
+          </div>
         </div>
+
+        {/* Upgrade CTA */}
+        {!isPremium && (
+          <div className="mt-8 bg-gradient-to-r from-green-600 to-emerald-600 rounded-2xl p-6 text-white text-center relative overflow-hidden">
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute top-0 -right-20 w-64 h-64 bg-white rounded-full blur-3xl"></div>
+              <div className="absolute -bottom-20 -left-20 w-48 h-48 bg-white rounded-full blur-3xl"></div>
+            </div>
+            <div className="relative z-10 max-w-2xl mx-auto">
+              <FaCrown className="text-4xl text-yellow-400 mx-auto mb-3" />
+              <h3 className="text-xl font-bold mb-2">🚀 Unlock Premium Features</h3>
+              <p className="text-green-100 mb-4">
+                Get unlimited conversions, batch processing, advanced table extraction, and priority support.
+              </p>
+              <button
+                onClick={handleUpgrade}
+                className="bg-white text-green-600 px-8 py-3 rounded-xl font-semibold hover:shadow-lg transition hover:-translate-y-0.5"
+              >
+                Upgrade Now — ₹499/month
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Payment Modal */}
+      <PaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        userEmail={localStorage.getItem('userEmail') || ''}
+        userId={localStorage.getItem('userId') || ''}
+      />
 
       <style dangerouslySetInnerHTML={{ __html: `
         .gradient-text {
@@ -338,6 +1053,13 @@ const PDFToExcel = () => {
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+        .animate-pulse {
+          animation: pulse 1.5s ease-in-out infinite;
         }
       `}} />
     </div>

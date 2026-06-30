@@ -5,14 +5,26 @@ import {
   FaShare, FaCopy, FaEye, FaEyeSlash, FaFileAlt, FaUser, 
   FaBriefcase, FaGraduationCap, FaEnvelope, FaPhone, 
   FaMapMarkerAlt, FaCheckCircle, FaCircle, FaArrowRight, 
-  FaTools, FaCrown, FaFilePdf, FaTimes, FaPlus,
-  FaRegFileAlt, FaRegFilePdf, FaRegFileWord, FaRegFileExcel
+  FaTools, FaCrown, FaFilePdf, FaTimes, FaPlus, FaMagic,
+  FaLightbulb, FaRocket, FaChartLine, FaUsers, FaCode,
+  FaDatabase, FaCloud, FaMobile, FaDesktop, FaRobot,
+  FaRegFileAlt, FaRegFilePdf, FaRegFileWord, FaRegFileExcel,
+  FaClock, FaChevronDown, FaChevronUp, FaAward, FaShieldAlt,
+  FaMedal, FaFlag, FaThumbsUp, FaPenFancy, FaSearch,
+  FaCheckDouble, FaExclamationTriangle, FaInfoCircle,
+  FaFileInvoice, FaClipboardCheck, FaBullseye, FaTrophy
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { api } from '../../utils/api';
+import PaymentModal from '../../components/PaymentModal';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import * as XLSX from 'xlsx';
+// ✅ Import docx for Word document generation
+import { Document, Packer, Paragraph, TextRun, AlignmentType } from 'docx';
 
 // ============================================
-// TEMPLATES CONFIGURATION
+// TEMPLATES CONFIGURATION WITH PRE-FILLED DATA
 // ============================================
 
 const TEMPLATES = {
@@ -25,7 +37,18 @@ const TEMPLATES = {
     primaryColor: 'blue-600',
     secondaryColor: 'gray-100',
     accentColor: 'blue-100',
-    fontFamily: 'Inter'
+    fontFamily: 'Inter',
+    example: {
+      name: 'Sarah Johnson',
+      title: 'Senior Full Stack Developer',
+      email: 'sarah.johnson@email.com',
+      phone: '+1 (555) 123-4567',
+      location: 'San Francisco, CA',
+      summary: 'Innovative Senior Full Stack Developer with 7+ years of experience building scalable web applications. Expertise in React, Node.js, and cloud architecture. Passionate about creating elegant solutions that solve complex business problems. Led teams of 10+ developers and delivered 20+ successful projects.',
+      skills: 'React, Node.js, Python, AWS, Docker, Kubernetes, GraphQL, TypeScript, MongoDB, PostgreSQL, Redis, CI/CD, Microservices',
+      experience: 'Senior Full Stack Developer | TechCorp Inc. (2020-Present)\n• Architected microservices handling 50M+ daily requests\n• Led team of 12 developers across 3 continents\n• Reduced deployment time by 70% using CI/CD pipelines\n• Implemented real-time features serving 2M+ users\n\nFull Stack Developer | Digital Solutions (2017-2020)\n• Built 15+ web applications for diverse clients\n• Integrated third-party APIs and payment systems\n• Improved application performance by 40%\n• Mentored junior developers and conducted code reviews',
+      education: 'M.S. Computer Science | Stanford University (2015-2017)\nGPA: 3.9/4.0, Research in Distributed Systems\n\nB.S. Computer Engineering | MIT (2011-2015)\nCum Laude, Dean\'s List all semesters'
+    }
   },
   elegant: {
     id: 'elegant',
@@ -36,7 +59,18 @@ const TEMPLATES = {
     primaryColor: 'purple-600',
     secondaryColor: 'gray-50',
     accentColor: 'purple-100',
-    fontFamily: 'Georgia'
+    fontFamily: 'Georgia',
+    example: {
+      name: 'Michael Anderson',
+      title: 'Chief Technology Officer',
+      email: 'michael.anderson@email.com',
+      phone: '+1 (555) 234-5678',
+      location: 'New York, NY',
+      summary: 'Visionary CTO with 15+ years of experience driving technological innovation and digital transformation. Proven track record of scaling tech teams, implementing enterprise solutions, and aligning technology with business strategy. Led digital transformation for Fortune 500 companies, resulting in 200% revenue growth.',
+      skills: 'Strategic Planning, Cloud Architecture, AI/ML, Digital Transformation, Team Leadership, Product Development, Enterprise Software, Cybersecurity, Data Analytics, Innovation Management',
+      experience: 'Chief Technology Officer | GlobalTech Inc. (2018-Present)\n• Led technology strategy for $2B+ portfolio\n• Built and scaled team from 50 to 500+ engineers\n• Implemented AI solutions increasing efficiency by 45%\n• Reduced operational costs by $10M annually\n\nVP of Engineering | InnovateCorp (2012-2018)\n• Managed 200+ engineering resources\n• Launched 10+ successful products\n• Established engineering best practices\n• Built high-performance culture',
+      education: 'MBA | Harvard Business School (2010-2012)\n\nM.S. Computer Science | Carnegie Mellon (2008-2010)'
+    }
   },
   minimal: {
     id: 'minimal',
@@ -47,7 +81,18 @@ const TEMPLATES = {
     primaryColor: 'gray-800',
     secondaryColor: 'white',
     accentColor: 'gray-100',
-    fontFamily: 'Arial'
+    fontFamily: 'Arial',
+    example: {
+      name: 'Emily Chen',
+      title: 'UX/UI Designer',
+      email: 'emily.chen@email.com',
+      phone: '+1 (555) 345-6789',
+      location: 'Austin, TX',
+      summary: 'Human-centered UX/UI Designer with 6+ years of experience creating intuitive digital experiences. Passionate about accessibility and inclusive design. Portfolio includes 30+ products used by millions.',
+      skills: 'Figma, Adobe XD, Sketch, Prototyping, User Research, UI Design, Design Systems, Accessibility, User Testing, HTML/CSS',
+      experience: 'Senior UX Designer | DesignStudio (2019-Present)\n• Designed 20+ successful products\n• Led design thinking workshops\n• Established design system for 10+ products\n• Increased user satisfaction by 35%\n\nUX Designer | Creative Agency (2016-2019)\n• Conducted 200+ user interviews\n• Created 50+ prototypes\n• Designed mobile and web experiences',
+      education: 'BFA Interaction Design | Savannah College (2012-2016)'
+    }
   },
   creative: {
     id: 'creative',
@@ -58,7 +103,18 @@ const TEMPLATES = {
     primaryColor: 'orange-600',
     secondaryColor: 'orange-50',
     accentColor: 'orange-100',
-    fontFamily: 'Poppins'
+    fontFamily: 'Poppins',
+    example: {
+      name: 'Alex Rivera',
+      title: 'Creative Director & Brand Strategist',
+      email: 'alex.rivera@email.com',
+      phone: '+1 (555) 456-7890',
+      location: 'Los Angeles, CA',
+      summary: 'Award-winning Creative Director with 10+ years of experience building iconic brands. Expert in visual storytelling, brand strategy, and creative leadership. Featured in Communication Arts, GDUSA, and The Dieline.',
+      skills: 'Brand Strategy, Creative Direction, Visual Identity, Art Direction, Packaging Design, Typography, Illustration, Motion Design, Photography, Copywriting',
+      experience: 'Creative Director | BrandCraft Studio (2015-Present)\n• Built brands for 100+ clients\n• Generated $50M+ in brand value\n• Won 20+ industry awards\n• Led creative team of 25\n\nSenior Designer | Design Agency (2010-2015)\n• Developed 100+ brand identities\n• Designed packaging for global brands\n• Created award-winning campaigns',
+      education: 'MFA Graphic Design | Art Center College (2008-2010)\n\nBFA Visual Communication | CalArts (2004-2008)'
+    }
   },
   professional: {
     id: 'professional',
@@ -69,7 +125,18 @@ const TEMPLATES = {
     primaryColor: 'blue-900',
     secondaryColor: 'gray-50',
     accentColor: 'blue-50',
-    fontFamily: 'Times New Roman'
+    fontFamily: 'Times New Roman',
+    example: {
+      name: 'Dr. James Wilson',
+      title: 'Chief Financial Officer',
+      email: 'james.wilson@email.com',
+      phone: '+1 (555) 567-8901',
+      location: 'Chicago, IL',
+      summary: 'Seasoned CFO with 20+ years of financial leadership experience across multiple industries. Expertise in M&A, strategic planning, and corporate finance. Successfully led IPO and raised $500M+ in capital.',
+      skills: 'Strategic Planning, M&A, Corporate Finance, Financial Modeling, Risk Management, Investor Relations, Budgeting, Audit, Compliance, Treasury Management',
+      experience: 'Chief Financial Officer | Fortune 500 Corp (2015-Present)\n• Managed $5B+ annual budget\n• Led successful IPO valuation of $2B\n• Increased profitability by 35%\n• Optimized capital structure saving $100M+\n\nSVP Finance | Investment Bank (2008-2015)\n• Advised on 50+ M&A deals\n• Raised $500M+ in capital\n• Managed $10B+ investment portfolio',
+      education: 'MBA Finance | University of Chicago (2006-2008)\n\nB.S. Accounting | University of Illinois (2002-2006)\nCPA, CFA'
+    }
   },
   tech: {
     id: 'tech',
@@ -80,8 +147,289 @@ const TEMPLATES = {
     primaryColor: 'cyan-600',
     secondaryColor: 'cyan-50',
     accentColor: 'cyan-100',
-    fontFamily: 'Consolas'
-  },
+    fontFamily: 'Consolas',
+    example: {
+      name: 'David Kim',
+      title: 'Machine Learning Engineer',
+      email: 'david.kim@email.com',
+      phone: '+1 (555) 678-9012',
+      location: 'Seattle, WA',
+      summary: 'Machine Learning Engineer with 5+ years of experience building and deploying AI/ML solutions. Expertise in deep learning, NLP, and computer vision. Published 15+ research papers and contributed to open-source ML frameworks.',
+      skills: 'Python, TensorFlow, PyTorch, Keras, Scikit-learn, NumPy, Pandas, SQL, AWS SageMaker, Docker, Kubernetes, Git, Linux, Jupyter',
+      experience: 'Senior ML Engineer | AI Tech Labs (2020-Present)\n• Built NLP models serving 10M+ users\n• Deployed 20+ ML models to production\n• Improved model accuracy by 30%\n• Led ML team of 8 engineers\n\nData Scientist | Tech Solutions (2018-2020)\n• Developed predictive models\n• Built data pipelines for 100TB+ data\n• Created ML infrastructure from scratch',
+      education: 'Ph.D. Computer Science (AI/ML) | MIT (2015-2018)\nThesis: "Neural Networks for Time Series Analysis"\n\nM.S. Data Science | UC Berkeley (2013-2015)'
+    }
+  }
+};
+
+// ============================================
+// ATS KEYWORDS & SUGGESTIONS
+// ============================================
+
+const ATS_KEYWORDS = {
+  tech: ['Agile', 'Scrum', 'Cloud', 'AWS', 'Azure', 'DevOps', 'Microservices', 'API', 'REST', 'GraphQL', 'Docker', 'Kubernetes', 'JavaScript', 'Python', 'React', 'Node.js', 'TypeScript', 'MongoDB', 'PostgreSQL', 'Redis', 'Git', 'Linux', 'Nginx', 'TDD', 'BDD', 'Kanban', 'JIRA', 'Confluence'],
+  design: ['UI Design', 'UX Design', 'Wireframing', 'Prototyping', 'Figma', 'Adobe XD', 'Sketch', 'Photoshop', 'Illustrator', 'InDesign', 'Design Systems', 'User Research', 'User Testing', 'Interaction Design', 'Visual Design', 'Brand Identity', 'Typography', 'Color Theory', 'Accessibility', 'WCAG', 'Responsive Design'],
+  business: ['Strategic Planning', 'Business Development', 'Project Management', 'Agile', 'Scrum', 'Kanban', 'PMP', 'Six Sigma', 'Lean', 'Budgeting', 'Forecasting', 'Financial Analysis', 'Risk Management', 'Stakeholder Management', 'Team Leadership', 'Mentoring', 'Coaching', 'KPI', 'OKR', 'ROI'],
+  marketing: ['Digital Marketing', 'SEO', 'SEM', 'Content Marketing', 'Social Media', 'Email Marketing', 'Analytics', 'Google Analytics', 'Google Ads', 'Facebook Ads', 'Brand Strategy', 'Market Research', 'CRM', 'HubSpot', 'Salesforce', 'Copywriting', 'Marketing Automation', 'PPC', 'SMM', 'CRO']
+};
+
+// ============================================
+// ATS SCORE COMPONENT
+// ============================================
+
+const ATSScore = ({ data }) => {
+  const [showDetails, setShowDetails] = useState(false);
+
+  const calculateATSScore = () => {
+    const details = {
+      keywords: { score: 0, max: 30, suggestions: [] },
+      formatting: { score: 0, max: 20, suggestions: [] },
+      content: { score: 0, max: 25, suggestions: [] },
+      length: { score: 0, max: 15, suggestions: [] },
+      skills: { score: 0, max: 10, suggestions: [] }
+    };
+
+    const allText = `${data.summary || ''} ${data.skills || ''} ${data.experience || ''}`.toLowerCase();
+    const allKeywords = [...new Set(Object.values(ATS_KEYWORDS).flat())];
+    const foundKeywords = allKeywords.filter(kw => allText.includes(kw.toLowerCase()));
+    const keywordCount = foundKeywords.length;
+    details.keywords.score = Math.min(30, (keywordCount / 15) * 30);
+    if (keywordCount < 10) {
+      details.keywords.suggestions = [
+        'Add more industry-specific keywords',
+        'Include common job title variations',
+        'Use both full forms and acronyms'
+      ];
+    }
+
+    const hasBullets = (data.experience || '').includes('•') || (data.experience || '').includes('-');
+    const hasNumbers = /\d+/.test(data.experience || '');
+    const hasActionWords = /(led|managed|developed|created|designed|implemented|built|achieved|improved|reduced|increased)/i.test(data.experience || '');
+    
+    details.formatting.score += hasBullets ? 10 : 0;
+    details.formatting.score += hasNumbers ? 5 : 0;
+    details.formatting.score += hasActionWords ? 5 : 0;
+    
+    if (!hasBullets) details.formatting.suggestions.push('Use bullet points for readability');
+    if (!hasNumbers) details.formatting.suggestions.push('Include numbers and metrics');
+    if (!hasActionWords) details.formatting.suggestions.push('Use action verbs to start bullet points');
+
+    const hasSummary = (data.summary || '').length > 50;
+    const hasExperience = (data.experience || '').length > 100;
+    const hasEducation = (data.education || '').length > 20;
+    
+    details.content.score += hasSummary ? 10 : 0;
+    details.content.score += hasExperience ? 10 : 0;
+    details.content.score += hasEducation ? 5 : 0;
+    
+    if (!hasSummary) details.content.suggestions.push('Add a professional summary');
+    if (!hasExperience) details.content.suggestions.push('Add work experience details');
+    if (!hasEducation) details.content.suggestions.push('Add education information');
+
+    const totalLength = (data.summary || '').length + (data.experience || '').length;
+    if (totalLength > 500 && totalLength < 1500) {
+      details.length.score = 15;
+    } else if (totalLength > 300) {
+      details.length.score = 10;
+    } else {
+      details.length.score = 5;
+      details.length.suggestions.push('Resume is too short. Add more details.');
+    }
+
+    const skillsArray = typeof data.skills === 'string' ? data.skills.split(',').filter(s => s.trim()) : data.skills || [];
+    details.skills.score = Math.min(10, skillsArray.length * 1.5);
+    if (skillsArray.length < 5) {
+      details.skills.suggestions.push('Add more skills (minimum 5-8 recommended)');
+    }
+
+    const totalScore = Object.values(details).reduce((sum, item) => sum + item.score, 0);
+    return { total: Math.min(100, Math.round(totalScore)), details };
+  };
+
+  const result = useMemo(() => calculateATSScore(), [data]);
+  
+  const getScoreColor = (score) => {
+    if (score >= 80) return 'text-green-500';
+    if (score >= 60) return 'text-yellow-500';
+    return 'text-red-500';
+  };
+
+  const getScoreGrade = (score) => {
+    if (score >= 80) return { label: 'Excellent', icon: FaTrophy, color: 'text-green-500' };
+    if (score >= 60) return { label: 'Good', icon: FaMedal, color: 'text-yellow-500' };
+    if (score >= 40) return { label: 'Needs Improvement', icon: FaShieldAlt, color: 'text-orange-500' };
+    return { label: 'Critical Review Needed', icon: FaExclamationTriangle, color: 'text-red-500' };
+  };
+
+  const grade = getScoreGrade(result.total);
+  const GradeIcon = grade.icon;
+
+  return (
+    <div className="bg-white rounded-xl p-4 border border-gray-200">
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+          <FaClipboardCheck className="text-blue-500" /> ATS Compatibility Score
+        </h4>
+        <div className="flex items-center gap-2">
+          <GradeIcon className={`text-lg ${grade.color}`} />
+          <span className={`text-xs font-semibold ${grade.color}`}>{grade.label}</span>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-4">
+        <div className="relative w-20 h-20">
+          <svg className="w-20 h-20 transform -rotate-90">
+            <circle className="text-gray-200" strokeWidth="8" stroke="currentColor" fill="transparent" r="32" cx="40" cy="40" />
+            <circle
+              className={getScoreColor(result.total)}
+              strokeWidth="8"
+              strokeDasharray={32 * 2 * Math.PI}
+              strokeDashoffset={32 * 2 * Math.PI * (1 - result.total / 100)}
+              strokeLinecap="round"
+              stroke="currentColor"
+              fill="transparent"
+              r="32"
+              cx="40"
+              cy="40"
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className={`text-xl font-bold ${getScoreColor(result.total)}`}>{result.total}</span>
+          </div>
+        </div>
+        <div className="flex-1">
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-600">Keywords</span>
+              <span className="font-medium">{Math.round(result.details.keywords.score)}/30</span>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-600">Formatting</span>
+              <span className="font-medium">{Math.round(result.details.formatting.score)}/20</span>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-600">Content</span>
+              <span className="font-medium">{Math.round(result.details.content.score)}/25</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button onClick={() => setShowDetails(!showDetails)} className="mt-2 text-xs text-blue-600 hover:text-blue-800 transition flex items-center gap-1">
+        {showDetails ? <FaChevronUp /> : <FaChevronDown />}
+        {showDetails ? 'Hide Suggestions' : 'View Suggestions'}
+      </button>
+
+      {showDetails && (
+        <div className="mt-3 space-y-2 text-xs">
+          {Object.entries(result.details).map(([key, value]) => (
+            value.suggestions.length > 0 && (
+              <div key={key} className="p-2 bg-yellow-50 rounded border border-yellow-200">
+                <p className="font-medium text-yellow-700 capitalize">{key}:</p>
+                <ul className="mt-1 space-y-0.5">
+                  {value.suggestions.map((suggestion, idx) => (
+                    <li key={idx} className="text-gray-600 flex items-start gap-1">
+                      <FaInfoCircle className="text-yellow-500 text-xs mt-0.5" />
+                      {suggestion}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )
+          ))}
+          {Object.values(result.details).every(v => v.suggestions.length === 0) && (
+            <div className="p-2 bg-green-50 rounded border border-green-200 text-green-700">
+              <FaCheckCircle className="inline mr-1" /> Great job! Your resume is well-optimized for ATS.
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ============================================
+// KEYWORD SUGGESTIONS COMPONENT
+// ============================================
+
+const KeywordSuggestions = ({ onAdd }) => {
+  const [selectedCategory, setSelectedCategory] = useState('tech');
+  const [selectedKeywords, setSelectedKeywords] = useState([]);
+
+  const categories = [
+    { id: 'tech', label: 'Technology', icon: FaCode },
+    { id: 'design', label: 'Design', icon: FaPalette },
+    { id: 'business', label: 'Business', icon: FaBriefcase },
+    { id: 'marketing', label: 'Marketing', icon: FaChartLine }
+  ];
+
+  const toggleKeyword = (keyword) => {
+    setSelectedKeywords(prev =>
+      prev.includes(keyword) ? prev.filter(k => k !== keyword) : [...prev, keyword]
+    );
+  };
+
+  const addSelected = () => {
+    if (selectedKeywords.length === 0) {
+      toast.error('Please select at least one keyword');
+      return;
+    }
+    onAdd(selectedKeywords.join(', '));
+    setSelectedKeywords([]);
+    toast.success(`Added ${selectedKeywords.length} keywords`);
+  };
+
+  const getUniqueKeywords = (category) => {
+    const keywords = ATS_KEYWORDS[category] || [];
+    return [...new Set(keywords)];
+  };
+
+  return (
+    <div className="bg-white rounded-xl p-4 border border-gray-200">
+      <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+        <FaSearch className="text-blue-500" /> ATS Keyword Suggestions
+      </h4>
+      
+      <div className="flex flex-wrap gap-2 mb-3">
+        {categories.map(cat => {
+          const Icon = cat.icon;
+          return (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCategory(cat.id)}
+              className={`px-3 py-1 rounded-lg text-xs font-medium transition flex items-center gap-1 ${
+                selectedCategory === cat.id
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <Icon className="text-xs" /> {cat.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
+        {getUniqueKeywords(selectedCategory).map((keyword, index) => (
+          <button
+            key={`${selectedCategory}-${keyword}-${index}`}
+            onClick={() => toggleKeyword(keyword)}
+            className={`px-2 py-1 rounded text-xs transition ${
+              selectedKeywords.includes(keyword)
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            {keyword}
+          </button>
+        ))}
+      </div>
+
+      <button onClick={addSelected} className="mt-3 w-full px-3 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 transition">
+        Add Selected Keywords ({selectedKeywords.length})
+      </button>
+    </div>
+  );
 };
 
 // ============================================
@@ -134,12 +482,14 @@ const ResumePreview = ({ data, template }) => {
     if (typeof data.skills === 'string') {
       return data.skills.split(',').map(s => s.trim()).filter(Boolean);
     }
-    return data.skills || [];
+    if (Array.isArray(data.skills)) {
+      return data.skills.map(s => s.trim()).filter(Boolean);
+    }
+    return [];
   }, [data.skills]);
 
   return (
     <div className={styles.container}>
-      {/* Header */}
       <div className={styles.header}>
         <h2 className="text-2xl font-bold">{data.name || 'Your Name'}</h2>
         <p className="text-sm opacity-90">{data.title || 'Professional Title'}</p>
@@ -151,18 +501,16 @@ const ResumePreview = ({ data, template }) => {
       </div>
 
       <div className="p-4">
-        {/* Summary */}
         {data.summary && (
           <div className="mb-3">
-            <h3 className={`${styles.title}`}>Professional Summary</h3>
+            <h3 className={styles.title}>Professional Summary</h3>
             <p className="text-gray-600 text-sm leading-relaxed">{data.summary}</p>
           </div>
         )}
 
-        {/* Skills */}
         {skillsArray.length > 0 && (
           <div className="mb-3">
-            <h3 className={`${styles.title}`}>Skills</h3>
+            <h3 className={styles.title}>Skills</h3>
             <div className="flex flex-wrap gap-2">
               {skillsArray.map((skill, idx) => (
                 <span key={idx} className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-medium">
@@ -173,23 +521,17 @@ const ResumePreview = ({ data, template }) => {
           </div>
         )}
 
-        {/* Experience */}
         {data.experience && (
           <div className="mb-3">
-            <h3 className={`${styles.title}`}>Experience</h3>
-            <div className="text-gray-600 text-sm leading-relaxed whitespace-pre-wrap">
-              {data.experience}
-            </div>
+            <h3 className={styles.title}>Experience</h3>
+            <div className="text-gray-600 text-sm leading-relaxed whitespace-pre-wrap">{data.experience}</div>
           </div>
         )}
 
-        {/* Education */}
         {data.education && (
           <div>
-            <h3 className={`${styles.title}`}>Education</h3>
-            <div className="text-gray-600 text-sm leading-relaxed whitespace-pre-wrap">
-              {data.education}
-            </div>
+            <h3 className={styles.title}>Education</h3>
+            <div className="text-gray-600 text-sm leading-relaxed whitespace-pre-wrap">{data.education}</div>
           </div>
         )}
       </div>
@@ -220,7 +562,50 @@ const ResumeBuilder = () => {
   const [usageInfo, setUsageInfo] = useState(null);
   const [activeTab, setActiveTab] = useState('form');
   const [generatedResume, setGeneratedResume] = useState(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [isPremium, setIsPremium] = useState(false);
+  const [showKeywords, setShowKeywords] = useState(false);
+  const [templateDropdownOpen, setTemplateDropdownOpen] = useState(false);
   const printRef = useRef(null);
+
+  // Check premium status
+  useEffect(() => {
+    const checkPremiumStatus = async () => {
+      try {
+        let response;
+        if (api.checkPremiumStatus) {
+          response = await api.checkPremiumStatus();
+        } else if (api.checkPremium) {
+          response = await api.checkPremium();
+        } else {
+          return;
+        }
+        
+        if (response.data && response.data.is_premium) {
+          setIsPremium(true);
+          setFormData(prev => ({ ...prev, is_premium: true }));
+          toast.success('🎉 Premium activated!');
+        }
+      } catch (error) {
+        console.error('Premium check failed:', error);
+      }
+    };
+    checkPremiumStatus();
+  }, []);
+
+  // Load template example
+  const loadTemplateExample = (templateId) => {
+    const template = TEMPLATES[templateId];
+    if (template && template.example) {
+      setFormData(prev => ({
+        ...prev,
+        ...template.example,
+        is_premium: prev.is_premium
+      }));
+      toast.success(`📄 Loaded ${template.name} template example`);
+    }
+    setTemplateDropdownOpen(false);
+  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -230,10 +615,273 @@ const ResumeBuilder = () => {
     }));
   };
 
+  const handleKeywordAdd = (keywords) => {
+    const currentSkills = typeof formData.skills === 'string' ? formData.skills : '';
+    const newSkills = currentSkills ? `${currentSkills}, ${keywords}` : keywords;
+    setFormData(prev => ({ ...prev, skills: newSkills }));
+  };
+
+  // ============================================
+  // DOWNLOAD FUNCTIONS
+  // ============================================
+
+  // Download as PDF
+  const handleDownloadPDF = async () => {
+    if (!generatedResume) {
+      toast.error('Please generate a resume first');
+      return;
+    }
+    
+    try {
+      const toastId = toast.loading('Generating PDF...');
+      
+      const previewElement = printRef.current;
+      if (!previewElement) {
+        toast.dismiss(toastId);
+        toast.error('Preview not found');
+        return;
+      }
+      
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = previewElement.innerHTML;
+      tempDiv.style.padding = '20px';
+      tempDiv.style.background = 'white';
+      tempDiv.style.width = '800px';
+      tempDiv.style.fontFamily = 'Arial, sans-serif';
+      document.body.appendChild(tempDiv);
+      
+      const canvas = await html2canvas(tempDiv, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+      
+      document.body.removeChild(tempDiv);
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`${formData.name || 'resume'}-resume.pdf`);
+      
+      toast.dismiss(toastId);
+      toast.success('✅ PDF downloaded successfully!');
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast.error('Failed to generate PDF. Please try again.');
+    }
+  };
+
+  // Download as Word
+  const handleDownloadWord = () => {
+    if (!generatedResume) {
+      toast.error('Please generate a resume first');
+      return;
+    }
+    
+    try {
+      const toastId = toast.loading('Generating Word document...');
+      
+      const doc = new Document({
+        sections: [{
+          properties: {},
+          children: [
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: formData.name || 'Resume',
+                  size: 32,
+                  bold: true,
+                  font: 'Arial'
+                })
+              ],
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 200 }
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: formData.title || '',
+                  size: 24,
+                  font: 'Arial'
+                })
+              ],
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 200 }
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: [formData.email, formData.phone, formData.location].filter(Boolean).join(' | '),
+                  size: 20,
+                  font: 'Arial',
+                  color: '666666'
+                })
+              ],
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 400 }
+            }),
+            // Summary
+            ...(formData.summary ? [
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: 'PROFESSIONAL SUMMARY',
+                    size: 24,
+                    bold: true,
+                    font: 'Arial'
+                  })
+                ],
+                spacing: { before: 200, after: 100 }
+              }),
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: formData.summary,
+                    size: 20,
+                    font: 'Arial'
+                  })
+                ],
+                spacing: { after: 200 }
+              })
+            ] : []),
+            // Skills
+            ...(formData.skills ? [
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: 'SKILLS',
+                    size: 24,
+                    bold: true,
+                    font: 'Arial'
+                  })
+                ],
+                spacing: { before: 200, after: 100 }
+              }),
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: formData.skills,
+                    size: 20,
+                    font: 'Arial'
+                  })
+                ],
+                spacing: { after: 200 }
+              })
+            ] : []),
+            // Experience
+            ...(formData.experience ? [
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: 'EXPERIENCE',
+                    size: 24,
+                    bold: true,
+                    font: 'Arial'
+                  })
+                ],
+                spacing: { before: 200, after: 100 }
+              }),
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: formData.experience,
+                    size: 20,
+                    font: 'Arial'
+                  })
+                ],
+                spacing: { after: 200 }
+              })
+            ] : []),
+            // Education
+            ...(formData.education ? [
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: 'EDUCATION',
+                    size: 24,
+                    bold: true,
+                    font: 'Arial'
+                  })
+                ],
+                spacing: { before: 200, after: 100 }
+              }),
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: formData.education,
+                    size: 20,
+                    font: 'Arial'
+                  })
+                ],
+                spacing: { after: 200 }
+              })
+            ] : [])
+          ]
+        }]
+      });
+
+      Packer.toBlob(doc).then(blob => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${formData.name || 'resume'}-resume.docx`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        toast.dismiss(toastId);
+        toast.success('✅ Word document downloaded successfully!');
+      });
+    } catch (error) {
+      console.error('Word generation error:', error);
+      toast.error('Failed to generate Word document');
+    }
+  };
+
+  // Download as Excel
+  const handleDownloadExcel = () => {
+    if (!generatedResume) {
+      toast.error('Please generate a resume first');
+      return;
+    }
+    
+    try {
+      const data = [
+        ['Resume Details'],
+        ['Field', 'Content'],
+        ['Name', formData.name || ''],
+        ['Title', formData.title || ''],
+        ['Email', formData.email || ''],
+        ['Phone', formData.phone || ''],
+        ['Location', formData.location || ''],
+        ['Summary', formData.summary || ''],
+        ['Skills', formData.skills || ''],
+        ['Experience', formData.experience || ''],
+        ['Education', formData.education || ''],
+        ['Template Used', currentTemplate.name || ''],
+        ['Generated On', new Date().toLocaleString()]
+      ];
+      
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      ws['!cols'] = [{ wch: 20 }, { wch: 60 }];
+      XLSX.utils.book_append_sheet(wb, ws, 'Resume');
+      XLSX.writeFile(wb, `${formData.name || 'resume'}-resume.xlsx`);
+      
+      toast.success('✅ Excel downloaded successfully!');
+    } catch (error) {
+      console.error('Excel generation error:', error);
+      toast.error('Failed to generate Excel file');
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validate required fields
     if (!formData.name.trim()) {
       toast.error('Please enter your full name');
       return;
@@ -250,12 +898,18 @@ const ResumeBuilder = () => {
     setLoading(true);
     
     try {
-      const skillsArray = formData.skills.split(',').map(s => s.trim()).filter(Boolean);
+      let skillsArray = [];
+      if (typeof formData.skills === 'string') {
+        skillsArray = formData.skills.split(',').map(s => s.trim()).filter(Boolean);
+      } else if (Array.isArray(formData.skills)) {
+        skillsArray = formData.skills.map(s => s.trim()).filter(Boolean);
+      }
+      
       const payload = {
         ...formData,
         skills: skillsArray,
         template: selectedTemplate,
-        is_premium: formData.is_premium
+        is_premium: isPremium || formData.is_premium
       };
       
       const response = await api.buildResume(payload);
@@ -265,9 +919,15 @@ const ResumeBuilder = () => {
         setUsageInfo({
           used: response.data.usage_count,
           remaining: response.data.remaining_free,
-          isPremium: response.data.is_premium
+          isPremium: response.data.is_premium || isPremium
         });
-        toast.success('🎉 Resume generated successfully!');
+        
+        if (response.data.is_premium) {
+          setIsPremium(true);
+          toast.success('🎉 Resume generated with premium features!');
+        } else {
+          toast.success('✅ Resume generated successfully!');
+        }
         setActiveTab('preview');
       }
     } catch (error) {
@@ -279,6 +939,7 @@ const ResumeBuilder = () => {
           isPremium: false,
           maxFree: error.response.data.max_free
         });
+        setShowPaymentModal(true);
       } else {
         toast.error(error.response?.data?.error || 'Failed to generate resume');
       }
@@ -306,13 +967,19 @@ const ResumeBuilder = () => {
   };
 
   const handleUpgrade = () => {
-    window.location.href = '/contact?upgrade=premium';
+    setShowPaymentModal(true);
   };
 
   const currentTemplate = TEMPLATES[selectedTemplate] || TEMPLATES.modern;
 
   const skillsArray = useMemo(() => {
-    return formData.skills.split(',').map(s => s.trim()).filter(Boolean);
+    if (typeof formData.skills === 'string') {
+      return formData.skills.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    if (Array.isArray(formData.skills)) {
+      return formData.skills.map(s => s.trim()).filter(Boolean);
+    }
+    return [];
   }, [formData.skills]);
 
   return (
@@ -328,17 +995,17 @@ const ResumeBuilder = () => {
             Create Your <span className="gradient-text">Perfect Resume</span>
           </h1>
           <p className="text-gray-600 max-w-2xl mx-auto">
-            Choose from 6 professional templates and build an ATS-friendly resume that gets noticed
+            Build an ATS-optimized resume with real-time scoring and AI-powered suggestions
           </p>
           <div className="flex flex-wrap justify-center gap-3 mt-3">
             <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm">
               <FaStar className="text-yellow-400" /> Free: 3/day
             </span>
             <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">
-              <FaLock className="text-green-500" /> Premium: Unlimited
+              <FaCrown className="text-yellow-500" /> Premium: Unlimited
             </span>
             <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm">
-              <FaPalette className="text-purple-500" /> 6 Templates
+              <FaSearch className="text-purple-500" /> ATS Score
             </span>
           </div>
         </div>
@@ -346,59 +1013,72 @@ const ResumeBuilder = () => {
         {/* Usage Info */}
         {usageInfo && (
           <div className={`mb-6 p-4 rounded-lg flex flex-wrap items-center justify-between ${
+            usageInfo.isPremium ? 'bg-green-50 border border-green-200' :
             usageInfo.remaining > 0 ? 'bg-blue-50 border border-blue-200' : 'bg-yellow-50 border border-yellow-200'
           }`}>
-            <p className="text-sm">
+            <p className="text-sm flex items-center gap-2">
               {usageInfo.isPremium ? (
-                <span className="flex items-center gap-2"><FaCrown className="text-yellow-500" /> Premium: Unlimited access to all templates</span>
+                <><FaCrown className="text-yellow-500" /> <span className="font-semibold">Premium:</span> Unlimited access</>
               ) : (
-                `${usageInfo.used} used today • ${usageInfo.remaining} free remaining`
+                <><FaClock className="text-blue-500" /> {usageInfo.used} used today • {usageInfo.remaining} free remaining</>
               )}
             </p>
-            {!usageInfo.isPremium && usageInfo.remaining === 0 && (
-              <button
-                onClick={handleUpgrade}
-                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition"
-              >
-                Upgrade Now
+            {!usageInfo.isPremium && (
+              <button onClick={handleUpgrade} className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition flex items-center gap-2">
+                <FaCrown /> Upgrade Now
               </button>
             )}
           </div>
         )}
 
-        {/* Template Selection */}
-        <div className="mb-6">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-            <FaPalette className="text-blue-600" /> Choose Your Template
-          </h3>
-          <div className="flex flex-wrap gap-3">
-            {Object.entries(TEMPLATES).map(([key, template]) => {
-              const Icon = template.icon;
-              const isSelected = selectedTemplate === key;
-              return (
-                <button
-                  key={key}
-                  onClick={() => setSelectedTemplate(key)}
-                  className={`group px-4 py-3 rounded-xl border-2 transition-all duration-300 flex items-center gap-3 ${
-                    isSelected 
-                      ? 'border-blue-600 bg-blue-50 shadow-md' 
-                      : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className={`w-10 h-10 rounded-lg ${template.preview} flex items-center justify-center text-white`}>
-                    <Icon className="text-lg" />
-                  </div>
-                  <div className="text-left">
-                    <p className={`font-semibold text-sm ${isSelected ? 'text-blue-600' : 'text-gray-700'}`}>
-                      {template.name}
-                    </p>
-                    <p className="text-xs text-gray-500 hidden md:block">{template.description}</p>
-                  </div>
-                  {isSelected && <FaCheckCircle className="text-blue-600 text-sm ml-1" />}
-                </button>
-              );
-            })}
+        {/* Template Dropdown */}
+        <div className="mb-6 relative">
+          <div className="flex items-center gap-4">
+            <button onClick={() => setTemplateDropdownOpen(!templateDropdownOpen)} className="flex-1 bg-white px-6 py-3 rounded-xl border-2 border-gray-200 hover:border-blue-300 transition flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-lg ${currentTemplate.preview} flex items-center justify-center text-white`}>
+                  <currentTemplate.icon className="text-lg" />
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-gray-900">{currentTemplate.name}</p>
+                  <p className="text-xs text-gray-500">{currentTemplate.description}</p>
+                </div>
+              </div>
+              <FaChevronDown className={`text-gray-400 transition ${templateDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+            <button onClick={() => loadTemplateExample(selectedTemplate)} className="px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition flex items-center gap-2 text-sm font-semibold whitespace-nowrap">
+              <FaMagic /> Load Example
+            </button>
           </div>
+
+          {templateDropdownOpen && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 max-h-96 overflow-y-auto z-50">
+              {Object.entries(TEMPLATES).map(([key, template]) => {
+                const Icon = template.icon;
+                const isSelected = selectedTemplate === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => { setSelectedTemplate(key); setTemplateDropdownOpen(false); }}
+                    className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition border-b border-gray-100 last:border-0 ${
+                      isSelected ? 'bg-blue-50' : ''
+                    }`}
+                  >
+                    <div className={`w-10 h-10 rounded-lg ${template.preview} flex items-center justify-center text-white flex-shrink-0`}>
+                      <Icon className="text-lg" />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className={`font-semibold text-sm ${isSelected ? 'text-blue-600' : 'text-gray-700'}`}>
+                        {template.name}
+                      </p>
+                      <p className="text-xs text-gray-500">{template.description}</p>
+                    </div>
+                    {isSelected && <FaCheckCircle className="text-blue-600" />}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Main Content */}
@@ -410,24 +1090,10 @@ const ResumeBuilder = () => {
                 <FaUser className="text-blue-600" /> Your Details
               </h2>
               <div className="flex gap-2">
-                <button
-                  onClick={() => setActiveTab('form')}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                    activeTab === 'form' 
-                      ? 'bg-blue-600 text-white shadow-md' 
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
+                <button onClick={() => setActiveTab('form')} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${activeTab === 'form' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
                   <FaFileAlt className="inline mr-1" /> Form
                 </button>
-                <button
-                  onClick={() => setActiveTab('preview')}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                    activeTab === 'preview' 
-                      ? 'bg-blue-600 text-white shadow-md' 
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
+                <button onClick={() => setActiveTab('preview')} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${activeTab === 'preview' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
                   <FaEye className="inline mr-1" /> Preview
                 </button>
               </div>
@@ -435,6 +1101,11 @@ const ResumeBuilder = () => {
 
             {activeTab === 'form' ? (
               <form onSubmit={handleSubmit} className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                {/* ATS Score Section */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 rounded-lg border border-blue-200">
+                  <ATSScore data={formData} />
+                </div>
+
                 {/* Personal Information */}
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
                   <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
@@ -443,60 +1114,23 @@ const ResumeBuilder = () => {
                   <div className="grid md:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Full Name *</label>
-                      <input
-                        type="text"
-                        name="name"
-                        placeholder="John Doe"
-                        value={formData.name}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        required
-                      />
+                      <input type="text" name="name" placeholder="John Doe" value={formData.name} onChange={handleChange} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Professional Title</label>
-                      <input
-                        type="text"
-                        name="title"
-                        placeholder="Full Stack Developer"
-                        value={formData.title}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Professional Title *</label>
+                      <input type="text" name="title" placeholder="e.g., Full Stack Developer" value={formData.title} onChange={handleChange} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required />
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Email *</label>
-                      <input
-                        type="email"
-                        name="email"
-                        placeholder="john@example.com"
-                        value={formData.email}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        required
-                      />
+                      <input type="email" name="email" placeholder="john@example.com" value={formData.email} onChange={handleChange} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required />
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Phone</label>
-                      <input
-                        type="text"
-                        name="phone"
-                        placeholder="+91 98765 43210"
-                        value={formData.phone}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
+                      <input type="text" name="phone" placeholder="+91 98765 43210" value={formData.phone} onChange={handleChange} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
                     </div>
                     <div className="md:col-span-2">
                       <label className="block text-xs font-medium text-gray-700 mb-1">Location</label>
-                      <input
-                        type="text"
-                        name="location"
-                        placeholder="Agra, India"
-                        value={formData.location}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
+                      <input type="text" name="location" placeholder="Agra, India" value={formData.location} onChange={handleChange} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
                     </div>
                   </div>
                 </div>
@@ -506,40 +1140,34 @@ const ResumeBuilder = () => {
                   <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                     <FaBriefcase className="text-blue-500" /> Professional Summary
                   </h4>
-                  <textarea
-                    name="summary"
-                    rows="3"
-                    placeholder="Experienced professional with 5+ years in web development, specializing in React and Node.js..."
-                    value={formData.summary}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
-                  />
+                  <textarea name="summary" rows="3" placeholder="Experienced professional with 5+ years..." value={formData.summary} onChange={handleChange} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y" />
+                  <p className="text-xs text-gray-400 mt-1">{formData.summary?.length || 0} characters (Recommended: 100-300)</p>
                 </div>
 
                 {/* Skills */}
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                    <FaTools className="text-blue-500" /> Skills *
-                  </h4>
-                  <input
-                    type="text"
-                    name="skills"
-                    placeholder="React, Python, SQL, AWS, Docker"
-                    value={formData.skills}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                      <FaTools className="text-blue-500" /> Skills *
+                    </h4>
+                    <button type="button" onClick={() => setShowKeywords(!showKeywords)} className="text-xs text-blue-600 hover:text-blue-800 transition flex items-center gap-1">
+                      <FaSearch /> {showKeywords ? 'Hide Keywords' : 'Show ATS Keywords'}
+                    </button>
+                  </div>
+                  <input type="text" name="skills" placeholder="React, Python, SQL, AWS, Docker" value={formData.skills} onChange={handleChange} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required />
+                  {showKeywords && (
+                    <div className="mt-3">
+                      <KeywordSuggestions onAdd={handleKeywordAdd} />
+                    </div>
+                  )}
                   {skillsArray.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-2">
                       {skillsArray.map((skill, idx) => (
-                        <span key={idx} className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-xs">
-                          {skill}
-                        </span>
+                        <span key={idx} className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-xs">{skill}</span>
                       ))}
                     </div>
                   )}
-                  <p className="text-xs text-gray-400 mt-1">Separate skills with commas</p>
+                  <p className="text-xs text-gray-400 mt-1">{skillsArray.length} skills (Recommended: 8-12)</p>
                 </div>
 
                 {/* Experience */}
@@ -547,14 +1175,8 @@ const ResumeBuilder = () => {
                   <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                     <FaBriefcase className="text-blue-500" /> Experience
                   </h4>
-                  <textarea
-                    name="experience"
-                    rows="4"
-                    placeholder="Senior Developer at XYZ Corp (2020-2024)&#10;• Led team of 5 developers&#10;• Built scalable web applications serving 1M+ users"
-                    value={formData.experience}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
-                  />
+                  <textarea name="experience" rows="4" placeholder="Company Name (Year-Year)&#10;• Achieved [metric]% increase&#10;• Led team of [number]" value={formData.experience} onChange={handleChange} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y font-mono" />
+                  <p className="text-xs text-gray-400 mt-1">Use bullet points (•) and include metrics (numbers, percentages)</p>
                 </div>
 
                 {/* Education */}
@@ -562,42 +1184,28 @@ const ResumeBuilder = () => {
                   <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                     <FaGraduationCap className="text-blue-500" /> Education
                   </h4>
-                  <textarea
-                    name="education"
-                    rows="3"
-                    placeholder="B.Tech in Computer Science, IIT Delhi (2016-2020)&#10;• GPA: 8.5/10"
-                    value={formData.education}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
-                  />
+                  <textarea name="education" rows="3" placeholder="Degree, University (Year-Year)&#10;• GPA: X.X/4.0" value={formData.education} onChange={handleChange} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y" />
                 </div>
 
                 {/* Premium Toggle */}
                 <div className="flex items-center gap-3 pt-2 border-t border-gray-200">
-                  <input
-                    type="checkbox"
-                    name="is_premium"
-                    checked={formData.is_premium}
-                    onChange={handleChange}
-                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                  />
+                  <input type="checkbox" name="is_premium" checked={formData.is_premium} onChange={handleChange} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />
                   <label className="text-sm text-gray-700 flex items-center gap-1">
                     <FaCrown className="text-yellow-500" /> Premium Mode (Unlimited + All Templates)
                   </label>
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-lg font-semibold hover:shadow-lg transition disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {loading ? <FaSpinner className="animate-spin" /> : <FaFileAlt />}
+                <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-lg font-semibold hover:shadow-lg transition disabled:opacity-50 flex items-center justify-center gap-2">
+                  {loading ? <FaSpinner className="animate-spin" /> : <FaRocket />}
                   {loading ? 'Generating...' : 'Generate Resume'}
                 </button>
               </form>
             ) : (
               <div className="max-h-[600px] overflow-y-auto">
                 <ResumePreview data={formData} template={currentTemplate} />
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <ATSScore data={formData} />
+                </div>
               </div>
             )}
           </div>
@@ -621,16 +1229,19 @@ const ResumeBuilder = () => {
 
             {generatedResume && (
               <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-gray-200">
-                <button
-                  onClick={handleDownload}
-                  className="flex-1 bg-green-500 text-white py-2.5 rounded-lg hover:bg-green-600 transition flex items-center justify-center gap-2 text-sm font-semibold shadow-md hover:shadow-lg"
-                >
-                  <FaDownload /> Download Resume
+                <button onClick={handleDownloadPDF} className="flex-1 bg-red-500 text-white py-2.5 rounded-lg hover:bg-red-600 transition flex items-center justify-center gap-2 text-sm font-semibold shadow-md hover:shadow-lg">
+                  <FaFilePdf /> PDF
                 </button>
-                <button
-                  onClick={handlePrint}
-                  className="flex-1 bg-gray-600 text-white py-2.5 rounded-lg hover:bg-gray-700 transition flex items-center justify-center gap-2 text-sm font-semibold"
-                >
+                <button onClick={handleDownloadWord} className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 text-sm font-semibold shadow-md hover:shadow-lg">
+                  <FaRegFileWord /> Word
+                </button>
+                <button onClick={handleDownloadExcel} className="flex-1 bg-green-600 text-white py-2.5 rounded-lg hover:bg-green-700 transition flex items-center justify-center gap-2 text-sm font-semibold shadow-md hover:shadow-lg">
+                  <FaRegFileExcel /> Excel
+                </button>
+                <button onClick={handleDownload} className="flex-1 bg-blue-500 text-white py-2.5 rounded-lg hover:bg-blue-600 transition flex items-center justify-center gap-2 text-sm font-semibold shadow-md hover:shadow-lg">
+                  <FaDownload /> Text
+                </button>
+                <button onClick={handlePrint} className="flex-1 bg-gray-600 text-white py-2.5 rounded-lg hover:bg-gray-700 transition flex items-center justify-center gap-2 text-sm font-semibold">
                   <FaPrint /> Print
                 </button>
               </div>
@@ -647,20 +1258,17 @@ const ResumeBuilder = () => {
           <div className="relative z-10 max-w-2xl mx-auto">
             <FaCrown className="text-4xl text-yellow-400 mx-auto mb-3" />
             <h3 className="text-xl font-bold mb-2">🚀 Unlock Premium Features</h3>
-            <p className="text-blue-100 mb-4">
-              Get unlimited resume generation, access to all 6 templates, and priority support.
-            </p>
-            <button
-              onClick={handleUpgrade}
-              className="bg-white text-blue-600 px-8 py-3 rounded-xl font-semibold hover:shadow-lg transition hover:-translate-y-0.5"
-            >
+            <p className="text-blue-100 mb-4">Get unlimited resume generation, access to all 6 templates, and priority support.</p>
+            <button onClick={handleUpgrade} className="bg-white text-blue-600 px-8 py-3 rounded-xl font-semibold hover:shadow-lg transition hover:-translate-y-0.5">
               Upgrade Now — ₹499/month
             </button>
           </div>
         </div>
       </div>
 
-      {/* CSS */}
+      {/* Payment Modal */}
+      <PaymentModal isOpen={showPaymentModal} onClose={() => setShowPaymentModal(false)} userEmail={formData.email} userId={localStorage.getItem('userId')} />
+
       <style dangerouslySetInnerHTML={{ __html: `
         .gradient-text {
           background: linear-gradient(135deg, #3b82f6, #8b5cf6);
@@ -668,20 +1276,10 @@ const ResumeBuilder = () => {
           -webkit-text-fill-color: transparent;
           background-clip: text;
         }
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: #f1f1f1;
-          border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #c1c1c1;
-          border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #a8a8a8;
-        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
         @media print {
           .no-print { display: none !important; }
           .print-preview { background: white !important; box-shadow: none !important; }
