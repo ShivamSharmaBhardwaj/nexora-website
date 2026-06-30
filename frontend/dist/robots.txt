@@ -6,5 +6,5 @@ Disallow: /login/
 Disallow: /api/
 Disallow: /private/
 
-# Sitemap - ✅ FIXED
-Sitemap: https://nexora-website-1.onrender.com/sitemap.xml
+# Sitemap - ✅ FIXED with correct domain
+Sitemap: https://krynovatechnology.pythonanywhere.com/sitemap.xml
