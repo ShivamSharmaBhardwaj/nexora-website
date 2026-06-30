@@ -45,6 +45,7 @@ apiClient.interceptors.response.use(
   }
 );
 
+
 // ============================================
 // PUBLIC API CLIENT (NO INTERCEPTORS)
 // ============================================
@@ -57,6 +58,8 @@ const publicApiClient = axios.create({
     'Accept': 'application/json',
   },
 });
+
+
 
 // ============================================
 // API HELPER FUNCTIONS
@@ -100,6 +103,16 @@ export const api = {
     return apiClient.delete(`/api/projects/${id}`);
   },
 
+    // ✅ ADD THIS - Service Pages API
+  getServiceData: async (serviceId) => {
+    const response = await publicApiClient.get(`/api/services/${serviceId}`);
+    return response.data;
+  },
+  
+  getServiceList: async () => {
+    const response = await publicApiClient.get('/api/services/list');
+    return response.data;
+  },
   // Testimonials
   getTestimonials: () => {
     return apiClient.get('/api/testimonials');

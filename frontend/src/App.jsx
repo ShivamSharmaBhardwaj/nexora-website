@@ -25,6 +25,11 @@ import MergePDF from './pages/tools/MergePDF';
 import SplitPDF from './pages/tools/SplitPDF';
 import ImageResizer from './pages/tools/ImageResizer';
 import TextToPDF from './pages/tools/TextToPDF';
+import WebDevelopmentAgra from './pages/services/WebDevelopmentAgra';
+import HRMSSoftware from './pages/services/HRMSSoftware';
+import PropertyManagement from './pages/services/PropertyManagement';
+import WhatsAppAutomation from './pages/services/WhatsAppAutomation';
+import EnterpriseSoftware from './pages/services/EnterpriseSoftware';
 
 import { useSecurity } from './hooks/useSecurity';
 
@@ -84,6 +89,11 @@ function App() {
         <Route path="/tools/split-pdf" element={<SplitPDF />} />
         <Route path="/tools/image-resizer" element={<ImageResizer />} />
         <Route path="/tools/text-to-pdf" element={<TextToPDF />} />
+        <Route path="/services/web-development-agra" element={<WebDevelopmentAgra />} />
+        <Route path="/services/hrms-software" element={<HRMSSoftware />} />
+        <Route path="/services/property-management" element={<PropertyManagement />} />
+        <Route path="/services/whatsapp-automation" element={<WhatsAppAutomation />} />
+        <Route path="/services/enterprise-software" element={<EnterpriseSoftware />} />
       </Routes>
       <Footer />
     </>

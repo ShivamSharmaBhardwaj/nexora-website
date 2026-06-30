@@ -108,6 +108,16 @@ try:
 except Exception as e:
     print(f"  ❌ Testimonial routes failed: {e}", flush=True)
 
+    # ✅ ADD THIS - Service Routes
+try:
+    from routes.service_routes import service_bp
+    app.register_blueprint(service_bp, url_prefix='/api/services')
+    print("  ✅ Service routes loaded", flush=True)
+except Exception as e:
+    print(f"  ❌ Service routes failed: {e}", flush=True)
+    import traceback
+    traceback.print_exc()
+
 # ✅ TOOLS ROUTES - REGISTER WITH URL PREFIX
 try:
     from routes.tools_routes import tools_bp
@@ -137,7 +147,7 @@ def sitemap():
 def robots():
     return send_from_directory(app.static_folder, 'robots.txt', mimetype='text/plain')
 
-# Root
+# In backend/app.py - Update the root endpoint
 @app.route('/')
 def root():
     try:
@@ -152,7 +162,8 @@ def root():
                 'projects': '/api/projects',
                 'testimonials': '/api/testimonials',
                 'contact': '/api/contact',
-                'tools': '/api/tools'
+                'tools': '/api/tools',
+                'services': '/api/services'  # ✅ ADD THIS
             }
         })
 
