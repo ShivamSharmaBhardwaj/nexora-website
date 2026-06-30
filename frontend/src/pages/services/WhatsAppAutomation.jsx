@@ -2,7 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../utils/api';
-import { FaCheckCircle, FaArrowRight, FaWhatsapp, FaRobot, FaUsers, FaChartLine, FaMessage, FaClock, FaMobileAlt } from 'react-icons/fa';
+import { 
+  FaCheckCircle, FaArrowRight, FaWhatsapp, FaRobot, FaUsers, 
+  FaChartLine, FaComment, FaClock, FaMobileAlt 
+} from 'react-icons/fa';
 
 const WhatsAppAutomation = () => {
   const [serviceData, setServiceData] = useState(null);
@@ -55,7 +58,7 @@ const WhatsAppAutomation = () => {
 
   document.title = title || 'WhatsApp Automation Bot | Krynova Technologies';
 
-  const serviceIcons = [FaUsers, FaMessage, FaClock, FaChartLine];
+  const serviceIcons = [FaUsers, FaComment, FaClock, FaChartLine];
 
   return (
     <>

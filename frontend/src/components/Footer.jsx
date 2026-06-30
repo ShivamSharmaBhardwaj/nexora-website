@@ -1,3 +1,4 @@
+// frontend/src/components/Footer.jsx
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -19,7 +20,27 @@ import {
   FaRegCopyright,
   FaGlobe,
   FaClock,
-  FaCheckCircle
+  FaCheckCircle,
+  FaCode,
+  FaUsers,
+  FaBuilding,
+  FaMobileAlt,
+  FaServer,
+  FaCog,
+  FaProjectDiagram,
+  FaTools,
+  FaComments,
+  FaFileAlt,
+  FaPenFancy,
+  FaQrcode,
+  FaFilePdf,
+  FaFileWord,
+  FaFileExcel,
+  FaImage,
+  FaFileArchive,
+  FaExchangeAlt,
+  FaFileExport,
+  FaMagic
 } from 'react-icons/fa';
 import { FaXTwitter } from 'react-icons/fa6';
 
@@ -38,6 +59,34 @@ const Footer = () => {
 
   const currentYear = new Date().getFullYear();
 
+  // Services data
+  const services = [
+    { path: '/services/web-development-agra', label: 'Web Development', icon: FaCode },
+    { path: '/services/hrms-software', label: 'HRMS Software', icon: FaUsers },
+    { path: '/services/property-management', label: 'Property Management', icon: FaBuilding },
+    { path: '/services/whatsapp-automation', label: 'WhatsApp Automation', icon: FaMobileAlt },
+    { path: '/services/enterprise-software', label: 'Enterprise Software', icon: FaServer },
+  ];
+
+  // Products data
+  const products = [
+    { path: '/products/category/HRMS', label: 'HRMS System', icon: FaUsers },
+    { path: '/products/category/TODO', label: 'TODO System', icon: FaCheckCircle },
+    { path: '/products/category/Estate', label: 'Estate Management', icon: FaBuilding },
+    { path: '/products/category/WhatsApp', label: 'WhatsApp Bot', icon: FaMobileAlt },
+    { path: '/products', label: 'View All Products', icon: FaProjectDiagram },
+  ];
+
+  // Tools data (top 6)
+  const tools = [
+    { path: '/tools/resume-builder', label: 'Resume Builder', icon: FaFileAlt },
+    { path: '/tools/cover-letter', label: 'Cover Letter', icon: FaPenFancy },
+    { path: '/tools/qr-generator', label: 'QR Generator', icon: FaQrcode },
+    { path: '/tools/pdf-to-image', label: 'PDF to Image', icon: FaFilePdf },
+    { path: '/tools/pdf-compressor', label: 'PDF Compressor', icon: FaFileArchive },
+    { path: '/tools/merge-pdf', label: 'Merge PDF', icon: FaExchangeAlt },
+  ];
+
   return (
     <footer className="bg-gray-900 text-white mt-16 relative overflow-hidden">
       {/* Animated Background */}
@@ -48,7 +97,7 @@ const Footer = () => {
       </div>
 
       <div className="container mx-auto px-4 py-12 relative z-10">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8">
           {/* Brand Column */}
           <div className="lg:col-span-1">
             <Link to="/" className="flex items-center gap-3 mb-4 group">
@@ -101,9 +150,7 @@ const Footer = () => {
             <ul className="space-y-2.5">
               {[
                 { path: '/', label: 'Home' },
-                { path: '/products', label: 'Products' },
                 { path: '/testimonials', label: 'Testimonials' },
-                { path: '/tools', label: 'Free Tools' },
                 { path: '/contact', label: 'Contact' },
               ].map((link) => (
                 <li key={link.path}>
@@ -120,33 +167,85 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Products */}
+          {/* Services */}
           <div>
-            <h4 className="text-sm font-semibold uppercase tracking-wider text-gray-300 mb-4">
-              Our Products
+            <h4 className="text-sm font-semibold uppercase tracking-wider text-gray-300 mb-4 flex items-center gap-2">
+              <FaCog className="text-blue-400" /> Services
             </h4>
             <ul className="space-y-2.5">
-              {[
-                { path: '/products/category/HRMS', label: 'HRMS System' },
-                { path: '/products/category/TODO', label: 'TODO System' },
-                { path: '/products/category/Estate', label: 'Estate Management' },
-                { path: '/products/category/WhatsApp', label: 'WhatsApp Bot' },
-                { path: '/products', label: 'View All Products' },
-              ].map((product) => (
-                <li key={product.path}>
-                  <Link 
-                    to={product.path} 
-                    className="text-gray-400 hover:text-white transition-all duration-300 flex items-center gap-2 group"
-                  >
-                    <span className="w-1.5 h-1.5 bg-blue-400 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300"></span>
-                    {product.label}
-                  </Link>
-                </li>
-              ))}
+              {services.map((service) => {
+                const Icon = service.icon;
+                return (
+                  <li key={service.path}>
+                    <Link 
+                      to={service.path} 
+                      className="text-gray-400 hover:text-white transition-all duration-300 flex items-center gap-2 group"
+                    >
+                      <Icon className="text-xs text-blue-400" />
+                      {service.label}
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           </div>
 
-          {/* Contact */}
+          {/* Products */}
+          <div>
+            <h4 className="text-sm font-semibold uppercase tracking-wider text-gray-300 mb-4 flex items-center gap-2">
+              <FaProjectDiagram className="text-blue-400" /> Products
+            </h4>
+            <ul className="space-y-2.5">
+              {products.map((product) => {
+                const Icon = product.icon;
+                return (
+                  <li key={product.path}>
+                    <Link 
+                      to={product.path} 
+                      className="text-gray-400 hover:text-white transition-all duration-300 flex items-center gap-2 group"
+                    >
+                      <Icon className="text-xs text-blue-400" />
+                      {product.label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+
+          {/* Free Tools */}
+          <div>
+            <h4 className="text-sm font-semibold uppercase tracking-wider text-gray-300 mb-4 flex items-center gap-2">
+              <FaTools className="text-blue-400" /> Free Tools
+            </h4>
+            <ul className="space-y-2.5">
+              {tools.map((tool) => {
+                const Icon = tool.icon;
+                return (
+                  <li key={tool.path}>
+                    <Link 
+                      to={tool.path} 
+                      className="text-gray-400 hover:text-white transition-all duration-300 flex items-center gap-2 group"
+                    >
+                      <Icon className="text-xs text-blue-400" />
+                      {tool.label}
+                    </Link>
+                  </li>
+                );
+              })}
+              <li>
+                <Link 
+                  to="/tools" 
+                  className="text-blue-400 hover:text-white transition-all duration-300 flex items-center gap-2 group text-sm font-medium"
+                >
+                  <FaArrowRight className="text-xs" />
+                  View All 12 Tools
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Contact & Social */}
           <div>
             <h4 className="text-sm font-semibold uppercase tracking-wider text-gray-300 mb-4">
               Contact Us
@@ -188,83 +287,29 @@ const Footer = () => {
                 </a>
               </li>
             </ul>
-          </div>
-
-          {/* Newsletter & Social */}
-          <div>
-            <h4 className="text-sm font-semibold uppercase tracking-wider text-gray-300 mb-4">
-              Stay Updated
-            </h4>
-            
-            {/* Newsletter */}
-            <form onSubmit={handleSubscribe} className="mb-4">
-              <div className="flex gap-2">
-                <input
-                  type="email"
-                  placeholder="Your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm"
-                  required
-                />
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 text-sm font-medium whitespace-nowrap"
-                >
-                  {subscribed ? '✅' : 'Subscribe'}
-                </button>
-              </div>
-              <p className="text-xs text-gray-500 mt-1.5">
-                Get updates on new products & features
-              </p>
-            </form>
 
             {/* Social Links */}
-            <div>
+            <div className="mt-4">
               <h5 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">
                 Follow Us
               </h5>
-              <div className="flex gap-2.5">
-                <a 
-                  href="#" 
-                  className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 hover:bg-blue-600 hover:text-white transition-all duration-300 hover:scale-110"
-                  aria-label="Facebook"
-                >
+              <div className="flex gap-2.5 flex-wrap">
+                <a href="#" className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 hover:bg-blue-600 hover:text-white transition-all duration-300 hover:scale-110">
                   <FaFacebook />
                 </a>
-                <a 
-                  href="#" 
-                  className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 hover:bg-black hover:text-white transition-all duration-300 hover:scale-110"
-                  aria-label="Twitter"
-                >
+                <a href="#" className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 hover:bg-black hover:text-white transition-all duration-300 hover:scale-110">
                   <FaXTwitter />
                 </a>
-                <a 
-                  href="#" 
-                  className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 hover:bg-blue-700 hover:text-white transition-all duration-300 hover:scale-110"
-                  aria-label="LinkedIn"
-                >
+                <a href="#" className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 hover:bg-blue-700 hover:text-white transition-all duration-300 hover:scale-110">
                   <FaLinkedin />
                 </a>
-                <a 
-                  href="#" 
-                  className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-700 hover:text-white transition-all duration-300 hover:scale-110"
-                  aria-label="GitHub"
-                >
+                <a href="#" className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-700 hover:text-white transition-all duration-300 hover:scale-110">
                   <FaGithub />
                 </a>
-                <a 
-                  href="#" 
-                  className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 hover:bg-pink-600 hover:text-white transition-all duration-300 hover:scale-110"
-                  aria-label="Instagram"
-                >
+                <a href="#" className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 hover:bg-pink-600 hover:text-white transition-all duration-300 hover:scale-110">
                   <FaInstagram />
                 </a>
-                <a 
-                  href="#" 
-                  className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 hover:bg-red-600 hover:text-white transition-all duration-300 hover:scale-110"
-                  aria-label="YouTube"
-                >
+                <a href="#" className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 hover:bg-red-600 hover:text-white transition-all duration-300 hover:scale-110">
                   <FaYoutube />
                 </a>
               </div>
@@ -280,7 +325,7 @@ const Footer = () => {
                 <FaRegCopyright className="inline mr-1" />
                 {currentYear} Krynova Technologies. All rights reserved.
               </p>
-              <p className="text-gray-500 text-xs mt-1 flex items-center justify-center md:justify-start gap-2">
+              <p className="text-gray-500 text-xs mt-1 flex items-center justify-center md:justify-start gap-2 flex-wrap">
                 <span>Enterprise Software Solutions</span>
                 <span className="w-1 h-1 bg-gray-600 rounded-full"></span>
                 <span>Agra, India</span>
@@ -311,10 +356,10 @@ const Footer = () => {
 
           {/* Security Badge */}
           <div className="flex justify-center mt-4">
-            <div className="inline-flex items-center gap-2 bg-gray-800/50 px-4 py-2 rounded-full border border-gray-700/50">
+            <div className="inline-flex items-center gap-2 bg-gray-800/50 px-4 py-2 rounded-full border border-gray-700/50 flex-wrap justify-center">
               <FaShieldAlt className="text-green-400 text-sm" />
               <span className="text-xs text-gray-400">256-bit SSL Encrypted</span>
-              <span className="w-px h-4 bg-gray-700"></span>
+              <span className="w-px h-4 bg-gray-700 hidden sm:block"></span>
               <FaClock className="text-blue-400 text-sm" />
               <span className="text-xs text-gray-400">24/7 Support</span>
             </div>
@@ -322,7 +367,6 @@ const Footer = () => {
         </div>
       </div>
 
-      {/* CSS Animations */}
       <style dangerouslySetInnerHTML={{ __html: `
         .bg-grid-pattern {
           background-image: 

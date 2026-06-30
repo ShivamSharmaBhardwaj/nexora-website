@@ -2,7 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../utils/api';
-import { FaCheckCircle, FaArrowRight, FaServer, FaCloud, FaShieldAlt, FaChartLine, FaDatabase, FaNetworkWired, FaCrown } from 'react-icons/fa';
+import { 
+  FaCheckCircle, FaArrowRight, FaServer, FaCloud, 
+  FaShieldAlt, FaChartLine, FaDatabase, FaGlobe, FaCrown 
+} from 'react-icons/fa';
 
 const EnterpriseSoftware = () => {
   const [serviceData, setServiceData] = useState(null);
@@ -110,7 +113,7 @@ const EnterpriseSoftware = () => {
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
               {services && services.map((service, index) => {
-                const Icon = serviceIcons[index] || FaNetworkWired;
+                const Icon = serviceIcons[index] || FaGlobe;
                 return (
                   <div key={index} className="bg-gray-50 p-6 rounded-xl border border-gray-100 hover:shadow-lg transition-all hover:-translate-y-1">
                     <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-600 text-2xl mb-4">

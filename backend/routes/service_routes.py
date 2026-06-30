@@ -1,6 +1,5 @@
 # backend/routes/service_routes.py
 from flask import Blueprint, jsonify, request
-from config.database import db
 
 service_bp = Blueprint('service', __name__, url_prefix='/api/services')
 
@@ -430,3 +429,12 @@ def get_service_faqs(service_id):
             'success': False,
             'message': str(e)
         }), 500
+
+@service_bp.route('/test', methods=['GET'])
+def test_service():
+    """Test endpoint to verify service routes are loaded"""
+    return jsonify({
+        'success': True,
+        'message': 'Service routes are working!',
+        'available_services': list(SERVICE_DATA.keys())
+    })
