@@ -1,22 +1,23 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime, timedelta
+import json
 from config import get_db
 from middleware.auth import token_required, admin_required
 from middleware.validation import validate_contact_data, sanitize_input
 from utils.email_service import send_contact_email
 
-contact_bp = Blueprint('contact', __name__)
+contact_bp = Blueprint('contact_bp', __name__)
 contact_bp.strict_slashes = False
 
 @contact_bp.route('/', methods=['POST'])
 def submit_contact():
-    """Submit contact form (public)"""
+    """Submit contact form (public) - Enhanced with new fields"""
     data = request.get_json()
     
     if not data:
         return jsonify({'message': 'No data provided'}), 400
     
-    # Validate
+    # Validate basic fields
     errors = validate_contact_data(data)
     if errors:
         return jsonify({'errors': errors}), 400
@@ -39,11 +40,15 @@ def submit_contact():
                 'message': 'Too many submissions from this email. Please try again later.'
             }), 429
         
-        # Insert contact
+        # ✅ Insert with new fields
         ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
         cursor.execute('''
-            INSERT INTO contacts (name, email, phone, subject, message, type, ip_address)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO contacts (
+                name, email, phone, subject, message, type, 
+                interest_type, service_type, product_type, budget, 
+                timeline, requirements, company_name, hear_about, 
+                preferred_contact, industry, team_size, ip_address
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             data['name'],
             data['email'],
@@ -51,6 +56,17 @@ def submit_contact():
             data.get('subject', ''),
             data['message'],
             data.get('type', 'general'),
+            data.get('interestType', 'service'),
+            data.get('serviceType', ''),
+            data.get('productType', ''),
+            data.get('budget', ''),
+            data.get('timeline', ''),
+            json.dumps(data.get('requirements', [])),
+            data.get('companyName', ''),
+            data.get('hearAbout', ''),
+            data.get('preferredContact', 'email'),
+            data.get('industry', ''),
+            data.get('teamSize', ''),
             ip_address
         ))
         
@@ -58,7 +74,7 @@ def submit_contact():
         conn.commit()
         conn.close()
         
-        # Try to send email notification (non-blocking)
+        # Try to send email notification
         try:
             send_contact_email(contact_id, data)
         except Exception as e:

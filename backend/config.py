@@ -99,18 +99,29 @@ def init_db():
     
     # Contacts table
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS contacts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            email TEXT NOT NULL,
-            phone TEXT,
-            subject TEXT,
-            message TEXT NOT NULL,
-            type TEXT DEFAULT 'general',
-            is_read INTEGER DEFAULT 0,
-            ip_address TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
+       CREATE TABLE IF NOT EXISTS contacts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    phone TEXT,
+    subject TEXT,
+    message TEXT NOT NULL,
+    type TEXT DEFAULT 'general',
+    interest_type TEXT DEFAULT 'service',
+    service_type TEXT,
+    product_type TEXT,
+    budget TEXT,
+    timeline TEXT,
+    requirements TEXT DEFAULT '[]',
+    company_name TEXT,
+    hear_about TEXT,
+    preferred_contact TEXT DEFAULT 'email',
+    industry TEXT,
+    team_size TEXT,
+    is_read INTEGER DEFAULT 0,
+    ip_address TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
     ''')
     
     conn.commit()
