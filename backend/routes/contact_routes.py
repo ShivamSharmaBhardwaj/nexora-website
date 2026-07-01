@@ -9,9 +9,18 @@ from utils.email_service import send_contact_email
 contact_bp = Blueprint('contact_bp', __name__)
 contact_bp.strict_slashes = False
 
-@contact_bp.route('/', methods=['POST'])
+@contact_bp.route('/', methods=['POST', 'OPTIONS'])
 def submit_contact():
     """Submit contact form (public) - Enhanced with new fields"""
+    
+    # Handle preflight
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Accept')
+        response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
+        return response
+    
     data = request.get_json()
     
     if not data:
@@ -40,7 +49,7 @@ def submit_contact():
                 'message': 'Too many submissions from this email. Please try again later.'
             }), 429
         
-        # ✅ Insert with new fields
+        # Insert with new fields
         ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
         cursor.execute('''
             INSERT INTO contacts (
@@ -50,11 +59,11 @@ def submit_contact():
                 preferred_contact, industry, team_size, ip_address
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
-            data['name'],
-            data['email'],
-            data.get('phone', ''),
-            data.get('subject', ''),
-            data['message'],
+            sanitize_input(data['name']),
+            sanitize_input(data['email']),
+            sanitize_input(data.get('phone', '')),
+            sanitize_input(data.get('subject', '')),
+            sanitize_input(data['message']),
             data.get('type', 'general'),
             data.get('interestType', 'service'),
             data.get('serviceType', ''),
@@ -62,8 +71,8 @@ def submit_contact():
             data.get('budget', ''),
             data.get('timeline', ''),
             json.dumps(data.get('requirements', [])),
-            data.get('companyName', ''),
-            data.get('hearAbout', ''),
+            sanitize_input(data.get('companyName', '')),
+            sanitize_input(data.get('hearAbout', '')),
             data.get('preferredContact', 'email'),
             data.get('industry', ''),
             data.get('teamSize', ''),
@@ -74,7 +83,7 @@ def submit_contact():
         conn.commit()
         conn.close()
         
-        # Try to send email notification
+        # Try to send email notification asynchronously
         try:
             send_contact_email(contact_id, data)
         except Exception as e:
@@ -87,15 +96,16 @@ def submit_contact():
         }), 201
         
     except Exception as e:
+        print(f"Error saving contact: {str(e)}")
         return jsonify({
             'success': False,
-            'message': f'Failed to save contact message: {str(e)}'
+            'message': 'Failed to save contact message'
         }), 500
 
 @contact_bp.route('/', methods=['GET'])
 @token_required
 def get_contacts():
-    """Get all contacts (admin only)"""
+    """Get all contacts (requires authentication)"""
     try:
         conn = get_db()
         cursor = conn.cursor()
@@ -104,7 +114,7 @@ def get_contacts():
         conn.close()
         return jsonify(contacts)
     except Exception as e:
-        return jsonify({'message': f'Failed to fetch contacts: {str(e)}'}), 500
+        return jsonify({'message': 'Failed to fetch contacts'}), 500
 
 @contact_bp.route('/<int:id>', methods=['GET'])
 @token_required
@@ -122,7 +132,7 @@ def get_contact(id):
         
         return jsonify(dict(contact))
     except Exception as e:
-        return jsonify({'message': f'Failed to fetch contact: {str(e)}'}), 500
+        return jsonify({'message': 'Failed to fetch contact'}), 500
 
 @contact_bp.route('/<int:id>/read', methods=['PUT'])
 @token_required
@@ -150,12 +160,13 @@ def mark_as_read(id):
             'contact': contact
         })
     except Exception as e:
-        return jsonify({'message': f'Failed to mark as read: {str(e)}'}), 500
+        return jsonify({'message': 'Failed to mark as read'}), 500
 
 @contact_bp.route('/<int:id>', methods=['DELETE'])
 @token_required
+@admin_required  # Added admin requirement for deletion
 def delete_contact(id):
-    """Delete contact"""
+    """Delete contact (admin only)"""
     try:
         conn = get_db()
         cursor = conn.cursor()
@@ -173,4 +184,4 @@ def delete_contact(id):
             'id': id
         })
     except Exception as e:
-        return jsonify({'message': f'Failed to delete contact: {str(e)}'}), 500
+        return jsonify({'message': 'Failed to delete contact'}), 500
