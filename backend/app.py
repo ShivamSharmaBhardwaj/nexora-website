@@ -13,6 +13,18 @@ print("🚀 Starting Krynova Backend...", flush=True)
 load_dotenv()
 print("✅ Environment loaded", flush=True)
 
+# ============================================
+# CHECK RAZORPAY KEYS
+# ============================================
+RAZORPAY_KEY_ID = os.environ.get('RAZORPAY_KEY_ID')
+RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET')
+
+if RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET:
+    print(f"✅ Razorpay configured with Key ID: {RAZORPAY_KEY_ID[:10]}...", flush=True)
+else:
+    print("⚠️ WARNING: Razorpay keys not set!", flush=True)
+    print("   Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET", flush=True)
+
 # Detect if running on PythonAnywhere
 ON_PYTHONANYWHERE = 'PYTHONANYWHERE_DOMAIN' in os.environ
 
@@ -136,7 +148,7 @@ except Exception as e:
 # ============================================
 
 try:
-    from routes.payment_routes import payment_bp
+    from routes.payment import payment_bp
     app.register_blueprint(payment_bp, url_prefix='/api')
     print("  ✅ Payment routes loaded", flush=True)
     print("  💳 Payment endpoints:")
