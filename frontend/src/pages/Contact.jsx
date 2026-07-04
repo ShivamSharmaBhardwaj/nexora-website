@@ -370,6 +370,7 @@ const Contact = () => {
 
   return (
     <>
+     <link rel="canonical" href={`${siteUrl}/contact`} />
       <title>Contact Krynova Technologies | Free Consultation & Demo Request</title>
       <meta name="description" content="Contact Krynova Technologies - India's leading web development company. Get free consultation, request a demo, or ask about our custom web solutions. We respond within 24 hours." />
       

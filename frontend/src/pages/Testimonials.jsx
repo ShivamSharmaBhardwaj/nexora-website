@@ -68,6 +68,7 @@ const TestimonialsSEO = () => {
       <meta property="og:url" content={`${siteUrl}/testimonials`} />
       <meta property="og:type" content="website" />
       <meta property="og:site_name" content="Krynova Technologies" />
+      <link rel="canonical" href={`${siteUrl}/testimonials`} />
       
       {/* Schema.org - Reviews */}
       <script type="application/ld+json">

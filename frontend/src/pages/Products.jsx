@@ -79,6 +79,7 @@ const ProductsSEO = () => {
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content="Krynova Technologies Products - Enterprise Software Solutions" />
       <meta name="twitter:description" content="Discover our range of enterprise software products. Trusted by businesses across India." />
+      <link rel="canonical" href={`${siteUrl}/products`} />
       
       {/* Schema.org - Product Collection */}
       <script type="application/ld+json">
