@@ -1,3 +1,4 @@
+# backend/config.py
 import sqlite3
 import os
 from pathlib import Path
@@ -7,6 +8,53 @@ load_dotenv()
 
 # Database path - works both locally and on PythonAnywhere
 DB_PATH = os.path.join(os.path.dirname(__file__), 'nexora.db')
+
+# ============================================
+# PAYMENT CONFIGURATION
+# ============================================
+
+# Razorpay Configuration
+RAZORPAY_KEY_ID = os.environ.get('RAZORPAY_KEY_ID', 'rzp_test_xxxxxxxxxxxx')
+RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET', 'xxxxxxxxxxxxxxxxxxxx')
+
+# Stripe Configuration (optional)
+STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY', '')
+STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
+
+# Plan prices (in paise for Razorpay)
+PLANS = {
+    'monthly': {
+        'amount': 9900,  # ₹99 in paise
+        'name': 'Monthly',
+        'price': '₹99',
+        'features': [
+            'Unlimited resume generation',
+            'All 6 professional templates',
+            'Unlimited cover letters',
+            'Unlimited QR codes',
+            'Unlimited PDF conversions',
+            'Priority support',
+            'Cancel anytime'
+        ]
+    },
+    'yearly': {
+        'amount': 99900,  # ₹999 in paise
+        'name': 'Yearly',
+        'price': '₹999',
+        'features': [
+            'Everything in Monthly',
+            '2 months free',
+            'Priority support',
+            'Early access to new features',
+            'Premium templates',
+            'Team collaboration (coming soon)'
+        ]
+    }
+}
+
+# ============================================
+# DATABASE FUNCTIONS
+# ============================================
 
 def get_db():
     """Get SQLite database connection"""
@@ -21,19 +69,57 @@ def init_db():
     conn = get_db()
     cursor = conn.cursor()
     
-    # Users table
+    # Users table - ADDED premium fields
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             email TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
-            role TEXT DEFAULT 'admin',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            role TEXT DEFAULT 'user',
+            is_premium INTEGER DEFAULT 0,
+            premium_since TIMESTAMP,
+            premium_expiry TIMESTAMP,
+            payment_id TEXT,
+            razorpay_order_id TEXT,
+            plan_type TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     
-    # Projects table - UPDATED with status and priority
+    # Check if premium columns exist and add if missing
+    cursor.execute("PRAGMA table_info(users)")
+    columns = [col[1] for col in cursor.fetchall()]
+    
+    premium_columns = ['is_premium', 'premium_since', 'premium_expiry', 'payment_id', 'razorpay_order_id', 'plan_type']
+    for col in premium_columns:
+        if col not in columns:
+            if col == 'is_premium':
+                cursor.execute(f"ALTER TABLE users ADD COLUMN {col} INTEGER DEFAULT 0")
+            else:
+                cursor.execute(f"ALTER TABLE users ADD COLUMN {col} TIMESTAMP")
+            print(f"✅ Added '{col}' column to users")
+    
+    # Payments table - NEW
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS payments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            razorpay_order_id TEXT UNIQUE,
+            razorpay_payment_id TEXT,
+            amount INTEGER NOT NULL,
+            currency TEXT DEFAULT 'INR',
+            plan_type TEXT NOT NULL,
+            status TEXT DEFAULT 'pending',
+            payment_data TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    ''')
+    
+    # Projects table (existing)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS projects (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -58,31 +144,7 @@ def init_db():
         )
     ''')
     
-    # Check if columns exist and add if missing
-    cursor.execute("PRAGMA table_info(projects)")
-    columns = [col[1] for col in cursor.fetchall()]
-    
-    if 'status' not in columns:
-        cursor.execute("ALTER TABLE projects ADD COLUMN status TEXT DEFAULT 'active'")
-        print("✅ Added 'status' column")
-    
-    if 'priority' not in columns:
-        cursor.execute("ALTER TABLE projects ADD COLUMN priority INTEGER DEFAULT 0")
-        print("✅ Added 'priority' column")
-    
-    if 'tech_stack' not in columns:
-        cursor.execute("ALTER TABLE projects ADD COLUMN tech_stack TEXT DEFAULT '[]'")
-        print("✅ Added 'tech_stack' column")
-    
-    if 'github_url' not in columns:
-        cursor.execute("ALTER TABLE projects ADD COLUMN github_url TEXT")
-        print("✅ Added 'github_url' column")
-    
-    if 'is_featured' not in columns:
-        cursor.execute("ALTER TABLE projects ADD COLUMN is_featured INTEGER DEFAULT 0")
-        print("✅ Added 'is_featured' column")
-    
-    # Testimonials table
+    # Testimonials table (existing)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS testimonials (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -97,31 +159,31 @@ def init_db():
         )
     ''')
     
-    # Contacts table
+    # Contacts table (existing)
     cursor.execute('''
-       CREATE TABLE IF NOT EXISTS contacts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    email TEXT NOT NULL,
-    phone TEXT,
-    subject TEXT,
-    message TEXT NOT NULL,
-    type TEXT DEFAULT 'general',
-    interest_type TEXT DEFAULT 'service',
-    service_type TEXT,
-    product_type TEXT,
-    budget TEXT,
-    timeline TEXT,
-    requirements TEXT DEFAULT '[]',
-    company_name TEXT,
-    hear_about TEXT,
-    preferred_contact TEXT DEFAULT 'email',
-    industry TEXT,
-    team_size TEXT,
-    is_read INTEGER DEFAULT 0,
-    ip_address TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-)
+        CREATE TABLE IF NOT EXISTS contacts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL,
+            phone TEXT,
+            subject TEXT,
+            message TEXT NOT NULL,
+            type TEXT DEFAULT 'general',
+            interest_type TEXT DEFAULT 'service',
+            service_type TEXT,
+            product_type TEXT,
+            budget TEXT,
+            timeline TEXT,
+            requirements TEXT DEFAULT '[]',
+            company_name TEXT,
+            hear_about TEXT,
+            preferred_contact TEXT DEFAULT 'email',
+            industry TEXT,
+            team_size TEXT,
+            is_read INTEGER DEFAULT 0,
+            ip_address TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
     ''')
     
     conn.commit()
@@ -144,7 +206,7 @@ def insert_sample_data(conn):
     
     cursor = conn.cursor()
     
-    # Sample projects with new fields - UPDATED GitHub URLs to krynova
+    # Sample projects
     projects = [
         ('HRMS System', 'HRMS', 'Complete human resource management system with payroll, attendance tracking, employee self-service, leave management, and performance reviews.',
          'Manage your workforce efficiently', '/demos/hrms', 
@@ -184,7 +246,7 @@ def insert_sample_data(conn):
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', project)
     
-    # Sample testimonials - UPDATED: Nexora → Krynova
+    # Sample testimonials
     testimonials = [
         ('Rahul Sharma', 'TechSolutions Pvt Ltd', '',
          'Krynova delivered an incredible HRMS system that transformed our workforce management. Highly recommended!', 
@@ -206,13 +268,13 @@ def insert_sample_data(conn):
             VALUES (?, ?, ?, ?, ?, ?)
         ''', testimonial)
     
-    # Default admin user (password: admin123) - KEPT AS admin@nexora.com
+    # Default admin user
     import bcrypt
     hashed = bcrypt.hashpw('admin123'.encode('utf-8'), bcrypt.gensalt())
     cursor.execute('''
-        INSERT INTO users (name, email, password, role)
-        VALUES (?, ?, ?, ?)
-    ''', ('Admin', 'admin@nexora.com', hashed.decode('utf-8'), 'admin'))
+        INSERT INTO users (name, email, password, role, is_premium)
+        VALUES (?, ?, ?, ?, ?)
+    ''', ('Admin', 'admin@nexora.com', hashed.decode('utf-8'), 'admin', 1))
     
     conn.commit()
     print("✅ Sample data inserted!")

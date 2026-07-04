@@ -63,7 +63,9 @@ const publicApiClient = axios.create({
 // ============================================
 
 export const api = {
-  // Auth
+  // ============================================
+  // AUTH
+  // ============================================
   login: (email, password) => {
     return apiClient.post('/api/auth/login', { email, password });
   },
@@ -80,7 +82,9 @@ export const api = {
     return Promise.resolve();
   },
 
-  // Projects
+  // ============================================
+  // PROJECTS
+  // ============================================
   getProjects: () => {
     return apiClient.get('/api/projects');
   },
@@ -100,18 +104,21 @@ export const api = {
     return apiClient.delete(`/api/projects/${id}`);
   },
 
-  // Service Pages API
+  // ============================================
+  // SERVICE PAGES API
+  // ============================================
   getServiceData: async (serviceId) => {
     const response = await publicApiClient.get(`/api/services/${serviceId}`);
     return response.data;
   },
-  
   getServiceList: async () => {
     const response = await publicApiClient.get('/api/services/list');
     return response.data;
   },
-  
-  // Testimonials
+
+  // ============================================
+  // TESTIMONIALS
+  // ============================================
   getTestimonials: () => {
     return apiClient.get('/api/testimonials');
   },
@@ -128,7 +135,9 @@ export const api = {
     return apiClient.delete(`/api/testimonials/${id}`);
   },
 
-  // Contact
+  // ============================================
+  // CONTACT
+  // ============================================
   submitContact: (data) => {
     return publicApiClient.post('/api/contact', data);
   },
@@ -145,7 +154,6 @@ export const api = {
   // ============================================
   // TOOLS
   // ============================================
-  
   // Resume Builder
   buildResume: (data) => {
     return apiClient.post('/api/tools/resume-builder', data);
@@ -222,32 +230,37 @@ export const api = {
     return apiClient.post('/api/tools/text-to-pdf', data);
   },
   
-  // Premium Check - ADD THIS (both names for compatibility)
+  // ============================================
+  // PAYMENT METHODS
+  // ============================================
+  
+  createRazorpayOrder: (data) => {
+    return apiClient.post('/api/create-razorpay-order', data);
+  },
+  
+  verifyRazorpayPayment: (data) => {
+    return apiClient.post('/api/verify-razorpay-payment', data);
+  },
+  
   checkPremium: () => {
-    return apiClient.get('/api/tools/premium/check');
+    const user = secureStorage.get('user');
+    const userId = user?.id || '';
+    return apiClient.get(`/api/premium/check?user_id=${userId}`);
   },
   
-  // ✅ ADD THIS - for compatibility with ResumeBuilder
   checkPremiumStatus: () => {
-    return apiClient.get('/api/tools/premium/check');
-  },
-  // ============================================
-  // PAYMENT METHODS (NEW - Add these)
-  // ============================================
-  
-  createCheckoutSession: (data) => {
-    return apiClient.post('/api/payment/create-checkout-session', data);
+    const user = secureStorage.get('user');
+    const userId = user?.id || '';
+    return apiClient.get(`/api/premium/check?user_id=${userId}`);
   },
   
-  getPaymentStatus: (sessionId) => {
-    return apiClient.get(`/api/payment/payment-status/${sessionId}`);
-  },
-  
-  cancelSubscription: (data) => {
-    return apiClient.post('/api/payment/cancel-subscription', data);
+  getPremiumStatus: (userId) => {
+    return apiClient.get(`/api/premium/check?user_id=${userId}`);
   },
 
-  // Health
+  // ============================================
+  // HEALTH
+  // ============================================
   healthCheck: () => {
     return apiClient.get('/api/health');
   }

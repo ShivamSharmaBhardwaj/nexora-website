@@ -1,3 +1,4 @@
+# backend/app.py
 import sys
 import os
 from flask import Flask, jsonify, request, send_from_directory
@@ -77,7 +78,10 @@ def after_request(response):
     response.headers['Access-Control-Allow-Credentials'] = 'true'
     return response
 
-# Import routes with error handling
+# ============================================
+# IMPORT AND REGISTER ROUTES
+# ============================================
+
 print("📦 Importing routes...", flush=True)
 
 try:
@@ -108,7 +112,6 @@ try:
 except Exception as e:
     print(f"  ❌ Testimonial routes failed: {e}", flush=True)
 
-    # ✅ ADD THIS - Service Routes
 try:
     from routes.service_routes import service_bp
     app.register_blueprint(service_bp, url_prefix='/api/services')
@@ -118,7 +121,6 @@ except Exception as e:
     import traceback
     traceback.print_exc()
 
-# ✅ TOOLS ROUTES - REGISTER WITH URL PREFIX
 try:
     from routes.tools_routes import tools_bp
     app.register_blueprint(tools_bp, url_prefix='/api/tools')
@@ -128,6 +130,28 @@ except Exception as e:
     print(f"  ❌ Tools routes failed: {e}", flush=True)
     import traceback
     traceback.print_exc()
+
+# ============================================
+# PAYMENT ROUTES - NEW
+# ============================================
+
+try:
+    from routes.payment_routes import payment_bp
+    app.register_blueprint(payment_bp, url_prefix='/api')
+    print("  ✅ Payment routes loaded", flush=True)
+    print("  💳 Payment endpoints:")
+    print("     - POST /api/create-razorpay-order")
+    print("     - POST /api/verify-razorpay-payment")
+    print("     - GET  /api/premium/check")
+    print("     - POST /api/razorpay-webhook")
+except Exception as e:
+    print(f"  ❌ Payment routes failed: {e}", flush=True)
+    import traceback
+    traceback.print_exc()
+
+# ============================================
+# ROOT AND STATIC ROUTES
+# ============================================
 
 # Health check
 @app.route('/api/health')
@@ -147,7 +171,6 @@ def sitemap():
 def robots():
     return send_from_directory(app.static_folder, 'robots.txt', mimetype='text/plain')
 
-# In backend/app.py - Update the root endpoint
 @app.route('/')
 def root():
     try:
@@ -163,7 +186,8 @@ def root():
                 'testimonials': '/api/testimonials',
                 'contact': '/api/contact',
                 'tools': '/api/tools',
-                'services': '/api/services'  # ✅ ADD THIS
+                'services': '/api/services',
+                'payment': '/api/create-razorpay-order'
             }
         })
 
@@ -176,7 +200,10 @@ def serve_static(path):
             return send_from_directory(app.static_folder, 'index.html')
         return jsonify({'error': 'Page not found'}), 404
 
-# Error handlers
+# ============================================
+# ERROR HANDLERS
+# ============================================
+
 @app.errorhandler(404)
 def not_found(e):
     if request.path.startswith('/api/'):
@@ -185,7 +212,10 @@ def not_found(e):
         return send_from_directory(app.static_folder, 'index.html')
     return jsonify({'error': 'Page not found'}), 404
 
-# Initialize database
+# ============================================
+# DATABASE INITIALIZATION
+# ============================================
+
 print("🔧 Initializing database...", flush=True)
 try:
     from config import init_db
@@ -193,6 +223,10 @@ try:
     print("✅ Database initialized", flush=True)
 except Exception as e:
     print(f"⚠️ Database warning: {e}", flush=True)
+
+# ============================================
+# APPLICATION ENTRY POINT
+# ============================================
 
 # For PythonAnywhere - this is needed
 application = app
