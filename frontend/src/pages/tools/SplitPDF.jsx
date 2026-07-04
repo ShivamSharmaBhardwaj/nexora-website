@@ -1,5 +1,6 @@
 // src/pages/tools/SplitPDF.jsx
 import React, { useState, useEffect, useRef } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { 
   FaSpinner, FaDownload, FaStar, FaLock, FaFilePdf, 
   FaCheckCircle, FaCircle, FaTimes, FaTrash, FaPlus,
@@ -10,11 +11,40 @@ import {
   FaList, FaTh, FaFileSignature, FaCompress,
   FaExpand, FaSearch, FaFilter, FaSort, FaSortAmountUp,
   FaSortAmountDown, FaCheckDouble, FaEye, FaEyeSlash,
-  FaFileExport, FaFileImport
+  FaFileExport, FaFileImport, FaGlobe, FaMapMarkerAlt, 
+  FaLanguage, FaHeadphones
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { api } from '../../utils/api';
 import PaymentModal from '../../components/PaymentModal';
+
+// ============================================
+// SEO + GEO DATA
+// ============================================
+
+const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://krynovatechnology.pythonanywhere.com';
+
+const indianCities = [
+  "Agra", "Lucknow", "Kanpur", "Varanasi", "Prayagraj", "Mathura", "Aligarh", "Bareilly",
+  "Meerut", "Ghaziabad", "Noida", "Delhi", "Mumbai", "Pune", "Bengaluru", "Chennai",
+  "Hyderabad", "Kolkata", "Ahmedabad", "Surat", "Jaipur", "Indore", "Bhopal", "Nagpur",
+  "Patna", "Ranchi", "Bhubaneswar", "Guwahati", "Chandigarh", "Dehradun", "Shimla",
+  "Srinagar", "Jammu", "Amritsar", "Ludhiana", "Jalandhar", "Panchkula", "Mohali",
+  "Gurugram", "Faridabad", "Aurangabad", "Nashik", "Vadodara", "Rajkot",
+  "Jodhpur", "Udaipur", "Kota", "Bikaner", "Gwalior", "Jabalpur", "Ujjain", "Sagar",
+  "Raipur", "Bilaspur", "Durgapur", "Asansol", "Siliguri", "Dhanbad", "Bhagalpur",
+  "Muzaffarpur", "Gaya", "Nanded", "Solapur", "Mysore", "Tiruchirappalli", "Coimbatore",
+  "Madurai", "Kochi", "Thiruvananthapuram", "Goa", "Panaji", "Puducherry"
+];
+
+const globalCountries = [
+  "United States", "United Kingdom", "Canada", "Australia", "Germany", "France",
+  "United Arab Emirates", "Saudi Arabia", "Singapore", "Malaysia", "Indonesia",
+  "Philippines", "South Africa", "Nigeria", "Kenya", "Tanzania", "Uganda", "Rwanda",
+  "Egypt", "Morocco", "Turkey", "Russia", "Japan", "South Korea", "China", "Hong Kong",
+  "Brazil", "Argentina", "Mexico", "New Zealand", "Ireland", "Netherlands", "Italy",
+  "Spain", "Portugal", "Sweden", "Norway", "Denmark", "Finland", "Switzerland", "Austria"
+];
 
 // ============================================
 // UTILITY FUNCTIONS
@@ -356,7 +386,7 @@ const SplitPDF = () => {
       return;
     }
     
-    // ✅ Updated limits: Free = 20MB, Premium = 50MB
+    // Updated limits: Free = 20MB, Premium = 50MB
     const maxSize = isPremium ? 50 * 1024 * 1024 : 20 * 1024 * 1024;
     if (selectedFile.size > maxSize) {
       toast.error(`File size must be less than ${isPremium ? '50MB' : '20MB'}. ${!isPremium ? 'Upgrade to premium for larger files.' : ''}`);
@@ -571,7 +601,7 @@ const SplitPDF = () => {
     setFile(null);
   };
 
-  // Get filtered pages based on search - FIXED for unique keys
+  // Get filtered pages based on search
   const getFilteredPages = () => {
     if (!result || !result.pages) return [];
     if (!searchTerm || searchTerm.trim() === '') return result.pages;
@@ -639,446 +669,611 @@ const SplitPDF = () => {
   const filteredPages = getFilteredPages();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8">
-      <div className="container mx-auto px-4 max-w-6xl">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 bg-red-100 text-red-700 px-4 py-2 rounded-full text-sm font-medium mb-4">
-            <FaCut className="text-red-500" />
-            Split PDF Pages
-          </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Split <span className="gradient-text">PDF Pages</span>
-          </h1>
-          <p className="text-gray-600 max-w-2xl mx-auto">
-            Split large PDF files into separate pages or smaller documents with ease
-          </p>
-          <div className="flex flex-wrap justify-center gap-3 mt-3">
-            <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm">
-              <FaStar className="text-yellow-400" /> Free: 3/day • 20MB max
-            </span>
-            <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">
-              <FaCrown className="text-yellow-500" /> Premium: Unlimited • 50MB max
-            </span>
-            <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm">
-              <FaCut className="text-red-500" /> Individual Pages
-            </span>
-            <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm">
-              <FaCompress className="text-purple-500" /> Compress Output
-            </span>
-          </div>
-        </div>
+    <>
+      {/* ============================================ */}
+      {/* SEO + AEO + GEO Helmet Implementation */}
+      {/* ============================================ */}
+      <Helmet>
+        <title>Free PDF Splitter - Split PDF Pages Online | Krynova Technologies</title>
+        <meta name="description" content="Split PDF files into separate pages online for free with Krynova Technologies. Split large PDF documents into individual pages or custom ranges. Free users get 3 splits per day (20MB max). Premium users get unlimited splits (50MB max)." />
+        <meta name="keywords" content="split PDF, PDF splitter, split PDF online, free PDF splitter, split PDF pages, extract PDF pages, PDF split tool, Krynova PDF splitter, best PDF splitter India" />
+        <link rel="canonical" href={`${siteUrl}/tools/split-pdf`} />
+        
+        {/* GEO Meta Tags */}
+        <meta name="geo.region" content="IN-UP" />
+        <meta name="geo.placename" content="Agra" />
+        <meta name="geo.position" content="27.1767;78.0081" />
+        <meta name="ICBM" content="27.1767, 78.0081" />
+        <meta name="areaServed" content={indianCities.join(", ")} />
+        <meta name="serviceArea" content={`India, ${globalCountries.join(", ")}, Worldwide`} />
+        <meta name="targetGeo" content="India" />
+        
+        {/* AEO Meta Tags */}
+        <meta name="question" content="How to split PDF pages for free in India?" />
+        <meta name="answer" content="Krynova Technologies offers a free PDF splitter in India. Upload your PDF file, choose your split mode (all pages, range, or custom), and download individual pages. Free users get 3 splits per day with 20MB file limit. Premium users get unlimited splits with 50MB file limit." />
+        <meta name="faq" content="true" />
+        <meta name="speakable" content="true" />
+        <meta name="voice-search" content="true" />
+        
+        {/* Open Graph */}
+        <meta property="og:title" content="Free PDF Splitter - Split PDF Pages Online | Krynova Technologies" />
+        <meta property="og:description" content="Split PDF files into separate pages online for free. Split large PDF documents into individual pages. Free users get 3 splits per day." />
+        <meta property="og:url" content={`${siteUrl}/tools/split-pdf`} />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Krynova Technologies" />
+        
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Free PDF Splitter - Split PDF Pages Online" />
+        <meta name="twitter:description" content="Split PDF files into separate pages online for free with Krynova Technologies." />
+      </Helmet>
 
-        {/* Usage Info */}
-        {usageInfo && (
-          <div className={`mb-6 p-4 rounded-lg flex flex-wrap items-center justify-between ${
-            usageInfo.isPremium ? 'bg-green-50 border border-green-200' :
-            usageInfo.remaining > 0 ? 'bg-blue-50 border border-blue-200' : 'bg-yellow-50 border border-yellow-200'
-          }`}>
-            <div className="text-sm flex flex-wrap items-center gap-2">
-              {usageInfo.isPremium ? (
-                <><FaCrown className="text-yellow-500" /> <span className="font-semibold">Premium:</span> Unlimited splits • 50MB files</>
-              ) : (
-                <>
-                  <FaClock className="text-blue-500" />
-                  <span>{usageInfo.used || 0} used today • {usageInfo.remaining || 0} remaining</span>
-                  <span className="text-gray-400">|</span>
-                  <span>20MB max file</span>
-                </>
+      {/* ============================================ */}
+      {/* Speakable Content for Voice Assistants */}
+      {/* ============================================ */}
+      <div className="speakable sr-only" aria-hidden="true">
+        <h2>Free PDF Splitter - Krynova Technologies</h2>
+        <p>Split PDF files into separate pages online for free. Split large PDF documents into individual pages or custom ranges.</p>
+        <ul>
+          <li>Free PDF splitting - 3 splits per day</li>
+          <li>Split all pages, page ranges, or custom selections</li>
+          <li>Download individual pages or all pages</li>
+          <li>Premium - Unlimited splits, 50MB file limit</li>
+          <li>Compress output PDFs (Premium)</li>
+          <li>Merge selected pages (Premium)</li>
+          <li>Secure and encrypted file processing</li>
+        </ul>
+        <p>Krynova Technologies is the best PDF splitter in India, serving cities like Agra, Delhi, Mumbai, Bengaluru, Chennai, Hyderabad, and all across India.</p>
+      </div>
+
+      {/* ============================================ */}
+      {/* Schema.org WebApplication */}
+      {/* ============================================ */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebApplication",
+          "name": "PDF Splitter",
+          "description": "Free online PDF splitter. Split large PDF documents into individual pages or custom ranges. Supports 3 free splits per day.",
+          "url": `${siteUrl}/tools/split-pdf`,
+          "applicationCategory": "Utilities",
+          "operatingSystem": "All",
+          "browserRequirements": "Requires JavaScript",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "INR",
+            "description": "Free PDF splitter with 3 splits per day. Premium upgrade available for unlimited splits."
+          },
+          "provider": {
+            "@type": "Organization",
+            "name": "Krynova Technologies",
+            "url": siteUrl,
+            "address": {
+              "@type": "PostalAddress",
+              "addressLocality": "Agra",
+              "addressRegion": "Uttar Pradesh",
+              "addressCountry": "India"
+            }
+          },
+          "areaServed": indianCities,
+          "availableLanguage": ["English", "Hindi", "Marathi", "Bengali", "Tamil", "Telugu", "Kannada", "Malayalam", "Gujarati", "Punjabi", "Urdu"],
+          "potentialAction": {
+            "@type": "CreateAction",
+            "target": `${siteUrl}/tools/split-pdf`,
+            "result": {
+              "@type": "CreativeWork",
+              "name": "Split PDF Pages"
+            }
+          }
+        })}
+      </script>
+
+      {/* ============================================ */}
+      {/* FAQ Schema */}
+      {/* ============================================ */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "How to split a PDF into individual pages for free?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "To split a PDF into individual pages for free, visit Krynova Technologies' PDF Splitter, upload your PDF file, choose 'Split All Pages' mode, and click Split. Download each page as a separate PDF. Free users get 3 splits per day."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What are the file size limits for PDF splitting?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Krynova Technologies' PDF splitter offers 20MB file limit for free users and 50MB file limit for premium users. Premium users also get unlimited splits per day."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Can I split only specific pages from a PDF?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes, you can split specific pages from a PDF using the 'Custom Selection' mode. Enter page numbers like 1,3,5-8 to split only those pages. You can also use the 'Range' mode to split a continuous page range."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What is the best PDF splitter in India?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Krynova Technologies offers one of the best free PDF splitters in India. It supports multiple split modes, individual page downloads, compress output, and serves users across all major Indian cities including Agra, Delhi, Mumbai, Bengaluru, Chennai, and Hyderabad."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Is it safe to split PDF online?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes, Krynova Technologies ensures secure PDF splitting with encrypted file processing. All uploaded files are automatically deleted after splitting, and your documents are never shared with third parties."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Can I merge selected pages after splitting?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes, premium users can merge selected pages after splitting. Select the pages you want to merge and use the 'Merge & Download' feature to combine them into a single PDF file."
+              }
+            }
+          ]
+        })}
+      </script>
+
+      {/* ============================================ */}
+      {/* Main Component */}
+      {/* ============================================ */}
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8">
+        <div className="container mx-auto px-4 max-w-6xl">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 bg-red-100 text-red-700 px-4 py-2 rounded-full text-sm font-medium mb-4">
+              <FaCut className="text-red-500" />
+              Free PDF Splitter
+            </div>
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">
+              Split <span className="gradient-text">PDF Pages</span>
+            </h1>
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              Split large PDF files into separate pages or smaller documents with ease. Free users get 3 splits per day.
+            </p>
+            <div className="flex flex-wrap justify-center gap-3 mt-3">
+              <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm">
+                <FaStar className="text-yellow-400" /> Free: 3/day • 20MB max
+              </span>
+              <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">
+                <FaCrown className="text-yellow-500" /> Premium: Unlimited • 50MB max
+              </span>
+              <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm">
+                <FaCut className="text-red-500" /> Individual Pages
+              </span>
+              <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm">
+                <FaCompress className="text-purple-500" /> Compress Output
+              </span>
+              <span className="inline-flex items-center gap-1 bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-sm">
+                <FaGlobe className="text-indigo-500" /> Serving 60+ Indian Cities
+              </span>
+            </div>
+          </div>
+
+          {/* Usage Info */}
+          {usageInfo && (
+            <div className={`mb-6 p-4 rounded-lg flex flex-wrap items-center justify-between ${
+              usageInfo.isPremium ? 'bg-green-50 border border-green-200' :
+              usageInfo.remaining > 0 ? 'bg-blue-50 border border-blue-200' : 'bg-yellow-50 border border-yellow-200'
+            }`}>
+              <div className="text-sm flex flex-wrap items-center gap-2">
+                {usageInfo.isPremium ? (
+                  <><FaCrown className="text-yellow-500" /> <span className="font-semibold">Premium:</span> Unlimited splits • 50MB files</>
+                ) : (
+                  <>
+                    <FaClock className="text-blue-500" />
+                    <span>{usageInfo.used || 0} used today • {usageInfo.remaining || 0} remaining</span>
+                    <span className="text-gray-400">|</span>
+                    <span>20MB max file</span>
+                  </>
+                )}
+              </div>
+              {!usageInfo.isPremium && (
+                <button
+                  onClick={handleUpgrade}
+                  className="px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition flex items-center gap-2"
+                >
+                  <FaCrown /> Upgrade Now
+                </button>
               )}
             </div>
-            {!usageInfo.isPremium && (
-              <button
-                onClick={handleUpgrade}
-                className="px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition flex items-center gap-2"
-              >
-                <FaCrown /> Upgrade Now
-              </button>
-            )}
-          </div>
-        )}
+          )}
 
-        {/* Progress Bar */}
-        {loading && progress > 0 && (
-          <div className="mb-6 bg-white rounded-xl p-4 border border-red-200 shadow-lg">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                <FaSpinner className="animate-spin text-red-500" />
-                {progressStatus}
-              </span>
-              <span className="text-sm font-semibold text-red-600">{Math.round(progress)}%</span>
+          {/* Progress Bar */}
+          {loading && progress > 0 && (
+            <div className="mb-6 bg-white rounded-xl p-4 border border-red-200 shadow-lg">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <FaSpinner className="animate-spin text-red-500" />
+                  {progressStatus}
+                </span>
+                <span className="text-sm font-semibold text-red-600">{Math.round(progress)}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                <div 
+                  className="bg-gradient-to-r from-red-500 to-rose-600 h-2.5 rounded-full transition-all duration-500"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+          )}
+
+          {/* Main Card */}
+          <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* File Upload Area */}
               <div 
-                className="bg-gradient-to-r from-red-500 to-rose-600 h-2.5 rounded-full transition-all duration-500"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Main Card */}
-        <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* File Upload Area */}
-            <div 
-              className={`border-2 border-dashed rounded-xl p-8 text-center transition ${
-                dragActive ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-red-400'
-              }`}
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-            >
-              {file ? (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-red-50 rounded-lg flex items-center justify-center text-red-500 text-2xl">
-                      <FaFilePdf />
+                className={`border-2 border-dashed rounded-xl p-8 text-center transition ${
+                  dragActive ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-red-400'
+                }`}
+                onDragEnter={handleDrag}
+                onDragLeave={handleDrag}
+                onDragOver={handleDrag}
+                onDrop={handleDrop}
+              >
+                {file ? (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-red-50 rounded-lg flex items-center justify-center text-red-500 text-2xl">
+                        <FaFilePdf />
+                      </div>
+                      <div className="text-left">
+                        <p className="font-medium text-gray-900">{file.name}</p>
+                        <p className="text-sm text-gray-500">{formatSize(file.size)}</p>
+                        {!isPremium && file.size > 20 * 1024 * 1024 && (
+                          <p className="text-xs text-red-500">⚠️ Exceeds free limit (20MB). Upgrade to premium.</p>
+                        )}
+                      </div>
                     </div>
-                    <div className="text-left">
-                      <p className="font-medium text-gray-900">{file.name}</p>
-                      <p className="text-sm text-gray-500">{formatSize(file.size)}</p>
-                      {!isPremium && file.size > 20 * 1024 * 1024 && (
-                        <p className="text-xs text-red-500">⚠️ Exceeds free limit (20MB). Upgrade to premium.</p>
+                    <button
+                      type="button"
+                      onClick={clearFile}
+                      className="text-red-500 hover:text-red-700 transition p-2 hover:bg-red-50 rounded-lg"
+                    >
+                      <FaTrash />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="text-6xl text-red-400 mx-auto">
+                      <FaCut className="mx-auto" />
+                    </div>
+                    <div>
+                      <p className="text-gray-600 text-lg">Drop your PDF here</p>
+                      <p className="text-sm text-gray-400">or click to browse</p>
+                    </div>
+                    <p className="text-xs text-gray-400">
+                      {isPremium ? 'Supports PDF up to 50MB' : 'Supports PDF up to 20MB (Premium: 50MB)'}
+                    </p>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".pdf"
+                      onChange={handleFileChange}
+                      className="hidden"
+                      id="pdf-upload"
+                    />
+                    <label
+                      htmlFor="pdf-upload"
+                      className="inline-block px-6 py-2.5 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-lg hover:shadow-lg transition cursor-pointer"
+                    >
+                      Choose PDF File
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              {/* Split Options */}
+              <SplitOptions 
+                options={splitOptions}
+                onChange={setSplitOptions}
+              />
+
+              {/* Premium Toggle */}
+              <div className="flex items-center gap-3 pt-2">
+                <input
+                  type="checkbox"
+                  checked={isPremium}
+                  onChange={(e) => setIsPremium(e.target.checked)}
+                  className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
+                />
+                <label className="text-sm text-gray-700 flex items-center gap-1">
+                  <FaCrown className="text-yellow-500" /> Premium Mode (Unlimited splits • 50MB files)
+                </label>
+                {!isPremium && (
+                  <span className="text-xs text-gray-400 ml-2">
+                    (Free: 3/day • 20MB)
+                  </span>
+                )}
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading || !file}
+                className="w-full bg-gradient-to-r from-red-600 to-rose-600 text-white py-3.5 rounded-xl font-semibold hover:shadow-lg hover:shadow-red-500/30 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-lg"
+              >
+                {loading ? <FaSpinner className="animate-spin" /> : <FaCut />}
+                {loading ? 'Splitting...' : 'Split PDF'}
+              </button>
+            </form>
+
+            {/* Results */}
+            {result && result.pages && (
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <div className="bg-gradient-to-r from-red-50 to-rose-50 p-4 rounded-xl border border-red-200">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-red-500 rounded-lg flex items-center justify-center text-white">
+                        <FaCheckCircle />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-red-800">✅ Split Complete!</p>
+                        <p className="text-sm text-red-600">{result.total_pages} pages extracted</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={selectAll}
+                        className="text-sm bg-white px-3 py-1 rounded-lg border border-gray-200 hover:bg-gray-50 transition"
+                      >
+                        {selectedPages.length === result.pages.length ? 'Deselect All' : 'Select All'}
+                      </button>
+                      {isPremium && (
+                        <button
+                          onClick={() => selectRange(0, 9)}
+                          className="text-sm bg-white px-3 py-1 rounded-lg border border-gray-200 hover:bg-gray-50 transition"
+                        >
+                          First 10
+                        </button>
                       )}
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={clearFile}
-                    className="text-red-500 hover:text-red-700 transition p-2 hover:bg-red-50 rounded-lg"
-                  >
-                    <FaTrash />
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="text-6xl text-red-400 mx-auto">
-                    <FaCut className="mx-auto" />
-                  </div>
-                  <div>
-                    <p className="text-gray-600 text-lg">Drop your PDF here</p>
-                    <p className="text-sm text-gray-400">or click to browse</p>
-                  </div>
-                  <p className="text-xs text-gray-400">
-                    {isPremium ? 'Supports PDF up to 50MB' : 'Supports PDF up to 20MB (Premium: 50MB)'}
-                  </p>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".pdf"
-                    onChange={handleFileChange}
-                    className="hidden"
-                    id="pdf-upload"
-                  />
-                  <label
-                    htmlFor="pdf-upload"
-                    className="inline-block px-6 py-2.5 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-lg hover:shadow-lg transition cursor-pointer"
-                  >
-                    Choose PDF File
-                  </label>
-                </div>
-              )}
-            </div>
-
-            {/* Split Options */}
-            <SplitOptions 
-              options={splitOptions}
-              onChange={setSplitOptions}
-            />
-
-            {/* Premium Toggle */}
-            <div className="flex items-center gap-3 pt-2">
-              <input
-                type="checkbox"
-                checked={isPremium}
-                onChange={(e) => setIsPremium(e.target.checked)}
-                className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
-              />
-              <label className="text-sm text-gray-700 flex items-center gap-1">
-                <FaCrown className="text-yellow-500" /> Premium Mode (Unlimited splits • 50MB files)
-              </label>
-              {!isPremium && (
-                <span className="text-xs text-gray-400 ml-2">
-                  (Free: 3/day • 20MB)
-                </span>
-              )}
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading || !file}
-              className="w-full bg-gradient-to-r from-red-600 to-rose-600 text-white py-3.5 rounded-xl font-semibold hover:shadow-lg hover:shadow-red-500/30 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-lg"
-            >
-              {loading ? <FaSpinner className="animate-spin" /> : <FaCut />}
-              {loading ? 'Splitting...' : 'Split PDF'}
-            </button>
-          </form>
-
-          {/* Results */}
-          {result && result.pages && (
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <div className="bg-gradient-to-r from-red-50 to-rose-50 p-4 rounded-xl border border-red-200">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-red-500 rounded-lg flex items-center justify-center text-white">
-                      <FaCheckCircle />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-red-800">✅ Split Complete!</p>
-                      <p className="text-sm text-red-600">{result.total_pages} pages extracted</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
+                  
+                  {/* Download Buttons */}
+                  <div className="flex flex-wrap gap-2 mt-4">
                     <button
-                      onClick={selectAll}
-                      className="text-sm bg-white px-3 py-1 rounded-lg border border-gray-200 hover:bg-gray-50 transition"
+                      onClick={downloadSelected}
+                      className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition text-sm flex items-center gap-2"
                     >
-                      {selectedPages.length === result.pages.length ? 'Deselect All' : 'Select All'}
+                      <FaDownload /> Download Selected ({selectedPages.length})
                     </button>
-                    {isPremium && (
+                    <button
+                      onClick={downloadAll}
+                      className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition text-sm flex items-center gap-2"
+                    >
+                      <FaDownload /> Download All
+                    </button>
+                    {isPremium && splitOptions.mergeSelected && selectedPages.length > 1 && (
                       <button
-                        onClick={() => selectRange(0, 9)}
-                        className="text-sm bg-white px-3 py-1 rounded-lg border border-gray-200 hover:bg-gray-50 transition"
+                        onClick={() => toast.info('Merging selected pages... (Premium)')}
+                        className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition text-sm flex items-center gap-2"
                       >
-                        First 10
+                        <FaFileExport /> Merge & Download
                       </button>
                     )}
                   </div>
-                </div>
-                
-                {/* Download Buttons */}
-                <div className="flex flex-wrap gap-2 mt-4">
-                  <button
-                    onClick={downloadSelected}
-                    className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition text-sm flex items-center gap-2"
-                  >
-                    <FaDownload /> Download Selected ({selectedPages.length})
-                  </button>
-                  <button
-                    onClick={downloadAll}
-                    className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition text-sm flex items-center gap-2"
-                  >
-                    <FaDownload /> Download All
-                  </button>
-                  {isPremium && splitOptions.mergeSelected && selectedPages.length > 1 && (
-                    <button
-                      onClick={() => toast.info('Merging selected pages... (Premium)')}
-                      className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition text-sm flex items-center gap-2"
-                    >
-                      <FaFileExport /> Merge & Download
-                    </button>
+
+                  {/* View Controls */}
+                  <div className="flex items-center justify-between mt-4">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setViewMode('grid')}
+                        className={`p-1.5 rounded transition ${
+                          viewMode === 'grid' ? 'bg-red-500 text-white' : 'text-gray-400 hover:text-gray-600'
+                        }`}
+                        title="Grid View"
+                      >
+                        <FaTh className="text-sm" />
+                      </button>
+                      <button
+                        onClick={() => setViewMode('list')}
+                        className={`p-1.5 rounded transition ${
+                          viewMode === 'list' ? 'bg-red-500 text-white' : 'text-gray-400 hover:text-gray-600'
+                        }`}
+                        title="List View"
+                      >
+                        <FaList className="text-sm" />
+                      </button>
+                      <span className="text-xs text-gray-400 ml-2">
+                        {selectedPages.length} of {result.pages.length} selected
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        placeholder="Search page..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="px-2 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent w-24"
+                      />
+                      <button
+                        onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                        className="text-xs text-gray-400 hover:text-gray-600 transition"
+                      >
+                        {sortOrder === 'asc' ? <FaSortAmountUp /> : <FaSortAmountDown />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Pages Grid */}
+                  <div className={`mt-4 max-h-96 overflow-y-auto custom-scrollbar ${
+                    viewMode === 'grid' 
+                      ? 'grid grid-cols-2 md:grid-cols-4 gap-3' 
+                      : 'space-y-2'
+                  }`}>
+                    {filteredPages.map((page, idx) => {
+                      const index = result.pages.findIndex(p => p === page);
+                      const uniqueKey = `${index}-${String(page).slice(0, 50)}-${idx}`;
+                      
+                      if (viewMode === 'grid') {
+                        return (
+                          <PagePreview
+                            key={uniqueKey}
+                            page={page}
+                            index={index}
+                            isSelected={selectedPages.includes(index)}
+                            onToggle={togglePageSelection}
+                            onDownload={downloadPage}
+                            totalPages={result.pages.length}
+                          />
+                        );
+                      } else {
+                        return (
+                          <div 
+                            key={uniqueKey}
+                            className={`flex items-center justify-between p-3 rounded-lg border-2 cursor-pointer transition ${
+                              selectedPages.includes(index) 
+                                ? 'border-red-500 bg-red-50' 
+                                : 'border-gray-200 hover:border-red-300 bg-white'
+                            }`}
+                            onClick={() => togglePageSelection(index)}
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className="text-xs font-medium text-gray-500 w-8">#{index + 1}</span>
+                              <FaFilePdf className="text-red-400" />
+                              <span className="text-sm">Page {index + 1}</span>
+                              <span className="text-xs text-gray-400">{formatSize(new Blob([page]).size)}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {selectedPages.includes(index) && (
+                                <FaCheckCircle className="text-red-500 text-xs" />
+                              )}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  downloadPage(page, index);
+                                }}
+                                className="text-red-600 hover:text-red-800 text-sm px-2 py-1 rounded hover:bg-red-50 transition"
+                              >
+                                <FaDownload />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      }
+                    })}
+                  </div>
+
+                  {filteredPages.length === 0 && result.pages.length > 0 && (
+                    <div className="text-center py-4 text-gray-400 text-sm">
+                      No pages found matching "{searchTerm}"
+                    </div>
                   )}
                 </div>
+              </div>
+            )}
+          </div>
 
-                {/* View Controls */}
-                <div className="flex items-center justify-between mt-4">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setViewMode('grid')}
-                      className={`p-1.5 rounded transition ${
-                        viewMode === 'grid' ? 'bg-red-500 text-white' : 'text-gray-400 hover:text-gray-600'
-                      }`}
-                      title="Grid View"
-                    >
-                      <FaTh className="text-sm" />
-                    </button>
-                    <button
-                      onClick={() => setViewMode('list')}
-                      className={`p-1.5 rounded transition ${
-                        viewMode === 'list' ? 'bg-red-500 text-white' : 'text-gray-400 hover:text-gray-600'
-                      }`}
-                      title="List View"
-                    >
-                      <FaList className="text-sm" />
-                    </button>
-                    <span className="text-xs text-gray-400 ml-2">
-                      {selectedPages.length} of {result.pages.length} selected
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      placeholder="Search page..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="px-2 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent w-24"
-                    />
-                    <button
-                      onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                      className="text-xs text-gray-400 hover:text-gray-600 transition"
-                    >
-                      {sortOrder === 'asc' ? <FaSortAmountUp /> : <FaSortAmountDown />}
-                    </button>
-                  </div>
-                </div>
+          {/* Split History */}
+          <div className="mt-6">
+            <SplitHistory 
+              history={splitHistory} 
+              onReuse={reuseHistory}
+            />
+          </div>
 
-                {/* Pages Grid - FIXED with unique keys */}
-                <div className={`mt-4 max-h-96 overflow-y-auto custom-scrollbar ${
-                  viewMode === 'grid' 
-                    ? 'grid grid-cols-2 md:grid-cols-4 gap-3' 
-                    : 'space-y-2'
-                }`}>
-                  {filteredPages.map((page, idx) => {
-                    // Find the actual index in the original result
-                    const index = result.pages.findIndex(p => p === page);
-                    // ✅ Use a combination of index and page content hash as key
-                    const uniqueKey = `${index}-${String(page).slice(0, 50)}-${idx}`;
-                    
-                    if (viewMode === 'grid') {
-                      return (
-                        <PagePreview
-                          key={uniqueKey}
-                          page={page}
-                          index={index}
-                          isSelected={selectedPages.includes(index)}
-                          onToggle={togglePageSelection}
-                          onDownload={downloadPage}
-                          totalPages={result.pages.length}
-                        />
-                      );
-                    } else {
-                      return (
-                        <div 
-                          key={uniqueKey}
-                          className={`flex items-center justify-between p-3 rounded-lg border-2 cursor-pointer transition ${
-                            selectedPages.includes(index) 
-                              ? 'border-red-500 bg-red-50' 
-                              : 'border-gray-200 hover:border-red-300 bg-white'
-                          }`}
-                          onClick={() => togglePageSelection(index)}
-                        >
-                          <div className="flex items-center gap-3">
-                            <span className="text-xs font-medium text-gray-500 w-8">#{index + 1}</span>
-                            <FaFilePdf className="text-red-400" />
-                            <span className="text-sm">Page {index + 1}</span>
-                            <span className="text-xs text-gray-400">{formatSize(new Blob([page]).size)}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {selectedPages.includes(index) && (
-                              <FaCheckCircle className="text-red-500 text-xs" />
-                            )}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                downloadPage(page, index);
-                              }}
-                              className="text-red-600 hover:text-red-800 text-sm px-2 py-1 rounded hover:bg-red-50 transition"
-                            >
-                              <FaDownload />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    }
-                  })}
-                </div>
+          {/* Features Section */}
+          <div className="mt-8 grid md:grid-cols-4 gap-4">
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
+              <FaCut className="text-3xl text-red-500 mx-auto mb-2" />
+              <h4 className="font-semibold text-gray-900">Individual Pages</h4>
+              <p className="text-xs text-gray-500">Split into separate PDF pages</p>
+            </div>
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
+              <FaShieldAlt className="text-3xl text-red-500 mx-auto mb-2" />
+              <h4 className="font-semibold text-gray-900">Secure Processing</h4>
+              <p className="text-xs text-gray-500">Files are encrypted and protected</p>
+            </div>
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
+              <FaRocket className="text-3xl text-red-500 mx-auto mb-2" />
+              <h4 className="font-semibold text-gray-900">Fast Splitting</h4>
+              <p className="text-xs text-gray-500">Split PDFs in seconds</p>
+            </div>
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
+              <FaCompress className="text-3xl text-red-500 mx-auto mb-2" />
+              <h4 className="font-semibold text-gray-900">Compress Output</h4>
+              <p className="text-xs text-gray-500">Reduce file size (Premium)</p>
+            </div>
+          </div>
 
-                {filteredPages.length === 0 && result.pages.length > 0 && (
-                  <div className="text-center py-4 text-gray-400 text-sm">
-                    No pages found matching "{searchTerm}"
-                  </div>
-                )}
+          {/* Upgrade CTA */}
+          {!isPremium && (
+            <div className="mt-8 bg-gradient-to-r from-red-600 to-rose-600 rounded-2xl p-6 text-white text-center relative overflow-hidden">
+              <div className="absolute inset-0 opacity-10">
+                <div className="absolute top-0 -right-20 w-64 h-64 bg-white rounded-full blur-3xl"></div>
+                <div className="absolute -bottom-20 -left-20 w-48 h-48 bg-white rounded-full blur-3xl"></div>
+              </div>
+              <div className="relative z-10 max-w-2xl mx-auto">
+                <FaCrown className="text-4xl text-yellow-400 mx-auto mb-3" />
+                <h3 className="text-xl font-bold mb-2">🚀 Unlock Premium Features</h3>
+                <p className="text-red-100 mb-4">
+                  Get unlimited splits, 50MB file support, compress output, merge selected pages, and priority support.
+                </p>
+                <button
+                  onClick={handleUpgrade}
+                  className="bg-white text-red-600 px-8 py-3 rounded-xl font-semibold hover:shadow-lg transition hover:-translate-y-0.5"
+                >
+                  Upgrade Now — ₹499/month
+                </button>
               </div>
             </div>
           )}
         </div>
 
-        {/* Split History */}
-        <div className="mt-6">
-          <SplitHistory 
-            history={splitHistory} 
-            onReuse={reuseHistory}
-          />
-        </div>
+        {/* Payment Modal */}
+        <PaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          userEmail={localStorage.getItem('userEmail') || ''}
+          userId={localStorage.getItem('userId') || ''}
+        />
 
-        {/* Features Section */}
-        <div className="mt-8 grid md:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
-            <FaCut className="text-3xl text-red-500 mx-auto mb-2" />
-            <h4 className="font-semibold text-gray-900">Individual Pages</h4>
-            <p className="text-xs text-gray-500">Split into separate PDF pages</p>
-          </div>
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
-            <FaShieldAlt className="text-3xl text-red-500 mx-auto mb-2" />
-            <h4 className="font-semibold text-gray-900">Secure Processing</h4>
-            <p className="text-xs text-gray-500">Files are encrypted and protected</p>
-          </div>
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
-            <FaRocket className="text-3xl text-red-500 mx-auto mb-2" />
-            <h4 className="font-semibold text-gray-900">Fast Splitting</h4>
-            <p className="text-xs text-gray-500">Split PDFs in seconds</p>
-          </div>
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
-            <FaCompress className="text-3xl text-red-500 mx-auto mb-2" />
-            <h4 className="font-semibold text-gray-900">Compress Output</h4>
-            <p className="text-xs text-gray-500">Reduce file size (Premium)</p>
-          </div>
-        </div>
-
-        {/* Upgrade CTA */}
-        {!isPremium && (
-          <div className="mt-8 bg-gradient-to-r from-red-600 to-rose-600 rounded-2xl p-6 text-white text-center relative overflow-hidden">
-            <div className="absolute inset-0 opacity-10">
-              <div className="absolute top-0 -right-20 w-64 h-64 bg-white rounded-full blur-3xl"></div>
-              <div className="absolute -bottom-20 -left-20 w-48 h-48 bg-white rounded-full blur-3xl"></div>
-            </div>
-            <div className="relative z-10 max-w-2xl mx-auto">
-              <FaCrown className="text-4xl text-yellow-400 mx-auto mb-3" />
-              <h3 className="text-xl font-bold mb-2">🚀 Unlock Premium Features</h3>
-              <p className="text-red-100 mb-4">
-                Get unlimited splits, 50MB file support, compress output, and priority support.
-              </p>
-              <button
-                onClick={handleUpgrade}
-                className="bg-white text-red-600 px-8 py-3 rounded-xl font-semibold hover:shadow-lg transition hover:-translate-y-0.5"
-              >
-                Upgrade Now — ₹499/month
-              </button>
-            </div>
-          </div>
-        )}
+        <style dangerouslySetInnerHTML={{ __html: `
+          .gradient-text {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+          }
+          @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+          }
+          .animate-pulse {
+            animation: pulse 1.5s ease-in-out infinite;
+          }
+          .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+          }
+          .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+          }
+          .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 10px;
+          }
+          .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+          }
+        `}} />
       </div>
-
-      {/* Payment Modal */}
-      <PaymentModal
-        isOpen={showPaymentModal}
-        onClose={() => setShowPaymentModal(false)}
-        userEmail={localStorage.getItem('userEmail') || ''}
-        userId={localStorage.getItem('userId') || ''}
-      />
-
-      <style dangerouslySetInnerHTML={{ __html: `
-        .gradient-text {
-          background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-        }
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
-        .animate-pulse {
-          animation: pulse 1.5s ease-in-out infinite;
-        }
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: #f1f1f1;
-          border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #c1c1c1;
-          border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #a8a8a8;
-        }
-      `}} />
-    </div>
+    </>
   );
 };
 

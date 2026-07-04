@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { api } from '../utils/api';
 import axios from 'axios';
 import { 
@@ -36,96 +37,16 @@ import {
   FaGlobe,
   FaAward,
   FaTrophy,
-  FaMedal
+  FaMedal,
+  FaMicrophone,
+  FaHeadphones,
+  FaQuestionCircle,
+  FaComments,
+  FaSearchLocation,
+  FaMapPin,
+  FaCity,
+  FaFlag
 } from 'react-icons/fa';
-
-// ============================================
-// SEO / GEO / AEO META COMPONENT
-// ============================================
-const TestimonialsSEO = () => {
-  const siteUrl = window.location.origin;
-  
-  return (
-    <>
-      <title>Client Testimonials - Krynova Technologies | 50+ Happy Clients in Agra, India</title>
-      <meta name="description" content="Read what our clients say about Krynova Technologies - the best web development company in Agra, India. Real feedback from 50+ businesses across HRMS, Property Management, and custom solutions." />
-      <meta name="keywords" content="Krynova Technologies testimonials, client reviews, web development company Agra reviews, HRMS software reviews, property management system feedback, best software company India, client feedback, business solutions reviews" />
-      <meta name="robots" content="index, follow" />
-      <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large" />
-      
-      {/* GEO Meta Tags */}
-      <meta name="geo.region" content="IN-UP" />
-      <meta name="geo.placename" content="Agra" />
-      <meta name="geo.position" content="27.1767;78.0081" />
-      <meta name="ICBM" content="27.1767, 78.0081" />
-      <meta name="city" content="Agra" />
-      <meta name="state" content="Uttar Pradesh" />
-      <meta name="country" content="India" />
-      
-      {/* Open Graph */}
-      <meta property="og:title" content="Client Testimonials - Krynova Technologies" />
-      <meta property="og:description" content="Real feedback from 50+ happy clients about our web development and software solutions." />
-      <meta property="og:url" content={`${siteUrl}/testimonials`} />
-      <meta property="og:type" content="website" />
-      <meta property="og:site_name" content="Krynova Technologies" />
-      <link rel="canonical" href={`${siteUrl}/testimonials`} />
-      
-      {/* Schema.org - Reviews */}
-      <script type="application/ld+json">
-        {JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "ReviewPage",
-          "name": "Krynova Technologies Testimonials",
-          "description": "Client reviews and feedback for Krynova Technologies",
-          "publisher": {
-            "@type": "Organization",
-            "name": "Krynova Technologies",
-            "address": {
-              "@type": "PostalAddress",
-              "addressLocality": "Agra",
-              "addressRegion": "Uttar Pradesh",
-              "addressCountry": "India"
-            }
-          },
-          "aggregateRating": {
-            "@type": "AggregateRating",
-            "ratingValue": "4.8",
-            "reviewCount": "50"
-          }
-        })}
-      </script>
-      
-      {/* Local Business Schema */}
-      <script type="application/ld+json">
-        {JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "LocalBusiness",
-          "name": "Krynova Technologies",
-          "description": "Best web development company in Agra, India",
-          "url": siteUrl,
-          "telephone": "+918630519082",
-          "email": "princeb744@gmail.com",
-          "address": {
-            "@type": "PostalAddress",
-            "addressLocality": "Agra",
-            "addressRegion": "Uttar Pradesh",
-            "addressCountry": "India"
-          },
-          "geo": {
-            "@type": "GeoCoordinates",
-            "latitude": 27.1767,
-            "longitude": 78.0081
-          },
-          "aggregateRating": {
-            "@type": "AggregateRating",
-            "ratingValue": "4.8",
-            "reviewCount": "50"
-          }
-        })}
-      </script>
-    </>
-  );
-};
 
 // ============================================
 // LOADING SKELETON
@@ -361,6 +282,33 @@ const Testimonials = () => {
   const [sortOrder, setSortOrder] = useState('desc');
   const [showForm, setShowForm] = useState(false);
 
+  // ✅ Get current URL for canonical
+  const siteUrl = window.location.origin;
+
+  // ✅ All major Indian cities for GEO targeting
+  const indianCities = [
+    "Agra", "Delhi", "Mumbai", "Bangalore", "Chennai", "Hyderabad", 
+    "Pune", "Kolkata", "Ahmedabad", "Surat", "Jaipur", "Lucknow", 
+    "Kanpur", "Nagpur", "Indore", "Thane", "Bhopal", "Visakhapatnam", 
+    "Patna", "Vadodara", "Ludhiana", "Nashik", "Faridabad", "Meerut", 
+    "Rajkot", "Varanasi", "Srinagar", "Aurangabad", "Dhanbad", "Amritsar", 
+    "Navi Mumbai", "Allahabad", "Ranchi", "Howrah", "Coimbatore", "Jabalpur", 
+    "Gwalior", "Vijayawada", "Jodhpur", "Madurai", "Raipur", "Kota", 
+    "Chandigarh", "Guwahati", "Solapur", "Hubballi-Dharwad", "Mysore", 
+    "Tiruchirappalli", "Bareilly", "Aligarh", "Moradabad", "Saharanpur", 
+    "Dehradun", "Noida", "Gurugram", "Ghaziabad", "Faridabad"
+  ];
+
+  // ✅ Global countries for international reach
+  const globalCountries = [
+    "USA", "UK", "Canada", "Australia", "UAE", "Singapore", 
+    "Germany", "France", "Japan", "South Korea", "Netherlands", 
+    "Sweden", "Norway", "Denmark", "Finland", "New Zealand", 
+    "Ireland", "Malaysia", "Thailand", "Vietnam", "Indonesia", 
+    "Philippines", "South Africa", "Kenya", "Nigeria", "Egypt", 
+    "Saudi Arabia", "Qatar", "Kuwait", "Bahrain", "Oman"
+  ];
+
   // Fetch testimonials
   useEffect(() => {
     const fetchTestimonials = async () => {
@@ -463,8 +411,244 @@ const Testimonials = () => {
 
   return (
     <>
-      <TestimonialsSEO />
+      {/* ========================================== */}
+      {/* ✅ HELMET - SEO + AEO + GEO COMBINED */}
+      {/* ========================================== */}
+      <Helmet>
+        {/* ===== SEO TAGS ===== */}
+        <title>Client Testimonials - Krynova Technologies | 50+ Happy Clients in Agra, India | Global Reviews</title>
+        <meta name="description" content="Read what our clients say about Krynova Technologies - the best web development company in Agra, India. Real feedback from 50+ businesses across HRMS, Property Management, and custom solutions. Trusted by clients in all Indian cities and globally." />
+        <meta name="keywords" content="Krynova Technologies testimonials, client reviews, web development company Agra reviews, HRMS software reviews, property management system feedback, best software company India, client feedback, business solutions reviews, global client reviews, Indian business testimonials" />
+        <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
+        <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large" />
+        
+        {/* ✅ Canonical Tag */}
+        <link rel="canonical" href={`${siteUrl}/testimonials`} />
+        
+        {/* ===== GEO TAGS - Local Targeting ===== */}
+        <meta name="geo.region" content="IN-UP" />
+        <meta name="geo.placename" content="Agra" />
+        <meta name="geo.position" content="27.1767;78.0081" />
+        <meta name="ICBM" content="27.1767, 78.0081" />
+        <meta name="city" content="Agra" />
+        <meta name="state" content="Uttar Pradesh" />
+        <meta name="country" content="India" />
+        <meta name="areaServed" content={indianCities.join(", ")} />
+        <meta name="serviceArea" content={`India, ${globalCountries.join(", ")}, Worldwide`} />
+        <meta name="coverage" content="Global, National, Local" />
+        
+        {/* ===== GEO TAGS - All Indian Cities ===== */}
+        <meta name="targetedCities" content={indianCities.join(", ")} />
+        <meta name="targetedStates" content="Uttar Pradesh, Delhi, Maharashtra, Karnataka, Tamil Nadu, Telangana, West Bengal, Gujarat, Rajasthan, Punjab, Haryana, Madhya Pradesh, Bihar, Odisha, Kerala, Andhra Pradesh, Jharkhand, Chhattisgarh, Uttarakhand, Himachal Pradesh, Goa, Assam, Jammu & Kashmir" />
+        <meta name="targetedCountries" content={globalCountries.join(", ")} />
+        
+        {/* ===== GEO TAGS - Multi-language ===== */}
+        <meta name="language" content="en, hi, bn, te, ta, ur, gu, mr, kn, ml, pa" />
+        <meta name="locales" content="en_IN, hi_IN, bn_IN, te_IN, ta_IN, ur_IN, gu_IN, mr_IN, kn_IN, ml_IN, pa_IN" />
+        
+        {/* ===== AEO TAGS - Answer Engine Optimization ===== */}
+        <meta name="question" content="What do clients say about Krynova Technologies?" />
+        <meta name="answer" content="Krynova Technologies has 50+ happy clients with an average rating of 4.8/5. Clients praise our HRMS software, property management systems, and custom web solutions." />
+        <meta name="faq" content="true" />
+        <meta name="speakable" content="true" />
+        <meta name="speakable-type" content="text/html" />
+        <meta name="speakable-css" content=".speakable" />
+        <meta name="voice-search" content="true" />
+        <meta name="voice-search-keywords" content="Krynova reviews, client testimonials, HRMS feedback, web development reviews, best software company India" />
+        
+        {/* ===== AEO - Rich Snippets ===== */}
+        <meta name="rich-snippet" content="reviews" />
+        <meta name="structured-data" content="true" />
+        <meta name="reviewCount" content={totalTestimonials} />
+        <meta name="averageRating" content={averageRating} />
+        <meta name="bestRating" content="5" />
+        <meta name="worstRating" content="1" />
+        
+        {/* ===== Open Graph ===== */}
+        <meta property="og:title" content="Client Testimonials - Krynova Technologies | 50+ Happy Clients" />
+        <meta property="og:description" content="Real feedback from 50+ happy clients about our web development and software solutions across India and globally." />
+        <meta property="og:url" content={`${siteUrl}/testimonials`} />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Krynova Technologies" />
+        <meta property="og:image" content={`${siteUrl}/logo.png`} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:locale" content="en_IN" />
+        <meta property="og:rich_attachment" content="true" />
+        
+        {/* ===== Twitter Card ===== */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Client Testimonials - Krynova Technologies | 50+ Happy Clients" />
+        <meta name="twitter:description" content="Real feedback from 50+ happy clients about our web development and software solutions." />
+        <meta name="twitter:image" content={`${siteUrl}/logo.png`} />
+      </Helmet>
+
+      {/* ========================================== */}
+      {/* ✅ AEO SPEAKABLE CONTENT */}
+      {/* ========================================== */}
+      <div className="speakable sr-only" aria-hidden="true">
+        <h2>Krynova Technologies Client Testimonials</h2>
+        <p>Krynova Technologies has 50+ happy clients with an average rating of 4.8 out of 5 stars. Clients praise our HRMS software, property management systems, and custom web solutions.</p>
+        <p>Testimonials from businesses in Agra, Delhi, Mumbai, Bangalore, Hyderabad, Pune, Kolkata, and many other cities across India and globally.</p>
+        <ul>
+          <li>HRMS Software Reviews - Complete human resource management</li>
+          <li>Property Management System Reviews - Real estate management</li>
+          <li>Custom Web Solutions Reviews - Tailored business applications</li>
+          <li>WhatsApp Automation Reviews - Business communication</li>
+        </ul>
+        <p>Trusted by 50+ businesses worldwide.</p>
+      </div>
+
+      {/* ========================================== */}
+      {/* ✅ SCHEMA.ORG - SEO + AEO + GEO */}
+      {/* ========================================== */}
       
+      {/* 📝 Review Page Schema */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "ReviewPage",
+          "name": "Krynova Technologies Testimonials",
+          "description": "Client reviews and feedback for Krynova Technologies - the best web development company in Agra, India.",
+          "url": `${siteUrl}/testimonials`,
+          "publisher": {
+            "@type": "Organization",
+            "name": "Krynova Technologies",
+            "address": {
+              "@type": "PostalAddress",
+              "addressLocality": "Agra",
+              "addressRegion": "Uttar Pradesh",
+              "addressCountry": "India"
+            }
+          },
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": averageRating || "4.8",
+            "reviewCount": totalTestimonials || "50",
+            "bestRating": "5",
+            "worstRating": "1"
+          },
+          "inLanguage": ["en", "hi", "bn", "te", "ta", "ur", "gu", "mr", "kn", "ml", "pa"],
+          "speakable": {
+            "@type": "SpeakableSpecification",
+            "cssSelector": ".speakable"
+          }
+        })}
+      </script>
+
+      {/* 🏢 Local Business Schema - GEO Focus */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "LocalBusiness",
+          "name": "Krynova Technologies",
+          "description": "Best web development company in Agra, India with 50+ happy clients globally.",
+          "url": siteUrl,
+          "telephone": "+918630519082",
+          "email": "princeb744@gmail.com",
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Agra",
+            "addressRegion": "Uttar Pradesh",
+            "addressCountry": "India"
+          },
+          "geo": {
+            "@type": "GeoCoordinates",
+            "latitude": 27.1767,
+            "longitude": 78.0081
+          },
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": averageRating || "4.8",
+            "reviewCount": totalTestimonials || "50",
+            "bestRating": "5",
+            "worstRating": "1"
+          },
+          "areaServed": indianCities,
+          "availableLanguage": ["English", "Hindi", "Bengali", "Telugu", "Tamil", "Urdu", "Gujarati", "Marathi", "Kannada", "Malayalam", "Punjabi"],
+          "slogan": "Global Enterprise Solutions from India",
+          "foundingDate": "2024-03-01"
+        })}
+      </script>
+
+      {/* ❓ FAQ Schema - AEO Focus */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "What do clients say about Krynova Technologies?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Clients praise Krynova Technologies for their professional web development, HRMS software, property management systems, and custom solutions. With 50+ happy clients and an average rating of 4.8/5, our clients appreciate our quality, support, and value."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How many clients has Krynova Technologies served?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Krynova Technologies has served 50+ businesses across India and globally, delivering enterprise software solutions, HRMS systems, property management software, and custom web applications."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Where are Krynova Technologies' clients located?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": `Krynova Technologies serves clients across all major cities in India including ${indianCities.slice(0, 10).join(", ")} and many more, as well as international clients in ${globalCountries.slice(0, 10).join(", ")} and worldwide.`
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What is the average rating of Krynova Technologies?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Krynova Technologies has an average rating of 4.8 out of 5 stars based on reviews from 50+ happy clients across India and globally."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Which industries does Krynova Technologies serve?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Krynova Technologies serves businesses across HR, real estate, technology, healthcare, education, retail, finance, manufacturing, and other industries with custom software solutions."
+              }
+            }
+          ]
+        })}
+      </script>
+
+      {/* 🗺️ Place Schema - GEO Targeting */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Place",
+          "name": "Krynova Technologies",
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Agra",
+            "addressRegion": "Uttar Pradesh",
+            "addressCountry": "India"
+          },
+          "geo": {
+            "@type": "GeoCoordinates",
+            "latitude": 27.1767,
+            "longitude": 78.0081
+          },
+          "areaServed": indianCities.map(city => ({
+            "@type": "City",
+            "name": city
+          })),
+          "globalLocationNumber": "IN-UP-AGRA"
+        })}
+      </script>
+
+      {/* ========================================== */}
+      {/* ✅ MAIN CONTENT */}
+      {/* ========================================== */}
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12">
         <div className="container mx-auto px-4 max-w-7xl">
           {/* Header */}
@@ -479,9 +663,23 @@ const Testimonials = () => {
             <p className="text-gray-600 max-w-2xl mx-auto text-lg">
               Real feedback from real businesses who've transformed their operations with our solutions
             </p>
+            <div className="flex flex-wrap justify-center gap-2 mt-3">
+              <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs">
+                <FaMapPin className="text-blue-500" /> {indianCities.length}+ Indian Cities
+              </span>
+              <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs">
+                <FaGlobe className="text-green-500" /> {globalCountries.length}+ Countries
+              </span>
+              <span className="inline-flex items-center gap-1 bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs">
+                <FaStar className="text-yellow-500" /> {averageRating}/5 Rating
+              </span>
+              <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs">
+                <FaUsers className="text-purple-500" /> {totalTestimonials}+ Reviews
+              </span>
+            </div>
             <p className="text-sm text-blue-600 mt-3">
               <FaMapMarkerAlt className="inline mr-1" />
-              Trusted by 50+ businesses in Agra, Uttar Pradesh, and across India
+              Trusted by 50+ businesses in Agra, Uttar Pradesh, across India, and worldwide
             </p>
           </div>
 
@@ -762,7 +960,7 @@ const Testimonials = () => {
             </>
           )}
 
-          {/* Call to Action */}
+          {/* Call to Action - Global & Local */}
           {!loading && testimonials.length > 0 && (
             <div className="mt-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-8 md:p-12 text-white text-center relative overflow-hidden">
               <div className="absolute inset-0 opacity-10">
@@ -772,8 +970,19 @@ const Testimonials = () => {
               <div className="relative z-10 max-w-2xl mx-auto">
                 <h2 className="text-2xl md:text-3xl font-bold mb-3">Ready to Join Our Happy Clients?</h2>
                 <p className="text-blue-100 mb-6 text-lg">
-                  Transform your business with our custom solutions. Serving 50+ businesses in Agra, Uttar Pradesh, and across India.
+                  Transform your business with our custom solutions. Serving 50+ businesses in Agra, Uttar Pradesh, across India, and worldwide.
                 </p>
+                <div className="flex flex-wrap justify-center gap-3 mb-4">
+                  <span className="inline-flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full text-xs">
+                    <FaMapPin /> {indianCities.length}+ Indian Cities
+                  </span>
+                  <span className="inline-flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full text-xs">
+                    <FaGlobe /> {globalCountries.length}+ Countries
+                  </span>
+                  <span className="inline-flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full text-xs">
+                    <FaStar /> 4.8/5 Rating
+                  </span>
+                </div>
                 <div className="flex flex-wrap justify-center gap-4">
                   <Link
                     to="/contact"
@@ -790,7 +999,7 @@ const Testimonials = () => {
                 </div>
                 <p className="text-blue-200 text-sm mt-4">
                   <FaMapMarkerAlt className="inline mr-1" />
-                  Based in Agra, Uttar Pradesh, India • Serving Worldwide
+                  Based in Agra, Uttar Pradesh, India • Serving Global Clients
                 </p>
               </div>
             </div>
@@ -819,6 +1028,17 @@ const Testimonials = () => {
             -webkit-line-clamp: 4;
             -webkit-box-orient: vertical;
             overflow: hidden;
+          }
+          .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
           }
         `}} />
       </div>

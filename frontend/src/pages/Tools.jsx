@@ -1,17 +1,43 @@
 // src/pages/Tools.jsx
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { 
   FaFileAlt, FaPenFancy, FaQrcode, FaFilePdf, 
   FaFileWord, FaFileExcel, FaImage, FaFileArchive,
   FaExchangeAlt, FaFileExport, FaMagic, FaTools,
   FaArrowRight, FaStar, FaLock, FaCheckCircle,
-  FaRocket, FaCrown
+  FaRocket, FaCrown, FaMicrophone, FaComments,
+  FaMapPin, FaGlobe
 } from 'react-icons/fa';
 
 const Tools = () => {
   // ✅ Get current URL for canonical
   const siteUrl = window.location.origin;
+
+  // ✅ All major Indian cities for GEO targeting
+  const indianCities = [
+    "Agra", "Delhi", "Mumbai", "Bangalore", "Chennai", "Hyderabad", 
+    "Pune", "Kolkata", "Ahmedabad", "Surat", "Jaipur", "Lucknow", 
+    "Kanpur", "Nagpur", "Indore", "Thane", "Bhopal", "Visakhapatnam", 
+    "Patna", "Vadodara", "Ludhiana", "Nashik", "Faridabad", "Meerut", 
+    "Rajkot", "Varanasi", "Srinagar", "Aurangabad", "Dhanbad", "Amritsar", 
+    "Navi Mumbai", "Allahabad", "Ranchi", "Howrah", "Coimbatore", "Jabalpur", 
+    "Gwalior", "Vijayawada", "Jodhpur", "Madurai", "Raipur", "Kota", 
+    "Chandigarh", "Guwahati", "Solapur", "Hubballi-Dharwad", "Mysore", 
+    "Tiruchirappalli", "Bareilly", "Aligarh", "Moradabad", "Saharanpur", 
+    "Dehradun", "Noida", "Gurugram", "Ghaziabad", "Faridabad"
+  ];
+
+  // ✅ Global countries for international reach
+  const globalCountries = [
+    "USA", "UK", "Canada", "Australia", "UAE", "Singapore", 
+    "Germany", "France", "Japan", "South Korea", "Netherlands", 
+    "Sweden", "Norway", "Denmark", "Finland", "New Zealand", 
+    "Ireland", "Malaysia", "Thailand", "Vietnam", "Indonesia", 
+    "Philippines", "South Africa", "Kenya", "Nigeria", "Egypt", 
+    "Saudi Arabia", "Qatar", "Kuwait", "Bahrain", "Oman"
+  ];
 
   const tools = [
     {
@@ -115,41 +141,79 @@ const Tools = () => {
 
   return (
     <>
-      {/* ✅ COMPLETE SEO / META TAGS */}
-      <title>12+ Free Online Tools - Resume Builder, PDF Tools, QR Generator | Krynova Technologies</title>
-      <meta name="description" content="Access 12+ free online tools including ATS Resume Builder, Cover Letter Generator, QR Code Generator, PDF to Image, PDF to Word, PDF Compressor, Merge PDF, Image Resizer, and more. No sign-up required, unlimited usage for premium users. Best free tools in India." />
-      <meta name="keywords" content="free resume builder, cover letter generator, QR code generator, PDF to image, PDF to word, PDF to excel, image to PDF, PDF compressor, merge PDF, split PDF, image resizer, text to PDF, free online tools India, productivity tools, Krynova tools" />
-      <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
-      <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large" />
-      
-      {/* ✅ CANONICAL TAG - MOST IMPORTANT */}
-      <link rel="canonical" href={`${siteUrl}/tools`} />
-      
-      {/* Open Graph */}
-      <meta property="og:title" content="12+ Free Online Tools - Resume Builder, PDF Tools & More | Krynova Technologies" />
-      <meta property="og:description" content="Boost your productivity with our completely free online tools. Resume Builder, QR Generator, PDF converters, and more. No sign-up required!" />
-      <meta property="og:url" content={`${siteUrl}/tools`} />
-      <meta property="og:type" content="website" />
-      <meta property="og:site_name" content="Krynova Technologies" />
-      <meta property="og:image" content={`${siteUrl}/logo.png`} />
-      <meta property="og:locale" content="en_IN" />
-      
-      {/* Twitter Card */}
-      <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:title" content="12+ Free Online Tools - Resume Builder, PDF Tools & More | Krynova Technologies" />
-      <meta name="twitter:description" content="Access 12+ free online tools. Resume Builder, QR Generator, PDF converters, and more. No sign-up required!" />
-      <meta name="twitter:image" content={`${siteUrl}/logo.png`} />
-      
-      {/* GEO Meta Tags */}
-      <meta name="geo.region" content="IN-UP" />
-      <meta name="geo.placename" content="Agra" />
-      <meta name="geo.position" content="27.1767;78.0081" />
-      <meta name="ICBM" content="27.1767, 78.0081" />
-      <meta name="city" content="Agra" />
-      <meta name="state" content="Uttar Pradesh" />
-      <meta name="country" content="India" />
-      
-      {/* ✅ Schema.org - Tool Collection */}
+      {/* ✅ HELMET - SEO + AEO + GEO COMBINED */}
+      <Helmet>
+        {/* ===== SEO TAGS ===== */}
+        <title>12+ Free Online Tools - Resume Builder, PDF Tools, QR Generator | Krynova Technologies | India & Global</title>
+        <meta name="description" content="Access 12+ free online tools including ATS Resume Builder, Cover Letter Generator, QR Code Generator, PDF to Image, PDF to Word, PDF Compressor, Merge PDF, Image Resizer, and more. No sign-up required, unlimited usage for premium users. Best free tools in India and worldwide." />
+        <meta name="keywords" content="free resume builder, cover letter generator, QR code generator, PDF to image, PDF to word, PDF to excel, image to PDF, PDF compressor, merge PDF, split PDF, image resizer, text to PDF, free online tools India, productivity tools, Krynova tools, global online tools" />
+        <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
+        <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large" />
+        
+        {/* ✅ Canonical Tag */}
+        <link rel="canonical" href={`${siteUrl}/tools`} />
+        
+        {/* ===== GEO TAGS - Local Targeting ===== */}
+        <meta name="geo.region" content="IN-UP" />
+        <meta name="geo.placename" content="Agra" />
+        <meta name="geo.position" content="27.1767;78.0081" />
+        <meta name="ICBM" content="27.1767, 78.0081" />
+        <meta name="city" content="Agra" />
+        <meta name="state" content="Uttar Pradesh" />
+        <meta name="country" content="India" />
+        <meta name="areaServed" content={indianCities.join(", ")} />
+        <meta name="serviceArea" content={`India, ${globalCountries.join(", ")}, Worldwide`} />
+        <meta name="coverage" content="Global, National, Local" />
+        
+        {/* ===== GEO TAGS - All Indian Cities ===== */}
+        <meta name="targetedCities" content={indianCities.join(", ")} />
+        <meta name="targetedStates" content="Uttar Pradesh, Delhi, Maharashtra, Karnataka, Tamil Nadu, Telangana, West Bengal, Gujarat, Rajasthan, Punjab, Haryana, Madhya Pradesh, Bihar, Odisha, Kerala, Andhra Pradesh, Jharkhand, Chhattisgarh, Uttarakhand, Himachal Pradesh, Goa, Assam, Jammu & Kashmir" />
+        <meta name="targetedCountries" content={globalCountries.join(", ")} />
+        
+        {/* ===== AEO TAGS - Answer Engine Optimization ===== */}
+        <meta name="question" content="What free online tools does Krynova Technologies offer?" />
+        <meta name="answer" content="Krynova Technologies offers 12+ free online tools including ATS Resume Builder, Cover Letter Generator, QR Code Generator, PDF to Image, PDF to Word, PDF to Excel, Image to PDF, PDF Compressor, Merge PDF, Split PDF, Image Resizer, and Text to PDF." />
+        <meta name="faq" content="true" />
+        <meta name="speakable" content="true" />
+        <meta name="speakable-type" content="text/html" />
+        <meta name="speakable-css" content=".speakable" />
+        <meta name="voice-search" content="true" />
+        <meta name="voice-search-keywords" content="free resume builder, PDF converter, QR generator, online tools, productivity tools India" />
+        
+        {/* ===== Open Graph ===== */}
+        <meta property="og:title" content="12+ Free Online Tools - Resume Builder, PDF Tools & More | Krynova Technologies" />
+        <meta property="og:description" content="Boost your productivity with our completely free online tools. Resume Builder, QR Generator, PDF converters, and more. No sign-up required!" />
+        <meta property="og:url" content={`${siteUrl}/tools`} />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Krynova Technologies" />
+        <meta property="og:image" content={`${siteUrl}/logo.png`} />
+        <meta property="og:locale" content="en_IN" />
+        
+        {/* ===== Twitter Card ===== */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="12+ Free Online Tools - Resume Builder, PDF Tools & More | Krynova Technologies" />
+        <meta name="twitter:description" content="Access 12+ free online tools. Resume Builder, QR Generator, PDF converters, and more. No sign-up required!" />
+        <meta name="twitter:image" content={`${siteUrl}/logo.png`} />
+      </Helmet>
+
+      {/* ✅ AEO SPEAKABLE CONTENT */}
+      <div className="speakable sr-only" aria-hidden="true">
+        <h2>Krynova Technologies Free Online Tools</h2>
+        <p>Access 12+ free online tools including ATS Resume Builder, Cover Letter Generator, QR Code Generator, PDF to Image, PDF to Word, PDF Compressor, Merge PDF, Image Resizer, and more. No sign-up required.</p>
+        <ul>
+          <li>ATS Resume Builder - Create professional resumes</li>
+          <li>Cover Letter Generator - Personalized cover letters</li>
+          <li>QR Code Generator - Custom QR codes</li>
+          <li>PDF to Image - Convert PDF to images</li>
+          <li>PDF to Word - Convert PDF to editable Word</li>
+          <li>PDF Compressor - Compress PDF files</li>
+          <li>Merge PDF - Combine multiple PDFs</li>
+          <li>Image Resizer - Resize images</li>
+        </ul>
+        <p>Free tools for users in Agra, Delhi, Mumbai, Bangalore, all Indian cities, and globally.</p>
+      </div>
+
+      {/* ✅ Schema.org - Tool Collection with Global Scope */}
       <script type="application/ld+json">
         {JSON.stringify({
           "@context": "https://schema.org",
@@ -172,11 +236,24 @@ const Tools = () => {
             "description": "Free tools with daily limits. Premium upgrade available for unlimited access.",
             "price": "0",
             "priceCurrency": "INR"
+          },
+          "audience": {
+            "@type": "Audience",
+            "name": "Businesses and Professionals Worldwide",
+            "geographicArea": {
+              "@type": "AdministrativeArea",
+              "name": `India, ${globalCountries.join(", ")}, Worldwide`
+            }
+          },
+          "inLanguage": ["en", "hi", "bn", "te", "ta", "ur", "gu", "mr", "kn", "ml", "pa"],
+          "speakable": {
+            "@type": "SpeakableSpecification",
+            "cssSelector": ".speakable"
           }
         })}
       </script>
       
-      {/* ✅ FAQ Schema for Tools */}
+      {/* ✅ FAQ Schema - AEO Focus */}
       <script type="application/ld+json">
         {JSON.stringify({
           "@context": "https://schema.org",
@@ -187,7 +264,7 @@ const Tools = () => {
               "name": "What free tools does Krynova Technologies offer?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Krynova Technologies offers 12+ free online tools including ATS Resume Builder, Cover Letter Generator, QR Code Generator, PDF to Image, PDF to Word, PDF to Excel, Image to PDF, PDF Compressor, Merge PDF, Split PDF, Image Resizer, and Text to PDF."
+                "text": "Krynova Technologies offers 12+ free online tools including ATS Resume Builder, Cover Letter Generator, QR Code Generator, PDF to Image, PDF to Word, PDF to Excel, Image to PDF, PDF Compressor, Merge PDF, Split PDF, Image Resizer, and Text to PDF. Available to users in India and worldwide."
               }
             },
             {
@@ -195,15 +272,23 @@ const Tools = () => {
               "name": "Do I need to sign up to use these free tools?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "No sign-up is required! All tools are completely free to use with daily limits. Premium users get unlimited access."
+                "text": "No sign-up is required! All tools are completely free to use with daily limits. Premium users get unlimited access. Available for users in Agra, Delhi, Mumbai, Bangalore, and all cities."
               }
             },
             {
               "@type": "Question",
-              "name": "Which is the best free resume builder?",
+              "name": "Which is the best free resume builder in India?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Krynova Technologies' ATS Resume Builder is one of the best free resume builders available. It creates professional, ATS-optimized resumes with multiple templates."
+                "text": "Krynova Technologies' ATS Resume Builder is one of the best free resume builders available in India. It creates professional, ATS-optimized resumes with multiple templates."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Are these tools available globally?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes! Our free online tools are available globally. Users from USA, UK, Canada, Australia, UAE, and over 30+ countries use our tools daily."
               }
             }
           ]
@@ -226,6 +311,20 @@ const Tools = () => {
               Boost your productivity with our completely free online tools. 
               No sign-up required, unlimited usage for premium users!
             </p>
+            <div className="flex flex-wrap justify-center gap-2 mt-3">
+              <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs">
+                <FaMapPin className="text-blue-500" /> {indianCities.length}+ Indian Cities
+              </span>
+              <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs">
+                <FaGlobe className="text-green-500" /> {globalCountries.length}+ Countries
+              </span>
+              <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs">
+                <FaMicrophone className="text-purple-500" /> Voice Search Ready
+              </span>
+              <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs">
+                <FaComments className="text-orange-500" /> FAQ Optimized
+              </span>
+            </div>
             <div className="flex flex-wrap justify-center gap-3 mt-4">
               <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm">
                 <FaStar className="text-yellow-400" /> Free daily limits
@@ -278,7 +377,7 @@ const Tools = () => {
             })}
           </div>
 
-          {/* Premium CTA */}
+          {/* Premium CTA - Global & Local */}
           <div className="mt-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-8 md:p-12 text-white text-center relative overflow-hidden">
             <div className="absolute inset-0 opacity-10">
               <div className="absolute top-0 -right-20 w-64 h-64 bg-white rounded-full blur-3xl"></div>
@@ -293,6 +392,14 @@ const Tools = () => {
                 Remove all limits and get unlimited access to all 12 tools.
                 Perfect for professionals and businesses!
               </p>
+              <div className="flex flex-wrap justify-center gap-3 mb-4">
+                <span className="inline-flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full text-xs">
+                  <FaMapPin /> {indianCities.length}+ Indian Cities
+                </span>
+                <span className="inline-flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full text-xs">
+                  <FaGlobe /> {globalCountries.length}+ Countries
+                </span>
+              </div>
               <div className="flex flex-wrap justify-center gap-4">
                 <Link
                   to="/contact?upgrade=premium"
@@ -314,6 +421,17 @@ const Tools = () => {
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+          }
+          .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
           }
         `}} />
       </div>

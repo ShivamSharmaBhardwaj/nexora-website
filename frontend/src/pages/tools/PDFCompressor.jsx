@@ -1,5 +1,6 @@
 // src/pages/tools/PDFCompressor.jsx
 import React, { useState, useEffect, useRef } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { 
   FaSpinner, FaDownload, FaStar, FaLock, FaFilePdf, 
   FaCheckCircle, FaCircle, FaTimes, FaTrash, FaPlus,
@@ -7,14 +8,43 @@ import {
   FaChartLine, FaArrowRight, FaUpload, FaClock,
   FaHistory, FaChevronDown, FaChevronUp, FaCog,
   FaFile, FaInfoCircle, FaRegFilePdf, FaSlidersH,
-  FaPercentage, FaFileInvoice, FaBalanceScale
+  FaPercentage, FaFileInvoice, FaBalanceScale,
+  FaGlobe, FaMapMarkerAlt, FaLanguage, FaHeadphones
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { api } from '../../utils/api';
 import PaymentModal from '../../components/PaymentModal';
 
 // ============================================
-// UTILITY FUNCTIONS - MOVED TO TOP LEVEL
+// SEO DATA
+// ============================================
+
+const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://krynovatechnology.pythonanywhere.com';
+
+const indianCities = [
+  "Agra", "Lucknow", "Kanpur", "Varanasi", "Prayagraj", "Mathura", "Aligarh", "Bareilly",
+  "Meerut", "Ghaziabad", "Noida", "Delhi", "Mumbai", "Pune", "Bengaluru", "Chennai",
+  "Hyderabad", "Kolkata", "Ahmedabad", "Surat", "Jaipur", "Indore", "Bhopal", "Nagpur",
+  "Patna", "Ranchi", "Bhubaneswar", "Guwahati", "Chandigarh", "Dehradun", "Shimla",
+  "Srinagar", "Jammu", "Amritsar", "Ludhiana", "Jalandhar", "Panchkula", "Mohali",
+  "Gurugram", "Faridabad", "Aurangabad", "Nashik", "Vadodara", "Rajkot",
+  "Jodhpur", "Udaipur", "Kota", "Bikaner", "Gwalior", "Jabalpur", "Ujjain", "Sagar",
+  "Raipur", "Bilaspur", "Durgapur", "Asansol", "Siliguri", "Dhanbad", "Bhagalpur",
+  "Muzaffarpur", "Gaya", "Nanded", "Solapur", "Mysore", "Tiruchirappalli", "Coimbatore",
+  "Madurai", "Kochi", "Thiruvananthapuram", "Goa", "Panaji", "Puducherry"
+];
+
+const globalCountries = [
+  "United States", "United Kingdom", "Canada", "Australia", "Germany", "France",
+  "United Arab Emirates", "Saudi Arabia", "Singapore", "Malaysia", "Indonesia",
+  "Philippines", "South Africa", "Nigeria", "Kenya", "Tanzania", "Uganda", "Rwanda",
+  "Egypt", "Morocco", "Turkey", "Russia", "Japan", "South Korea", "China", "Hong Kong",
+  "Brazil", "Argentina", "Mexico", "New Zealand", "Ireland", "Netherlands", "Italy",
+  "Spain", "Portugal", "Sweden", "Norway", "Denmark", "Finland", "Switzerland", "Austria"
+];
+
+// ============================================
+// UTILITY FUNCTIONS
 // ============================================
 
 const formatSize = (bytes) => {
@@ -219,7 +249,10 @@ const CompressionHistory = ({ history, onReuse }) => {
   );
 };
 
-// Update SizeComparison to show more details
+// ============================================
+// SIZE COMPARISON
+// ============================================
+
 const SizeComparison = ({ original, compressed, savedPercent, pages }) => {
   const maxSize = Math.max(original, compressed);
   const savedBytes = original - compressed;
@@ -425,162 +458,157 @@ const PDFCompressor = () => {
     }
   };
 
- // In PDFCompressor.jsx - Update the handleSingleSubmit function
-
-const handleSingleSubmit = async () => {
-  setLoading(true);
-  setProgress(0);
-  setProgressStatus('Starting compression...');
-  
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('is_premium', isPremium);
-  formData.append('options', JSON.stringify(compressionOptions));
-  formData.append('batch_mode', 'false'); // ✅ Single file - no limit
-  
-  try {
-    setProgress(30);
-    setProgressStatus('Compressing PDF...');
-    
-    const response = await api.compressPdf(formData);
-    
-    setProgress(90);
-    setProgressStatus('Finalizing...');
-    
-    if (response.data.success) {
-      setResult(response.data);
-      setUsageInfo({
-        used: response.data.usage_count,
-        remaining: response.data.remaining_free,
-        isPremium: response.data.is_premium,
-        isBatch: response.data.is_batch,
-        batchRemaining: response.data.batch_remaining
-      });
-      
-      saveToHistory(file.name, 'completed', response.data);
-      
-      setProgress(100);
-      setProgressStatus('✅ Compression complete!');
-      toast.success(`✅ PDF compressed! Saved ${response.data.saved_percentage}%`);
-      
-      if (isPremium) {
-        setTimeout(() => downloadFile(), 1000);
-      }
-    }
-  } catch (error) {
+  const handleSingleSubmit = async () => {
+    setLoading(true);
     setProgress(0);
-    setProgressStatus('❌ Compression failed');
-    if (error.response?.data?.limit_reached) {
-      const limitType = error.response.data.limit_type;
-      if (limitType === 'batch') {
-        toast.error('Batch compression limit reached! Free users get 3 batch compressions per day. Upgrade to premium for unlimited.');
-      } else {
-        toast.error('Free limit reached! Upgrade to premium for unlimited compressions.');
-      }
-      setUsageInfo({
-        used: error.response.data.usage_count,
-        remaining: 0,
-        isPremium: false
-      });
-      setShowPaymentModal(true);
-    } else {
-      toast.error(error.response?.data?.error || 'Failed to compress PDF');
-    }
-  } finally {
-    setLoading(false);
-    setTimeout(() => setProgress(0), 3000);
-  }
-};
-
-// Update handleBatchSubmit function
-const handleBatchSubmit = async () => {
-  setLoading(true);
-  setProgress(0);
-  setProgressStatus('Starting batch compression...');
-  setConversionResults([]);
-
-  // ✅ Check batch limit locally first
-  if (!isPremium) {
-    const today = new Date().toDateString();
-    const batchUsage = JSON.parse(localStorage.getItem('batchPdfCompressor') || '{"date":"","count":0}');
-    if (batchUsage.date === today && batchUsage.count >= 3) {
-      toast.error('Batch compression limit reached! Free users get 3 batch compressions per day. Upgrade to premium for unlimited.');
-      setShowPaymentModal(true);
-      setLoading(false);
-      return;
-    }
-  }
-
-  const results = [];
-  const total = files.length;
-
-  for (let i = 0; i < files.length; i++) {
-    const currentFile = files[i];
-    setProgressStatus(`Compressing ${i + 1} of ${total}: ${currentFile.name}`);
+    setProgressStatus('Starting compression...');
     
     const formData = new FormData();
-    formData.append('file', currentFile);
+    formData.append('file', file);
     formData.append('is_premium', isPremium);
     formData.append('options', JSON.stringify(compressionOptions));
-    formData.append('batch_mode', 'true'); // ✅ Batch mode
-
+    formData.append('batch_mode', 'false');
+    
     try {
+      setProgress(30);
+      setProgressStatus('Compressing PDF...');
+      
       const response = await api.compressPdf(formData);
       
+      setProgress(90);
+      setProgressStatus('Finalizing...');
+      
       if (response.data.success) {
-        results.push({
-          filename: currentFile.name,
-          result: response.data,
-          success: true
+        setResult(response.data);
+        setUsageInfo({
+          used: response.data.usage_count,
+          remaining: response.data.remaining_free,
+          isPremium: response.data.is_premium,
+          isBatch: response.data.is_batch,
+          batchRemaining: response.data.batch_remaining
         });
-        saveToHistory(currentFile.name, 'completed', response.data);
+        
+        saveToHistory(file.name, 'completed', response.data);
+        
+        setProgress(100);
+        setProgressStatus('✅ Compression complete!');
+        toast.success(`✅ PDF compressed! Saved ${response.data.saved_percentage}%`);
+        
+        if (isPremium) {
+          setTimeout(() => downloadFile(), 1000);
+        }
+      }
+    } catch (error) {
+      setProgress(0);
+      setProgressStatus('❌ Compression failed');
+      if (error.response?.data?.limit_reached) {
+        const limitType = error.response.data.limit_type;
+        if (limitType === 'batch') {
+          toast.error('Batch compression limit reached! Free users get 3 batch compressions per day. Upgrade to premium for unlimited.');
+        } else {
+          toast.error('Free limit reached! Upgrade to premium for unlimited compressions.');
+        }
+        setUsageInfo({
+          used: error.response.data.usage_count,
+          remaining: 0,
+          isPremium: false
+        });
+        setShowPaymentModal(true);
       } else {
+        toast.error(error.response?.data?.error || 'Failed to compress PDF');
+      }
+    } finally {
+      setLoading(false);
+      setTimeout(() => setProgress(0), 3000);
+    }
+  };
+
+  const handleBatchSubmit = async () => {
+    setLoading(true);
+    setProgress(0);
+    setProgressStatus('Starting batch compression...');
+    setConversionResults([]);
+
+    if (!isPremium) {
+      const today = new Date().toDateString();
+      const batchUsage = JSON.parse(localStorage.getItem('batchPdfCompressor') || '{"date":"","count":0}');
+      if (batchUsage.date === today && batchUsage.count >= 3) {
+        toast.error('Batch compression limit reached! Free users get 3 batch compressions per day. Upgrade to premium for unlimited.');
+        setShowPaymentModal(true);
+        setLoading(false);
+        return;
+      }
+    }
+
+    const results = [];
+    const total = files.length;
+
+    for (let i = 0; i < files.length; i++) {
+      const currentFile = files[i];
+      setProgressStatus(`Compressing ${i + 1} of ${total}: ${currentFile.name}`);
+      
+      const formData = new FormData();
+      formData.append('file', currentFile);
+      formData.append('is_premium', isPremium);
+      formData.append('options', JSON.stringify(compressionOptions));
+      formData.append('batch_mode', 'true');
+
+      try {
+        const response = await api.compressPdf(formData);
+        
+        if (response.data.success) {
+          results.push({
+            filename: currentFile.name,
+            result: response.data,
+            success: true
+          });
+          saveToHistory(currentFile.name, 'completed', response.data);
+        } else {
+          results.push({
+            filename: currentFile.name,
+            error: response.data.error || 'Compression failed',
+            success: false
+          });
+        }
+      } catch (error) {
         results.push({
           filename: currentFile.name,
-          error: response.data.error || 'Compression failed',
+          error: error.response?.data?.error || 'Compression failed',
           success: false
         });
       }
-    } catch (error) {
-      results.push({
-        filename: currentFile.name,
-        error: error.response?.data?.error || 'Compression failed',
-        success: false
-      });
+
+      setProgress(((i + 1) / total) * 100);
     }
 
-    setProgress(((i + 1) / total) * 100);
-  }
-
-  setConversionResults(results);
-  setProgress(100);
-  
-  // Update batch usage in localStorage
-  if (!isPremium) {
-    const today = new Date().toDateString();
-    const batchUsage = JSON.parse(localStorage.getItem('batchPdfCompressor') || '{"date":"","count":0}');
-    if (batchUsage.date === today) {
-      batchUsage.count += 1;
-    } else {
-      batchUsage.date = today;
-      batchUsage.count = 1;
+    setConversionResults(results);
+    setProgress(100);
+    
+    if (!isPremium) {
+      const today = new Date().toDateString();
+      const batchUsage = JSON.parse(localStorage.getItem('batchPdfCompressor') || '{"date":"","count":0}');
+      if (batchUsage.date === today) {
+        batchUsage.count += 1;
+      } else {
+        batchUsage.date = today;
+        batchUsage.count = 1;
+      }
+      localStorage.setItem('batchPdfCompressor', JSON.stringify(batchUsage));
     }
-    localStorage.setItem('batchPdfCompressor', JSON.stringify(batchUsage));
-  }
-  
-  setProgressStatus(`✅ Batch compression complete! (${results.filter(r => r.success).length}/${total} succeeded)`);
-  
-  const successCount = results.filter(r => r.success).length;
-  if (successCount > 0) {
-    toast.success(`✅ ${successCount} files compressed successfully!`);
-  }
-  if (successCount < total) {
-    toast.warning(`⚠️ ${total - successCount} files failed to compress`);
-  }
+    
+    setProgressStatus(`✅ Batch compression complete! (${results.filter(r => r.success).length}/${total} succeeded)`);
+    
+    const successCount = results.filter(r => r.success).length;
+    if (successCount > 0) {
+      toast.success(`✅ ${successCount} files compressed successfully!`);
+    }
+    if (successCount < total) {
+      toast.warning(`⚠️ ${total - successCount} files failed to compress`);
+    }
 
-  setLoading(false);
-  setTimeout(() => setProgress(0), 3000);
-};
+    setLoading(false);
+    setTimeout(() => setProgress(0), 3000);
+  };
 
   const downloadFile = () => {
     if (!result) return;
@@ -628,449 +656,614 @@ const handleBatchSubmit = async () => {
     setShowPaymentModal(true);
   };
 
-  // REMOVED: formatSize is now at the top level, so we don't need it here
-
   const reuseHistory = (item) => {
     toast.success('Reusing previous compression settings');
     setFile(null);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8">
-      <div className="container mx-auto px-4 max-w-6xl">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 bg-orange-100 text-orange-700 px-4 py-2 rounded-full text-sm font-medium mb-4">
-            <FaCompress className="text-orange-500" />
-            PDF Compressor
-          </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            PDF <span className="gradient-text">Compressor</span>
-          </h1>
-          <p className="text-gray-600 max-w-2xl mx-auto">
-            Compress PDF files to reduce size while maintaining quality. Great for email attachments.
-          </p>
-          <div className="flex flex-wrap justify-center gap-3 mt-3">
-  <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm">
-    <FaStar className="text-yellow-400" /> Free: Unlimited Single
-  </span>
-  <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-sm">
-    <FaUpload className="text-orange-500" /> Free: 3 Batch/day
-  </span>
-  <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">
-    <FaCrown className="text-yellow-500" /> Premium: Unlimited
-  </span>
-  <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm">
-    <FaChartLine className="text-purple-500" /> Up to 70% Reduction
-  </span>
-</div>
-        </div>
+    <>
+      {/* ============================================ */}
+      {/* SEO + AEO + GEO Helmet Implementation */}
+      {/* ============================================ */}
+      <Helmet>
+        <title>Free PDF Compressor - Compress PDF Files Online | Krynova Technologies</title>
+        <meta name="description" content="Compress PDF files online for free with Krynova Technologies. Reduce PDF size by up to 70% while maintaining quality. Free users get unlimited single compressions and 3 batch compressions per day." />
+        <meta name="keywords" content="PDF compressor, compress PDF online, reduce PDF size, free PDF compression, PDF optimiser, Krynova PDF compressor, compress PDF India, best PDF compression tool, reduce PDF file size" />
+        <link rel="canonical" href={`${siteUrl}/tools/pdf-compressor`} />
+        
+        {/* GEO Meta Tags */}
+        <meta name="geo.region" content="IN-UP" />
+        <meta name="geo.placename" content="Agra" />
+        <meta name="geo.position" content="27.1767;78.0081" />
+        <meta name="ICBM" content="27.1767, 78.0081" />
+        <meta name="areaServed" content={indianCities.join(", ")} />
+        <meta name="serviceArea" content={`India, ${globalCountries.join(", ")}, Worldwide`} />
+        <meta name="targetGeo" content="India" />
+        
+        {/* AEO Meta Tags */}
+        <meta name="question" content="How to compress PDF files for free in India?" />
+        <meta name="answer" content="Krynova Technologies offers a free PDF compressor in India. Upload your PDF file, choose compression level (1-9), and download your compressed PDF instantly. Free users get unlimited single compressions and 3 batch compressions per day with up to 70% size reduction." />
+        <meta name="faq" content="true" />
+        <meta name="speakable" content="true" />
+        <meta name="voice-search" content="true" />
+        
+        {/* Open Graph */}
+        <meta property="og:title" content="Free PDF Compressor - Compress PDF Files Online | Krynova Technologies" />
+        <meta property="og:description" content="Compress PDF files online for free. Reduce PDF size by up to 70% while maintaining quality." />
+        <meta property="og:url" content={`${siteUrl}/tools/pdf-compressor`} />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Krynova Technologies" />
+        
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Free PDF Compressor - Compress PDF Files Online" />
+        <meta name="twitter:description" content="Compress PDF files online for free with Krynova Technologies. Reduce size by up to 70%." />
+      </Helmet>
 
-       
+      {/* ============================================ */}
+      {/* Speakable Content for Voice Assistants */}
+      {/* ============================================ */}
+      <div className="speakable sr-only" aria-hidden="true">
+        <h2>Free PDF Compressor - Krynova Technologies</h2>
+        <p>Compress PDF files online for free. Reduce PDF file size while maintaining quality.</p>
+        <ul>
+          <li>Free PDF compression - Unlimited single compressions</li>
+          <li>3 batch compressions per day for free users</li>
+          <li>Reduce file size by up to 70%</li>
+          <li>Adjustable compression level (1-9)</li>
+          <li>Multiple compression modes - Balanced, Size, Quality</li>
+          <li>Batch compression for multiple PDFs (Premium)</li>
+          <li>Advanced options - Remove metadata, optimize images</li>
+          <li>Secure and encrypted file processing</li>
+        </ul>
+        <p>Krynova Technologies is the best PDF compressor in India, serving cities like Agra, Delhi, Mumbai, Bengaluru, Chennai, Hyderabad, and all across India.</p>
+      </div>
 
-{usageInfo && (
-  <div className={`mb-6 p-4 rounded-lg flex flex-wrap items-center justify-between ${
-    usageInfo.isPremium ? 'bg-green-50 border border-green-200' :
-    usageInfo.remaining > 0 ? 'bg-blue-50 border border-blue-200' : 'bg-yellow-50 border border-yellow-200'
-  }`}>
-    <div className="text-sm flex flex-wrap items-center gap-2">
-      {usageInfo.isPremium ? (
-        <><FaCrown className="text-yellow-500" /> <span className="font-semibold">Premium:</span> Unlimited compressions</>
-      ) : (
-        <>
-          <FaClock className="text-blue-500" />
-          <span>Single files: Unlimited</span>
-          <span className="text-gray-400">|</span>
-          <span>Batch: {usageInfo.batchRemaining !== undefined ? usageInfo.batchRemaining : 3} left today</span>
-        </>
-      )}
-    </div>
-    {!usageInfo.isPremium && (
-      <button
-        onClick={handleUpgrade}
-        className="px-4 py-2 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition flex items-center gap-2"
-      >
-        <FaCrown /> Upgrade Now
-      </button>
-    )}
-  </div>
-)}
+      {/* ============================================ */}
+      {/* Schema.org WebApplication */}
+      {/* ============================================ */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebApplication",
+          "name": "PDF Compressor",
+          "description": "Free online PDF compressor. Reduce PDF file size by up to 70% while maintaining quality. Supports unlimited single compressions and 3 batch compressions per day.",
+          "url": `${siteUrl}/tools/pdf-compressor`,
+          "applicationCategory": "Utilities",
+          "operatingSystem": "All",
+          "browserRequirements": "Requires JavaScript",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "INR",
+            "description": "Free PDF compressor with unlimited single compressions. Premium upgrade available for unlimited batch compressions."
+          },
+          "provider": {
+            "@type": "Organization",
+            "name": "Krynova Technologies",
+            "url": siteUrl,
+            "address": {
+              "@type": "PostalAddress",
+              "addressLocality": "Agra",
+              "addressRegion": "Uttar Pradesh",
+              "addressCountry": "India"
+            }
+          },
+          "areaServed": indianCities,
+          "availableLanguage": ["English", "Hindi", "Marathi", "Bengali", "Tamil", "Telugu", "Kannada", "Malayalam", "Gujarati", "Punjabi", "Urdu"],
+          "potentialAction": {
+            "@type": "CreateAction",
+            "target": `${siteUrl}/tools/pdf-compressor`,
+            "result": {
+              "@type": "DigitalDocument",
+              "contentUrl": `${siteUrl}/api/compress-pdf`
+            }
+          }
+        })}
+      </script>
 
-        {/* Progress Bar */}
-        {loading && progress > 0 && (
-          <div className="mb-6 bg-white rounded-xl p-4 border border-orange-200 shadow-lg">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                <FaSpinner className="animate-spin text-orange-500" />
-                {progressStatus}
+      {/* ============================================ */}
+      {/* FAQ Schema */}
+      {/* ============================================ */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "How to compress PDF files for free?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "To compress PDF files for free, visit Krynova Technologies' PDF Compressor, upload your PDF file, adjust the compression level (1-9), choose your compression mode, and click Compress. Download your compressed PDF instantly. Free users get unlimited single compressions and 3 batch compressions per day."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How much can I reduce PDF file size?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Krynova Technologies' PDF compressor can reduce file size by up to 70% while maintaining quality. The actual reduction depends on the content of your PDF and the compression level you choose."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What compression modes are available?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Three compression modes are available: Balanced (quality + size), Maximum Size Reduction, and Preserve Quality. Premium users can also access custom settings with advanced options like image quality adjustment and resolution control."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What is the best PDF compressor in India?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Krynova Technologies offers one of the best free PDF compressors in India. It supports multiple compression modes, adjustable levels, batch processing, and serves users across all major Indian cities including Agra, Delhi, Mumbai, Bengaluru, Chennai, and Hyderabad."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Is it safe to compress PDF files online?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes, Krynova Technologies ensures secure PDF compression with encrypted file processing. All uploaded files are automatically deleted after compression, and your documents are never shared with third parties."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Can I compress multiple PDFs at once?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes, batch compression is available for Premium users. Free users get 3 batch compressions per day. You can compress multiple PDF files at once with the same settings and download them individually."
+              }
+            }
+          ]
+        })}
+      </script>
+
+      {/* ============================================ */}
+      {/* Main Component */}
+      {/* ============================================ */}
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8">
+        <div className="container mx-auto px-4 max-w-6xl">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 bg-orange-100 text-orange-700 px-4 py-2 rounded-full text-sm font-medium mb-4">
+              <FaCompress className="text-orange-500" />
+              Free PDF Compressor
+            </div>
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">
+              PDF <span className="gradient-text">Compressor</span>
+            </h1>
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              Compress PDF files to reduce size while maintaining quality. Perfect for email attachments and document sharing.
+            </p>
+            <div className="flex flex-wrap justify-center gap-3 mt-3">
+              <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm">
+                <FaStar className="text-yellow-400" /> Free: Unlimited Single
               </span>
-              <span className="text-sm font-semibold text-orange-600">{Math.round(progress)}%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-              <div 
-                className="bg-gradient-to-r from-orange-500 to-amber-600 h-2.5 rounded-full transition-all duration-500"
-                style={{ width: `${progress}%` }}
-              />
+              <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-sm">
+                <FaUpload className="text-orange-500" /> Free: 3 Batch/day
+              </span>
+              <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">
+                <FaCrown className="text-yellow-500" /> Premium: Unlimited
+              </span>
+              <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm">
+                <FaChartLine className="text-purple-500" /> Up to 70% Reduction
+              </span>
+              <span className="inline-flex items-center gap-1 bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-sm">
+                <FaGlobe className="text-indigo-500" /> Serving 60+ Indian Cities
+              </span>
             </div>
           </div>
-        )}
 
-        {/* Main Card */}
-        <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
-          {/* Batch Mode Toggle */}
-          <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={batchMode}
-                  onChange={(e) => {
-                    setBatchMode(e.target.checked);
-                    if (e.target.checked) {
-                      setFile(null);
-                      setResult(null);
-                    }
-                  }}
-                  className="w-4 h-4 text-orange-600 rounded focus:ring-orange-500"
-                />
-                <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                  <FaUpload className="text-orange-500" /> Batch Mode
-                </label>
+          {/* Usage Info */}
+          {usageInfo && (
+            <div className={`mb-6 p-4 rounded-lg flex flex-wrap items-center justify-between ${
+              usageInfo.isPremium ? 'bg-green-50 border border-green-200' :
+              usageInfo.remaining > 0 ? 'bg-blue-50 border border-blue-200' : 'bg-yellow-50 border border-yellow-200'
+            }`}>
+              <div className="text-sm flex flex-wrap items-center gap-2">
+                {usageInfo.isPremium ? (
+                  <><FaCrown className="text-yellow-500" /> <span className="font-semibold">✨ Premium:</span> Unlimited compressions</>
+                ) : (
+                  <>
+                    <FaClock className="text-blue-500" />
+                    <span>Single files: Unlimited</span>
+                    <span className="text-gray-400">|</span>
+                    <span>Batch: {usageInfo.batchRemaining !== undefined ? usageInfo.batchRemaining : 3} left today</span>
+                  </>
+                )}
               </div>
-              {batchMode && isPremium && (
-                <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full">
-                  Unlimited
-                </span>
+              {!usageInfo.isPremium && (
+                <button
+                  onClick={handleUpgrade}
+                  className="px-4 py-2 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition flex items-center gap-2"
+                >
+                  <FaCrown /> Upgrade Now
+                </button>
               )}
             </div>
-            {batchMode && !isPremium && (
-              <button
-                onClick={handleUpgrade}
-                className="text-xs text-orange-600 hover:text-orange-800 transition flex items-center gap-1"
+          )}
+
+          {/* Progress Bar */}
+          {loading && progress > 0 && (
+            <div className="mb-6 bg-white rounded-xl p-4 border border-orange-200 shadow-lg">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <FaSpinner className="animate-spin text-orange-500" />
+                  {progressStatus}
+                </span>
+                <span className="text-sm font-semibold text-orange-600">{Math.round(progress)}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                <div 
+                  className="bg-gradient-to-r from-orange-500 to-amber-600 h-2.5 rounded-full transition-all duration-500"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Main Card */}
+          <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
+            {/* Batch Mode Toggle */}
+            <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={batchMode}
+                    onChange={(e) => {
+                      setBatchMode(e.target.checked);
+                      if (e.target.checked) {
+                        setFile(null);
+                        setResult(null);
+                      }
+                    }}
+                    className="w-4 h-4 text-orange-600 rounded focus:ring-orange-500"
+                  />
+                  <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <FaUpload className="text-orange-500" /> Batch Mode
+                  </label>
+                </div>
+                {batchMode && isPremium && (
+                  <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full">
+                    Unlimited
+                  </span>
+                )}
+              </div>
+              {batchMode && !isPremium && (
+                <button
+                  onClick={handleUpgrade}
+                  className="text-xs text-orange-600 hover:text-orange-800 transition flex items-center gap-1"
+                >
+                  <FaCrown className="text-yellow-500" /> Upgrade for Batch
+                </button>
+              )}
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* File Upload Area */}
+              <div 
+                className={`border-2 border-dashed rounded-xl p-8 text-center transition ${
+                  dragActive ? 'border-orange-500 bg-orange-50' : 'border-gray-300 hover:border-orange-400'
+                }`}
+                onDragEnter={handleDrag}
+                onDragLeave={handleDrag}
+                onDragOver={handleDrag}
+                onDrop={handleDrop}
               >
-                <FaCrown className="text-yellow-500" /> Upgrade for Batch
+                {!batchMode && file ? (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-red-50 rounded-lg flex items-center justify-center text-red-500 text-2xl">
+                        <FaFilePdf />
+                      </div>
+                      <div className="text-left">
+                        <p className="font-medium text-gray-900">{file.name}</p>
+                        <p className="text-sm text-gray-500">{formatSize(file.size)}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={clearFile}
+                      className="text-red-500 hover:text-red-700 transition p-2 hover:bg-red-50 rounded-lg"
+                    >
+                      <FaTrash />
+                    </button>
+                  </div>
+                ) : batchMode && files.length > 0 ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-center gap-2 text-green-600">
+                      <FaCheckCircle className="text-2xl" />
+                      <span className="font-medium">{files.length} PDF(s) added to queue</span>
+                    </div>
+                    <div className="max-h-32 overflow-y-auto space-y-1">
+                      {files.map((f, idx) => (
+                        <div key={idx} className="flex items-center justify-between text-sm bg-gray-50 p-2 rounded">
+                          <span className="truncate">{f.name}</span>
+                          <span className="text-gray-400 text-xs ml-2">{formatSize(f.size)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => document.getElementById('batch-upload-input')?.click()}
+                      className="text-sm text-orange-600 hover:text-orange-800 transition"
+                    >
+                      <FaPlus className="inline mr-1" /> Add more files
+                    </button>
+                    <input
+                      id="batch-upload-input"
+                      type="file"
+                      accept=".pdf"
+                      multiple
+                      onChange={handleBatchFileChange}
+                      className="hidden"
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="text-6xl text-orange-400 mx-auto">
+                      <FaCompress className="mx-auto" />
+                    </div>
+                    <div>
+                      <p className="text-gray-600 text-lg">
+                        {batchMode ? 'Drop PDFs here for batch compression' : 'Drop your PDF here'}
+                      </p>
+                      <p className="text-sm text-gray-400">or click to browse</p>
+                    </div>
+                    <p className="text-xs text-gray-400">
+                      {batchMode ? 'Multiple PDFs up to 25MB each' : 'Supports PDF up to 25MB'}
+                    </p>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".pdf"
+                      onChange={handleFileChange}
+                      className="hidden"
+                      id="pdf-upload"
+                      multiple={batchMode}
+                    />
+                    <label
+                      htmlFor="pdf-upload"
+                      className="inline-block px-6 py-2.5 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-lg hover:shadow-lg transition cursor-pointer"
+                    >
+                      {batchMode ? 'Choose PDF Files' : 'Choose PDF File'}
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              {/* Compression Options */}
+              <CompressionOptions 
+                options={compressionOptions}
+                onChange={setCompressionOptions}
+              />
+
+              {/* Premium Toggle */}
+              <div className="flex items-center gap-3 pt-2">
+                <input
+                  type="checkbox"
+                  checked={isPremium}
+                  onChange={(e) => setIsPremium(e.target.checked)}
+                  className="w-4 h-4 text-orange-600 rounded focus:ring-orange-500"
+                />
+                <label className="text-sm text-gray-700 flex items-center gap-1">
+                  <FaCrown className="text-yellow-500" /> Premium Mode (Unlimited + Batch)
+                </label>
+                {!isPremium && (
+                  <span className="text-xs text-gray-400 ml-2">
+                    (Free: 3/day)
+                  </span>
+                )}
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading || (batchMode ? files.length === 0 : !file)}
+                className="w-full bg-gradient-to-r from-orange-600 to-amber-600 text-white py-3.5 rounded-xl font-semibold hover:shadow-lg hover:shadow-orange-500/30 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-lg"
+              >
+                {loading ? <FaSpinner className="animate-spin" /> : <FaCompress />}
+                {loading 
+                  ? batchMode ? `Compressing... ${Math.round(progress)}%` : 'Compressing...'
+                  : batchMode ? `Compress ${files.length} Files` : 'Compress PDF'
+                }
               </button>
+            </form>
+
+            {/* Batch Results */}
+            {conversionResults.length > 0 && !loading && (
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-semibold text-gray-700 flex items-center gap-2">
+                    <FaCheckCircle className="text-green-500" /> Compression Results
+                  </h4>
+                  {conversionResults.filter(r => r.success).length > 0 && (
+                    <button
+                      onClick={downloadAllBatch}
+                      className="text-sm bg-orange-500 text-white px-4 py-1.5 rounded-lg hover:bg-orange-600 transition flex items-center gap-2"
+                    >
+                      <FaDownload /> Download All
+                    </button>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  {conversionResults.map((item, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center gap-3 min-w-0">
+                        {item.success ? (
+                          <FaCheckCircle className="text-green-500 flex-shrink-0" />
+                        ) : (
+                          <FaTimes className="text-red-500 flex-shrink-0" />
+                        )}
+                        <span className="text-sm truncate">{item.filename}</span>
+                        {item.success && (
+                          <span className="text-xs text-green-500 flex-shrink-0">
+                            -{item.result.saved_percentage}%
+                          </span>
+                        )}
+                      </div>
+                      {item.success && (
+                        <button
+                          onClick={() => downloadBatchFile(item.result, item.filename)}
+                          className="text-orange-500 hover:text-orange-700 transition text-sm flex items-center gap-1 flex-shrink-0"
+                        >
+                          <FaDownload /> Download
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Single Result */}
+            {result && !batchMode && (
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <div className="bg-gradient-to-r from-orange-50 to-amber-50 p-4 rounded-xl border border-orange-200">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center text-white">
+                      <FaCheckCircle />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-orange-800">✅ Compression Complete!</p>
+                      <p className="text-sm text-orange-600">Saved {result.saved_percentage}% of file size</p>
+                    </div>
+                  </div>
+                  
+                  {/* Size Comparison */}
+                  <SizeComparison 
+                    original={result.original_size}
+                    compressed={result.compressed_size}
+                    savedPercent={result.saved_percentage}
+                  />
+
+                  <div className="flex flex-wrap gap-3 mt-4">
+                    <button
+                      onClick={downloadFile}
+                      className="flex-1 bg-orange-500 text-white py-2.5 rounded-lg hover:bg-orange-600 transition flex items-center justify-center gap-2 font-semibold shadow-md hover:shadow-lg"
+                    >
+                      <FaDownload /> Download Compressed PDF
+                    </button>
+                    <button
+                      onClick={() => {
+                        clearFile();
+                        if (batchMode) {
+                          clearAllBatchFiles();
+                        }
+                      }}
+                      className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg hover:bg-gray-300 transition flex items-center justify-center gap-2 font-semibold"
+                    >
+                      <FaPlus /> Compress Another
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* File Upload Area */}
-            <div 
-              className={`border-2 border-dashed rounded-xl p-8 text-center transition ${
-                dragActive ? 'border-orange-500 bg-orange-50' : 'border-gray-300 hover:border-orange-400'
-              }`}
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-            >
-              {!batchMode && file ? (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-red-50 rounded-lg flex items-center justify-center text-red-500 text-2xl">
-                      <FaFilePdf />
-                    </div>
-                    <div className="text-left">
-                      <p className="font-medium text-gray-900">{file.name}</p>
-                      <p className="text-sm text-gray-500">{formatSize(file.size)}</p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={clearFile}
-                    className="text-red-500 hover:text-red-700 transition p-2 hover:bg-red-50 rounded-lg"
-                  >
-                    <FaTrash />
-                  </button>
-                </div>
-              ) : batchMode && files.length > 0 ? (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-center gap-2 text-green-600">
-                    <FaCheckCircle className="text-2xl" />
-                    <span className="font-medium">{files.length} PDF(s) added to queue</span>
-                  </div>
-                  <div className="max-h-32 overflow-y-auto space-y-1">
-                    {files.map((f, idx) => (
-                      <div key={idx} className="flex items-center justify-between text-sm bg-gray-50 p-2 rounded">
-                        <span className="truncate">{f.name}</span>
-                        <span className="text-gray-400 text-xs ml-2">{formatSize(f.size)}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => document.getElementById('batch-upload-input')?.click()}
-                    className="text-sm text-orange-600 hover:text-orange-800 transition"
-                  >
-                    <FaPlus className="inline mr-1" /> Add more files
-                  </button>
-                  <input
-                    id="batch-upload-input"
-                    type="file"
-                    accept=".pdf"
-                    multiple
-                    onChange={handleBatchFileChange}
-                    className="hidden"
-                  />
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="text-6xl text-orange-400 mx-auto">
-                    <FaCompress className="mx-auto" />
-                  </div>
-                  <div>
-                    <p className="text-gray-600 text-lg">
-                      {batchMode ? 'Drop PDFs here for batch compression' : 'Drop your PDF here'}
-                    </p>
-                    <p className="text-sm text-gray-400">or click to browse</p>
-                  </div>
-                  <p className="text-xs text-gray-400">
-                    {batchMode ? 'Multiple PDFs up to 25MB each' : 'Supports PDF up to 25MB'}
-                  </p>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".pdf"
-                    onChange={handleFileChange}
-                    className="hidden"
-                    id="pdf-upload"
-                    multiple={batchMode}
-                  />
-                  <label
-                    htmlFor="pdf-upload"
-                    className="inline-block px-6 py-2.5 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-lg hover:shadow-lg transition cursor-pointer"
-                  >
-                    {batchMode ? 'Choose PDF Files' : 'Choose PDF File'}
-                  </label>
-                </div>
-              )}
-            </div>
-
-            {/* Compression Options */}
-            <CompressionOptions 
-              options={compressionOptions}
-              onChange={setCompressionOptions}
+          {/* Compression History */}
+          <div className="mt-6">
+            <CompressionHistory 
+              history={conversionHistory} 
+              onReuse={reuseHistory}
             />
+          </div>
 
-            {/* Premium Toggle */}
-            <div className="flex items-center gap-3 pt-2">
-              <input
-                type="checkbox"
-                checked={isPremium}
-                onChange={(e) => setIsPremium(e.target.checked)}
-                className="w-4 h-4 text-orange-600 rounded focus:ring-orange-500"
-              />
-              <label className="text-sm text-gray-700 flex items-center gap-1">
-                <FaCrown className="text-yellow-500" /> Premium Mode (Unlimited + Batch)
-              </label>
-              {!isPremium && (
-                <span className="text-xs text-gray-400 ml-2">
-                  (Free: 3/day)
-                </span>
-              )}
+          {/* Features Section */}
+          <div className="mt-8 grid md:grid-cols-4 gap-4">
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
+              <FaChartLine className="text-3xl text-orange-500 mx-auto mb-2" />
+              <h4 className="font-semibold text-gray-900">High Compression</h4>
+              <p className="text-xs text-gray-500">Reduce file size by up to 70%</p>
             </div>
-
-            <button
-              type="submit"
-              disabled={loading || (batchMode ? files.length === 0 : !file)}
-              className="w-full bg-gradient-to-r from-orange-600 to-amber-600 text-white py-3.5 rounded-xl font-semibold hover:shadow-lg hover:shadow-orange-500/30 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-lg"
-            >
-              {loading ? <FaSpinner className="animate-spin" /> : <FaCompress />}
-              {loading 
-                ? batchMode ? `Compressing... ${Math.round(progress)}%` : 'Compressing...'
-                : batchMode ? `Compress ${files.length} Files` : 'Compress PDF'
-              }
-            </button>
-          </form>
-
-          {/* Batch Results */}
-          {conversionResults.length > 0 && !loading && (
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="font-semibold text-gray-700 flex items-center gap-2">
-                  <FaCheckCircle className="text-green-500" /> Compression Results
-                </h4>
-                {conversionResults.filter(r => r.success).length > 0 && (
-                  <button
-                    onClick={downloadAllBatch}
-                    className="text-sm bg-orange-500 text-white px-4 py-1.5 rounded-lg hover:bg-orange-600 transition flex items-center gap-2"
-                  >
-                    <FaDownload /> Download All
-                  </button>
-                )}
-              </div>
-              <div className="space-y-2">
-                {conversionResults.map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-3 min-w-0">
-                      {item.success ? (
-                        <FaCheckCircle className="text-green-500 flex-shrink-0" />
-                      ) : (
-                        <FaTimes className="text-red-500 flex-shrink-0" />
-                      )}
-                      <span className="text-sm truncate">{item.filename}</span>
-                      {item.success && (
-                        <span className="text-xs text-green-500 flex-shrink-0">
-                          -{item.result.saved_percentage}%
-                        </span>
-                      )}
-                    </div>
-                    {item.success && (
-                      <button
-                        onClick={() => downloadBatchFile(item.result, item.filename)}
-                        className="text-orange-500 hover:text-orange-700 transition text-sm flex items-center gap-1 flex-shrink-0"
-                      >
-                        <FaDownload /> Download
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
+              <FaShieldAlt className="text-3xl text-orange-500 mx-auto mb-2" />
+              <h4 className="font-semibold text-gray-900">Quality Preserved</h4>
+              <p className="text-xs text-gray-500">Maintain quality while reducing size</p>
             </div>
-          )}
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
+              <FaRocket className="text-3xl text-orange-500 mx-auto mb-2" />
+              <h4 className="font-semibold text-gray-900">Fast Processing</h4>
+              <p className="text-xs text-gray-500">Compress PDFs in seconds</p>
+            </div>
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
+              <FaUpload className="text-3xl text-orange-500 mx-auto mb-2" />
+              <h4 className="font-semibold text-gray-900">Batch Compression</h4>
+              <p className="text-xs text-gray-500">Compress multiple PDFs at once (Premium)</p>
+            </div>
+          </div>
 
-          {/* Single Result */}
-          {result && !batchMode && (
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <div className="bg-gradient-to-r from-orange-50 to-amber-50 p-4 rounded-xl border border-orange-200">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center text-white">
-                    <FaCheckCircle />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-orange-800">✅ Compression Complete!</p>
-                    <p className="text-sm text-orange-600">Saved {result.saved_percentage}% of file size</p>
-                  </div>
-                </div>
-                
-                {/* Size Comparison */}
-                <SizeComparison 
-                  original={result.original_size}
-                  compressed={result.compressed_size}
-                  savedPercent={result.saved_percentage}
-                />
-
-                <div className="flex flex-wrap gap-3 mt-4">
-                  <button
-                    onClick={downloadFile}
-                    className="flex-1 bg-orange-500 text-white py-2.5 rounded-lg hover:bg-orange-600 transition flex items-center justify-center gap-2 font-semibold shadow-md hover:shadow-lg"
-                  >
-                    <FaDownload /> Download Compressed PDF
-                  </button>
-                  <button
-                    onClick={() => {
-                      clearFile();
-                      if (batchMode) {
-                        clearAllBatchFiles();
-                      }
-                    }}
-                    className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg hover:bg-gray-300 transition flex items-center justify-center gap-2 font-semibold"
-                  >
-                    <FaPlus /> Compress Another
-                  </button>
-                </div>
+          {/* Upgrade CTA */}
+          {!isPremium && (
+            <div className="mt-8 bg-gradient-to-r from-orange-600 to-amber-600 rounded-2xl p-6 text-white text-center relative overflow-hidden">
+              <div className="absolute inset-0 opacity-10">
+                <div className="absolute top-0 -right-20 w-64 h-64 bg-white rounded-full blur-3xl"></div>
+                <div className="absolute -bottom-20 -left-20 w-48 h-48 bg-white rounded-full blur-3xl"></div>
+              </div>
+              <div className="relative z-10 max-w-2xl mx-auto">
+                <FaCrown className="text-4xl text-yellow-400 mx-auto mb-3" />
+                <h3 className="text-xl font-bold mb-2">🚀 Unlock Premium Features</h3>
+                <p className="text-orange-100 mb-4">
+                  Get unlimited compressions, batch processing, advanced compression options, and priority support.
+                </p>
+                <button
+                  onClick={handleUpgrade}
+                  className="bg-white text-orange-600 px-8 py-3 rounded-xl font-semibold hover:shadow-lg transition hover:-translate-y-0.5"
+                >
+                  Upgrade Now — ₹499/month
+                </button>
               </div>
             </div>
           )}
         </div>
 
-        {/* Compression History */}
-        <div className="mt-6">
-          <CompressionHistory 
-            history={conversionHistory} 
-            onReuse={reuseHistory}
-          />
-        </div>
+        {/* Payment Modal */}
+        <PaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          userEmail={localStorage.getItem('userEmail') || ''}
+          userId={localStorage.getItem('userId') || ''}
+        />
 
-        {/* Features Section */}
-        <div className="mt-8 grid md:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
-            <FaChartLine className="text-3xl text-orange-500 mx-auto mb-2" />
-            <h4 className="font-semibold text-gray-900">High Compression</h4>
-            <p className="text-xs text-gray-500">Reduce file size by up to 70%</p>
-          </div>
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
-            <FaShieldAlt className="text-3xl text-orange-500 mx-auto mb-2" />
-            <h4 className="font-semibold text-gray-900">Quality Preserved</h4>
-            <p className="text-xs text-gray-500">Maintain quality while reducing size</p>
-          </div>
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
-            <FaRocket className="text-3xl text-orange-500 mx-auto mb-2" />
-            <h4 className="font-semibold text-gray-900">Fast Processing</h4>
-            <p className="text-xs text-gray-500">Compress PDFs in seconds</p>
-          </div>
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
-            <FaUpload className="text-3xl text-orange-500 mx-auto mb-2" />
-            <h4 className="font-semibold text-gray-900">Batch Compression</h4>
-            <p className="text-xs text-gray-500">Compress multiple PDFs at once (Premium)</p>
-          </div>
-        </div>
-
-        {/* Upgrade CTA */}
-        {!isPremium && (
-          <div className="mt-8 bg-gradient-to-r from-orange-600 to-amber-600 rounded-2xl p-6 text-white text-center relative overflow-hidden">
-            <div className="absolute inset-0 opacity-10">
-              <div className="absolute top-0 -right-20 w-64 h-64 bg-white rounded-full blur-3xl"></div>
-              <div className="absolute -bottom-20 -left-20 w-48 h-48 bg-white rounded-full blur-3xl"></div>
-            </div>
-            <div className="relative z-10 max-w-2xl mx-auto">
-              <FaCrown className="text-4xl text-yellow-400 mx-auto mb-3" />
-              <h3 className="text-xl font-bold mb-2">🚀 Unlock Premium Features</h3>
-              <p className="text-orange-100 mb-4">
-                Get unlimited compressions, batch processing, advanced compression options, and priority support.
-              </p>
-              <button
-                onClick={handleUpgrade}
-                className="bg-white text-orange-600 px-8 py-3 rounded-xl font-semibold hover:shadow-lg transition hover:-translate-y-0.5"
-              >
-                Upgrade Now — ₹499/month
-              </button>
-            </div>
-          </div>
-        )}
+        <style dangerouslySetInnerHTML={{ __html: `
+          .gradient-text {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+          }
+          @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+          }
+          .animate-pulse {
+            animation: pulse 1.5s ease-in-out infinite;
+          }
+          input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #f97316;
+            cursor: pointer;
+          }
+          input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #f97316;
+            cursor: pointer;
+            border: none;
+          }
+        `}} />
       </div>
-
-      {/* Payment Modal */}
-      <PaymentModal
-        isOpen={showPaymentModal}
-        onClose={() => setShowPaymentModal(false)}
-        userEmail={localStorage.getItem('userEmail') || ''}
-        userId={localStorage.getItem('userId') || ''}
-      />
-
-      <style dangerouslySetInnerHTML={{ __html: `
-        .gradient-text {
-          background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-        }
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
-        .animate-pulse {
-          animation: pulse 1.5s ease-in-out infinite;
-        }
-        input[type="range"]::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          appearance: none;
-          width: 16px;
-          height: 16px;
-          border-radius: 50%;
-          background: #f97316;
-          cursor: pointer;
-        }
-        input[type="range"]::-moz-range-thumb {
-          width: 16px;
-          height: 16px;
-          border-radius: 50%;
-          background: #f97316;
-          cursor: pointer;
-          border: none;
-        }
-      `}} />
-    </div>
+    </>
   );
 };
 

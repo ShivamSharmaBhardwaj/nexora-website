@@ -1,5 +1,6 @@
 // frontend/src/pages/Contact.jsx
 import React, { useState, useEffect, useRef } from 'react';
+import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
 import { 
   FaEnvelope, FaPhone, FaMapMarkerAlt, FaSpinner, 
@@ -11,7 +12,9 @@ import {
   FaRegSmile, FaRocket, FaBriefcase, FaMoneyBillWave,
   FaCalendarAlt, FaStar, FaLightbulb, FaHandshake,
   FaChartLine, FaUsers, FaCrown, FaBullseye,
-  FaFileAlt, FaVideo, FaPhoneAlt
+  FaFileAlt, FaVideo, FaPhoneAlt,
+  FaMicrophone, FaHeadphones, FaQuestionCircle,
+  FaComments, FaSearchLocation, FaMapPin, FaCity, FaFlag
 } from 'react-icons/fa';
 import { api } from '../utils/api';
 import { 
@@ -202,6 +205,33 @@ const Contact = () => {
   const [selectedRequirements, setSelectedRequirements] = useState([]);
   const formRef = useRef(null);
 
+  // ✅ Get current URL for canonical
+  const siteUrl = window.location.origin;
+
+  // ✅ All major Indian cities for GEO targeting
+  const indianCities = [
+    "Agra", "Delhi", "Mumbai", "Bangalore", "Chennai", "Hyderabad", 
+    "Pune", "Kolkata", "Ahmedabad", "Surat", "Jaipur", "Lucknow", 
+    "Kanpur", "Nagpur", "Indore", "Thane", "Bhopal", "Visakhapatnam", 
+    "Patna", "Vadodara", "Ludhiana", "Nashik", "Faridabad", "Meerut", 
+    "Rajkot", "Varanasi", "Srinagar", "Aurangabad", "Dhanbad", "Amritsar", 
+    "Navi Mumbai", "Allahabad", "Ranchi", "Howrah", "Coimbatore", "Jabalpur", 
+    "Gwalior", "Vijayawada", "Jodhpur", "Madurai", "Raipur", "Kota", 
+    "Chandigarh", "Guwahati", "Solapur", "Hubballi-Dharwad", "Mysore", 
+    "Tiruchirappalli", "Bareilly", "Aligarh", "Moradabad", "Saharanpur", 
+    "Dehradun", "Noida", "Gurugram", "Ghaziabad", "Faridabad"
+  ];
+
+  // ✅ Global countries for international reach
+  const globalCountries = [
+    "USA", "UK", "Canada", "Australia", "UAE", "Singapore", 
+    "Germany", "France", "Japan", "South Korea", "Netherlands", 
+    "Sweden", "Norway", "Denmark", "Finland", "New Zealand", 
+    "Ireland", "Malaysia", "Thailand", "Vietnam", "Indonesia", 
+    "Philippines", "South Africa", "Kenya", "Nigeria", "Egypt", 
+    "Saudi Arabia", "Qatar", "Kuwait", "Bahrain", "Oman"
+  ];
+
   useEffect(() => {
     setCharacterCount(form.message.length);
   }, [form.message]);
@@ -370,10 +400,254 @@ const Contact = () => {
 
   return (
     <>
-     <link rel="canonical" href={`${siteUrl}/contact`} />
-      <title>Contact Krynova Technologies | Free Consultation & Demo Request</title>
-      <meta name="description" content="Contact Krynova Technologies - India's leading web development company. Get free consultation, request a demo, or ask about our custom web solutions. We respond within 24 hours." />
+      {/* ========================================== */}
+      {/* ✅ HELMET - SEO + AEO + GEO COMBINED */}
+      {/* ========================================== */}
+      <Helmet>
+        {/* ===== SEO TAGS ===== */}
+        <title>Contact Krynova Technologies | Free Consultation & Demo Request in Agra, India | Global Reach</title>
+        <meta name="description" content="Contact Krynova Technologies - India's leading web development company in Agra. Get free consultation, request a demo for HRMS, Property Management, or custom web solutions. Serving businesses in all Indian cities and globally. We respond within 24 hours." />
+        <meta name="keywords" content="contact web development company Agra, free consultation, HRMS demo, property management demo, web development quote, Krynova Technologies contact, software development inquiry, enterprise solutions India, global software company, contact for web development" />
+        <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
+        <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large" />
+        
+        {/* ✅ Canonical Tag */}
+        <link rel="canonical" href={`${siteUrl}/contact`} />
+        
+        {/* ===== GEO TAGS - Local Targeting ===== */}
+        <meta name="geo.region" content="IN-UP" />
+        <meta name="geo.placename" content="Agra" />
+        <meta name="geo.position" content="27.1767;78.0081" />
+        <meta name="ICBM" content="27.1767, 78.0081" />
+        <meta name="city" content="Agra" />
+        <meta name="state" content="Uttar Pradesh" />
+        <meta name="country" content="India" />
+        <meta name="areaServed" content={indianCities.join(", ")} />
+        <meta name="serviceArea" content={`India, ${globalCountries.join(", ")}, Worldwide`} />
+        <meta name="coverage" content="Global, National, Local" />
+        
+        {/* ===== GEO TAGS - All Indian Cities ===== */}
+        <meta name="targetedCities" content={indianCities.join(", ")} />
+        <meta name="targetedStates" content="Uttar Pradesh, Delhi, Maharashtra, Karnataka, Tamil Nadu, Telangana, West Bengal, Gujarat, Rajasthan, Punjab, Haryana, Madhya Pradesh, Bihar, Odisha, Kerala, Andhra Pradesh, Jharkhand, Chhattisgarh, Uttarakhand, Himachal Pradesh, Goa, Assam, Jammu & Kashmir" />
+        <meta name="targetedCountries" content={globalCountries.join(", ")} />
+        
+        {/* ===== GEO TAGS - Multi-language ===== */}
+        <meta name="language" content="en, hi, bn, te, ta, ur, gu, mr, kn, ml, pa" />
+        <meta name="locales" content="en_IN, hi_IN, bn_IN, te_IN, ta_IN, ur_IN, gu_IN, mr_IN, kn_IN, ml_IN, pa_IN" />
+        
+        {/* ===== AEO TAGS - Answer Engine Optimization ===== */}
+        <meta name="question" content="How can I contact Krynova Technologies for a free consultation?" />
+        <meta name="answer" content="You can contact Krynova Technologies via email at princeb744@gmail.com, phone at +91 86305 19082, WhatsApp, or through our contact form. We offer free consultation and respond within 24 hours." />
+        <meta name="faq" content="true" />
+        <meta name="speakable" content="true" />
+        <meta name="speakable-type" content="text/html" />
+        <meta name="speakable-css" content=".speakable" />
+        <meta name="voice-search" content="true" />
+        <meta name="voice-search-keywords" content="contact web development company, free consultation, software development quote, Krynova contact, HRMS demo request, property management inquiry" />
+        
+        {/* ===== AEO - Rich Snippets ===== */}
+        <meta name="rich-snippet" content="contact" />
+        <meta name="structured-data" content="true" />
+        
+        {/* ===== Open Graph ===== */}
+        <meta property="og:title" content="Contact Krynova Technologies | Free Consultation & Demo Request | Global Reach" />
+        <meta property="og:description" content="Get in touch with India's leading web development company. Free consultation available for HRMS, Property Management, and custom web solutions. Serving clients in all Indian cities and globally." />
+        <meta property="og:url" content={`${siteUrl}/contact`} />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Krynova Technologies" />
+        <meta property="og:image" content={`${siteUrl}/logo.png`} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:locale" content="en_IN" />
+        <meta property="og:rich_attachment" content="true" />
+        
+        {/* ===== Twitter Card ===== */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Contact Krynova Technologies | Free Consultation & Demo Request" />
+        <meta name="twitter:description" content="Get in touch with India's leading web development company. Free consultation available." />
+        <meta name="twitter:image" content={`${siteUrl}/logo.png`} />
+      </Helmet>
+
+      {/* ========================================== */}
+      {/* ✅ AEO SPEAKABLE CONTENT */}
+      {/* ========================================== */}
+      <div className="speakable sr-only" aria-hidden="true">
+        <h2>Contact Krynova Technologies</h2>
+        <p>Krynova Technologies is a leading web development company based in Agra, India. We offer free consultation for HRMS software, property management systems, WhatsApp automation, and custom web solutions.</p>
+        <p>Contact us via email at princeb744@gmail.com, phone at +91 86305 19082, or through our contact form. We respond within 24 hours.</p>
+        <p>Serving clients in Agra, Delhi, Mumbai, Bangalore, and all major cities in India, as well as international clients in USA, UK, Canada, Australia, UAE, and worldwide.</p>
+        <ul>
+          <li>Email: princeb744@gmail.com</li>
+          <li>Phone: +91 86305 19082</li>
+          <li>WhatsApp: +91 86305 19082</li>
+          <li>Location: Agra, Uttar Pradesh, India</li>
+        </ul>
+        <p>We offer free consultation, quick demos, and 24/7 support for all our services.</p>
+      </div>
+
+      {/* ========================================== */}
+      {/* ✅ SCHEMA.ORG - SEO + AEO + GEO */}
+      {/* ========================================== */}
       
+      {/* 📞 Contact Page Schema */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "ContactPage",
+          "name": "Contact Krynova Technologies",
+          "description": "Contact page for Krynova Technologies - web development company in Agra, India with global reach.",
+          "url": `${siteUrl}/contact`,
+          "provider": {
+            "@type": "Organization",
+            "name": "Krynova Technologies",
+            "address": {
+              "@type": "PostalAddress",
+              "addressLocality": "Agra",
+              "addressRegion": "Uttar Pradesh",
+              "addressCountry": "India"
+            },
+            "telephone": "+918630519082",
+            "email": "princeb744@gmail.com"
+          },
+          "inLanguage": ["en", "hi", "bn", "te", "ta", "ur", "gu", "mr", "kn", "ml", "pa"],
+          "speakable": {
+            "@type": "SpeakableSpecification",
+            "cssSelector": ".speakable"
+          }
+        })}
+      </script>
+
+      {/* 🏢 Organization Schema - Global Reach */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          "name": "Krynova Technologies",
+          "description": "Best web development company in Agra, India. We provide custom web solutions, HRMS software, property management systems, and enterprise applications globally.",
+          "url": siteUrl,
+          "telephone": "+918630519082",
+          "email": "princeb744@gmail.com",
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Agra",
+            "addressRegion": "Uttar Pradesh",
+            "addressCountry": "India"
+          },
+          "geo": {
+            "@type": "GeoCoordinates",
+            "latitude": 27.1767,
+            "longitude": 78.0081
+          },
+          "areaServed": indianCities,
+          "availableLanguage": ["English", "Hindi", "Bengali", "Telugu", "Tamil", "Urdu", "Gujarati", "Marathi", "Kannada", "Malayalam", "Punjabi"],
+          "slogan": "Global Enterprise Solutions from India",
+          "foundingDate": "2024-03-01",
+          "founder": {
+            "@type": "Person",
+            "name": "Shivam Sharma"
+          },
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "telephone": "+918630519082",
+            "contactType": "sales",
+            "email": "princeb744@gmail.com",
+            "availableLanguage": ["English", "Hindi"],
+            "hoursAvailable": {
+              "@type": "OpeningHoursSpecification",
+              "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+              "opens": "09:00",
+              "closes": "18:00"
+            }
+          }
+        })}
+      </script>
+
+      {/* ❓ FAQ Schema - AEO Focus */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "How can I contact Krynova Technologies?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "You can contact Krynova Technologies via email at princeb744@gmail.com, phone at +91 86305 19082, WhatsApp, or through our contact form. We respond within 24 hours."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Where is Krynova Technologies located?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Krynova Technologies is based in Agra, Uttar Pradesh, India. We serve clients across all major cities in India including Delhi, Mumbai, Bangalore, Chennai, Hyderabad, Pune, Kolkata, and many more, as well as international clients in USA, UK, Canada, Australia, UAE, and worldwide."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Do you offer free consultation?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes! We offer free consultation for all our services including web development, HRMS software, property management systems, WhatsApp automation, and custom solutions. Contact us to discuss your project requirements."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How quickly do you respond to inquiries?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "We respond to all inquiries within 24 hours. For urgent requests, you can reach us via phone at +91 86305 19082 or WhatsApp for immediate assistance."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What services can I get a demo for?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "You can request demos for our HRMS software, property management system, task management system, WhatsApp automation bot, and custom web applications. We provide personalized demos tailored to your business needs."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Do you serve international clients?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes! Krynova Technologies serves clients globally including USA, UK, Canada, Australia, UAE, Singapore, Germany, France, Japan, South Korea, and many other countries. We provide remote development and support services worldwide."
+              }
+            }
+          ]
+        })}
+      </script>
+
+      {/* 🗺️ Place Schema - GEO Targeting */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Place",
+          "name": "Krynova Technologies",
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Agra",
+            "addressRegion": "Uttar Pradesh",
+            "addressCountry": "India"
+          },
+          "geo": {
+            "@type": "GeoCoordinates",
+            "latitude": 27.1767,
+            "longitude": 78.0081
+          },
+          "areaServed": indianCities.map(city => ({
+            "@type": "City",
+            "name": city
+          })),
+          "globalLocationNumber": "IN-UP-AGRA"
+        })}
+      </script>
+
+      {/* ========================================== */}
+      {/* ✅ MAIN CONTENT */}
+      {/* ========================================== */}
       <div className="bg-gradient-to-b from-gray-50 to-white min-h-screen">
         {/* ✅ Spacer for fixed navbar */}
         <div className="h-14 md:h-16 lg:h-20"></div>
@@ -397,6 +671,20 @@ const Contact = () => {
               <p className="text-sm md:text-base text-blue-100 max-w-2xl mx-auto">
                 Tell us about your project, request a demo, or just say hello. We'll respond within 24 hours.
               </p>
+              <div className="flex flex-wrap justify-center gap-2 mt-4">
+                <span className="inline-flex items-center gap-1 bg-white/10 px-3 py-1 rounded-full text-xs">
+                  <FaMapPin className="text-yellow-400" /> {indianCities.length}+ Indian Cities
+                </span>
+                <span className="inline-flex items-center gap-1 bg-white/10 px-3 py-1 rounded-full text-xs">
+                  <FaGlobe className="text-yellow-400" /> {globalCountries.length}+ Countries
+                </span>
+                <span className="inline-flex items-center gap-1 bg-white/10 px-3 py-1 rounded-full text-xs">
+                  <FaMicrophone className="text-yellow-400" /> Voice Search Ready
+                </span>
+                <span className="inline-flex items-center gap-1 bg-white/10 px-3 py-1 rounded-full text-xs">
+                  <FaComments className="text-yellow-400" /> 24/7 Support
+                </span>
+              </div>
             </div>
           </div>
         </section>
@@ -502,6 +790,29 @@ const Contact = () => {
                   <a href="#" className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center text-red-600 hover:bg-red-600 hover:text-white transition-all duration-300 text-sm">
                     <FaYoutube />
                   </a>
+                </div>
+              </div>
+
+              {/* Location Info - GEO */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
+                <h4 className="text-xs font-semibold text-gray-700 mb-2 flex items-center gap-1">
+                  <FaMapPin className="text-blue-500" /> Serving Locations
+                </h4>
+                <div className="flex flex-wrap gap-1">
+                  {indianCities.slice(0, 8).map((city, idx) => (
+                    <span key={idx} className="text-xs bg-white/80 px-2 py-0.5 rounded-full border border-blue-200">
+                      {city}
+                    </span>
+                  ))}
+                  <span className="text-xs text-blue-600 font-medium">+{indianCities.length - 8} more cities</span>
+                </div>
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {globalCountries.slice(0, 6).map((country, idx) => (
+                    <span key={idx} className="text-xs bg-white/80 px-2 py-0.5 rounded-full border border-green-200">
+                      {country}
+                    </span>
+                  ))}
+                  <span className="text-xs text-green-600 font-medium">+{globalCountries.length - 6} more countries</span>
                 </div>
               </div>
             </div>
@@ -884,7 +1195,7 @@ const Contact = () => {
 
                     <p className="text-center text-xs text-gray-400">
                       <FaShieldAlt className="inline mr-1" />
-                      Your information is secure.
+                      Your information is secure. We respond within 24 hours.
                     </p>
                   </form>
                 )}
@@ -924,6 +1235,17 @@ const Contact = () => {
         .animate-fade-in { animation: fadeIn 0.4s ease-out; }
         .animate-slide-up { animation: slideUp 0.4s ease-out; }
         .animate-scale-in { animation: scaleIn 0.3s ease-out; }
+        .sr-only {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          padding: 0;
+          margin: -1px;
+          overflow: hidden;
+          clip: rect(0, 0, 0, 0);
+          white-space: nowrap;
+          border-width: 0;
+        }
       `}} />
     </>
   );

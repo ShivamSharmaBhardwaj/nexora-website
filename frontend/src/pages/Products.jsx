@@ -1,170 +1,18 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import axios from 'axios';
 import { 
-  FaSearch, 
-  FaFilter, 
-  FaTimes, 
-  FaArrowRight, 
-  FaStar, 
-  FaCode, 
-  FaMobileAlt,
-  FaCloud,
-  FaShieldAlt,
-  FaRocket,
-  FaChartLine,
-  FaUsers,
-  FaBuilding,
-  FaCheckCircle,
-  FaSpinner,
-  FaPlayCircle,
-  FaThLarge,
-  FaList,
-  FaSort,
-  FaSortUp,
-  FaSortDown,
-  FaEye,
-  FaClock,
-  FaTag,
-  FaLayerGroup,
-  FaCrown,
-  FaAward,
-  FaMedal,
-  FaTrophy,
-  FaGithub,
-  FaExternalLinkAlt,
-  FaHeart,
-  FaBookmark,
-  FaShare,
-  FaDownload,
-  FaCalendarAlt,
-  FaArrowLeft,
-  FaMapMarkerAlt
+  FaSearch, FaFilter, FaTimes, FaArrowRight, FaStar, FaCode, 
+  FaMobileAlt, FaCloud, FaShieldAlt, FaRocket, FaChartLine,
+  FaUsers, FaBuilding, FaCheckCircle, FaSpinner, FaPlayCircle,
+  FaThLarge, FaList, FaSort, FaSortUp, FaSortDown, FaEye,
+  FaClock, FaTag, FaLayerGroup, FaCrown, FaAward, FaMedal,
+  FaTrophy, FaGithub, FaExternalLinkAlt, FaHeart, FaBookmark,
+  FaShare, FaDownload, FaCalendarAlt, FaArrowLeft, FaMapMarkerAlt,
+  FaGlobe, FaMicrophone, FaHeadphones, FaQuestionCircle,
+  FaComments, FaSearchLocation, FaMapPin, FaCity, FaFlag
 } from 'react-icons/fa';
-
-// ============================================
-// SEO / GEO / AEO META COMPONENT
-// ============================================
-const ProductsSEO = () => {
-  const siteUrl = window.location.origin;
-  
-  return (
-    <>
-      <title>Krynova Technologies Products - Enterprise Software Solutions in Agra, India</title>
-      <meta name="description" content="Explore Krynova Technologies' enterprise software products including HRMS, Property Management, Task Management, and WhatsApp Automation. Best web development company in Agra, India. Serving businesses across Uttar Pradesh and India." />
-      <meta name="keywords" content="HRMS software India, property management system, task management software, WhatsApp automation bot, enterprise software products, web development company Agra, software solutions Uttar Pradesh, best software company India, Krynova Technologies products, business management software" />
-      <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
-      <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large" />
-      
-      {/* GEO Meta Tags - Local Targeting */}
-      <meta name="geo.region" content="IN-UP" />
-      <meta name="geo.placename" content="Agra" />
-      <meta name="geo.position" content="27.1767;78.0081" />
-      <meta name="ICBM" content="27.1767, 78.0081" />
-      <meta name="city" content="Agra" />
-      <meta name="state" content="Uttar Pradesh" />
-      <meta name="country" content="India" />
-      <meta name="areaServed" content="Agra, Uttar Pradesh, India" />
-      <meta name="serviceArea" content="India, Worldwide" />
-      
-      {/* Open Graph */}
-      <meta property="og:title" content="Krynova Technologies Products - Enterprise Software Solutions" />
-      <meta property="og:description" content="Discover our range of enterprise software products including HRMS, Property Management, Task Management, and more. Built for businesses in India and worldwide." />
-      <meta property="og:url" content={`${siteUrl}/products`} />
-      <meta property="og:type" content="website" />
-      <meta property="og:site_name" content="Krynova Technologies" />
-      <meta property="og:locale" content="en_IN" />
-      
-      {/* Twitter Card */}
-      <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:title" content="Krynova Technologies Products - Enterprise Software Solutions" />
-      <meta name="twitter:description" content="Discover our range of enterprise software products. Trusted by businesses across India." />
-      <link rel="canonical" href={`${siteUrl}/products`} />
-      
-      {/* Schema.org - Product Collection */}
-      <script type="application/ld+json">
-        {JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "CollectionPage",
-          "name": "Krynova Technologies Products",
-          "description": "Enterprise software products including HRMS, Property Management, Task Management, and WhatsApp Automation.",
-          "url": `${siteUrl}/products`,
-          "provider": {
-            "@type": "Organization",
-            "name": "Krynova Technologies",
-            "address": {
-              "@type": "PostalAddress",
-              "addressLocality": "Agra",
-              "addressRegion": "Uttar Pradesh",
-              "addressCountry": "India"
-            }
-          }
-        })}
-      </script>
-      
-      {/* Local Business Schema */}
-      <script type="application/ld+json">
-        {JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "LocalBusiness",
-          "name": "Krynova Technologies",
-          "description": "Best web development company in Agra, India. We provide custom web solutions, HRMS software, property management systems, and enterprise applications.",
-          "url": siteUrl,
-          "telephone": "+918630519082",
-          "email": "princeb744@gmail.com",
-          "address": {
-            "@type": "PostalAddress",
-            "addressLocality": "Agra",
-            "addressRegion": "Uttar Pradesh",
-            "addressCountry": "India"
-          },
-          "geo": {
-            "@type": "GeoCoordinates",
-            "latitude": 27.1767,
-            "longitude": 78.0081
-          },
-          "priceRange": "₹25,000 - ₹5,00,000",
-          "openingHours": "Mo-Fr 09:00-18:00",
-          "areaServed": ["India", "Worldwide"]
-        })}
-      </script>
-      
-      {/* FAQ Schema for AEO */}
-      <script type="application/ld+json">
-        {JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "FAQPage",
-          "mainEntity": [
-            {
-              "@type": "Question",
-              "name": "What enterprise software products does Krynova Technologies offer?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Krynova Technologies offers a comprehensive range of enterprise software products including HRMS System for human resource management, Property Management System for real estate, Task Management System for productivity, and WhatsApp Automation bot for business communication."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "Where is Krynova Technologies located?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Krynova Technologies is based in Agra, Uttar Pradesh, India. We serve clients across India and internationally."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "What is the best web development company in Agra?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Krynova Technologies is recognized as one of the best web development companies in Agra, India, with over 8 years of experience and 50+ successful enterprise systems delivered."
-              }
-            }
-          ]
-        })}
-      </script>
-    </>
-  );
-};
 
 // ============================================
 // LOADING SKELETON
@@ -434,7 +282,7 @@ const ProductCard = ({ project, onQuickView }) => {
         </div>
 
         <meta itemProp="areaServed" content="India, Worldwide" />
-        <meta itemProp="availableIn" content="Agra, Uttar Pradesh, India" />
+        <meta itemProp="availableIn" content="All Cities in India, Global" />
       </div>
     </article>
   );
@@ -536,6 +384,33 @@ const Products = () => {
   const [quickViewProject, setQuickViewProject] = useState(null);
   const { category } = useParams();
   const navigate = useNavigate();
+  
+  // ✅ Get current URL for canonical
+  const siteUrl = window.location.origin;
+
+  // ✅ List of all major Indian cities for GEO targeting
+  const indianCities = [
+    "Agra", "Delhi", "Mumbai", "Bangalore", "Chennai", "Hyderabad", 
+    "Pune", "Kolkata", "Ahmedabad", "Surat", "Jaipur", "Lucknow", 
+    "Kanpur", "Nagpur", "Indore", "Thane", "Bhopal", "Visakhapatnam", 
+    "Patna", "Vadodara", "Ludhiana", "Nashik", "Faridabad", "Meerut", 
+    "Rajkot", "Varanasi", "Srinagar", "Aurangabad", "Dhanbad", "Amritsar", 
+    "Navi Mumbai", "Allahabad", "Ranchi", "Howrah", "Coimbatore", "Jabalpur", 
+    "Gwalior", "Vijayawada", "Jodhpur", "Madurai", "Raipur", "Kota", 
+    "Chandigarh", "Guwahati", "Solapur", "Hubballi-Dharwad", "Mysore", 
+    "Tiruchirappalli", "Bareilly", "Aligarh", "Moradabad", "Saharanpur", 
+    "Dehradun", "Noida", "Gurugram", "Ghaziabad", "Faridabad"
+  ];
+
+  // ✅ List of countries for global targeting
+  const globalCountries = [
+    "USA", "UK", "Canada", "Australia", "UAE", "Singapore", 
+    "Germany", "France", "Japan", "South Korea", "Netherlands", 
+    "Sweden", "Norway", "Denmark", "Finland", "New Zealand", 
+    "Ireland", "Malaysia", "Thailand", "Vietnam", "Indonesia", 
+    "Philippines", "South Africa", "Kenya", "Nigeria", "Egypt", 
+    "Saudi Arabia", "Qatar", "Kuwait", "Bahrain", "Oman"
+  ];
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -641,15 +516,263 @@ const Products = () => {
 
   return (
     <>
-      <ProductsSEO />
+      {/* ========================================== */}
+      {/* ✅ HELMET - SEO + AEO + GEO COMBINED */}
+      {/* ========================================== */}
+      <Helmet>
+        {/* ===== SEO TAGS ===== */}
+        <title>Krynova Technologies Products - Enterprise Software Solutions | Global & India</title>
+        <meta name="description" content="Explore Krynova Technologies' enterprise software products including HRMS, Property Management, Task Management, and WhatsApp Automation. Best web development company in Agra, India. Serving businesses across all cities in India and worldwide. Global enterprise solutions." />
+        <meta name="keywords" content="HRMS software India, property management system, task management software, WhatsApp automation bot, enterprise software products, web development company Agra, software solutions Uttar Pradesh, best software company India, Krynova Technologies products, business management software, global enterprise solutions, software for all cities India, worldwide software solutions" />
+        <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
+        <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large" />
+        
+        {/* ✅ Canonical Tag */}
+        <link rel="canonical" href={`${siteUrl}/products`} />
+        
+        {/* ===== GEO TAGS - Local Targeting ===== */}
+        <meta name="geo.region" content="IN-UP" />
+        <meta name="geo.placename" content="Agra" />
+        <meta name="geo.position" content="27.1767;78.0081" />
+        <meta name="ICBM" content="27.1767, 78.0081" />
+        <meta name="city" content="Agra" />
+        <meta name="state" content="Uttar Pradesh" />
+        <meta name="country" content="India" />
+        <meta name="areaServed" content={indianCities.join(", ")} />
+        <meta name="serviceArea" content={`India, ${globalCountries.join(", ")}, Worldwide`} />
+        <meta name="coverage" content="Global, National, Local" />
+        
+        {/* ===== GEO TAGS - All Indian Cities ===== */}
+        <meta name="targetedCities" content={indianCities.join(", ")} />
+        <meta name="targetedStates" content="Uttar Pradesh, Delhi, Maharashtra, Karnataka, Tamil Nadu, Telangana, West Bengal, Gujarat, Rajasthan, Punjab, Haryana, Madhya Pradesh, Bihar, Odisha, Kerala, Andhra Pradesh, Jharkhand, Chhattisgarh, Uttarakhand, Himachal Pradesh, Goa, Assam, Jammu & Kashmir" />
+        <meta name="targetedCountries" content={globalCountries.join(", ")} />
+        
+        {/* ===== GEO TAGS - Multi-language ===== */}
+        <meta name="language" content="en, hi, bn, te, ta, ur, gu, mr, kn, ml, pa" />
+        <meta name="locales" content="en_IN, hi_IN, bn_IN, te_IN, ta_IN, ur_IN, gu_IN, mr_IN, kn_IN, ml_IN, pa_IN" />
+        
+        {/* ===== AEO TAGS - Answer Engine Optimization ===== */}
+        <meta name="question" content="What enterprise software products does Krynova Technologies offer?" />
+        <meta name="answer" content="Krynova Technologies offers HRMS System, Property Management System, Task Management System, and WhatsApp Automation bot for businesses worldwide." />
+        <meta name="faq" content="true" />
+        <meta name="speakable" content="true" />
+        <meta name="speakable-type" content="text/html" />
+        <meta name="speakable-css" content=".speakable" />
+        <meta name="voice-search" content="true" />
+        <meta name="voice-search-keywords" content="HRMS software, property management, WhatsApp automation, enterprise software, web development company, best software company India" />
+        
+        {/* ===== AEO - Rich Snippets ===== */}
+        <meta name="rich-snippet" content="products" />
+        <meta name="structured-data" content="true" />
+        
+        {/* ===== Open Graph - SEO + GEO ===== */}
+        <meta property="og:title" content="Krynova Technologies Products - Enterprise Software Solutions | Global & India" />
+        <meta property="og:description" content="Discover our range of enterprise software products including HRMS, Property Management, Task Management, and more. Serving businesses in all Indian cities and globally." />
+        <meta property="og:url" content={`${siteUrl}/products`} />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Krynova Technologies" />
+        <meta property="og:locale" content="en_IN" />
+        <meta property="og:image" content={`${siteUrl}/logo.png`} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        
+        {/* ===== Twitter Card ===== */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Krynova Technologies Products - Enterprise Software Solutions" />
+        <meta name="twitter:description" content="Enterprise software products for businesses worldwide. Based in India with global reach." />
+        <meta name="twitter:image" content={`${siteUrl}/logo.png`} />
+      </Helmet>
+
+      {/* ========================================== */}
+      {/* ✅ AEO SPEAKABLE CONTENT */}
+      {/* ========================================== */}
+      <div className="speakable sr-only" aria-hidden="true">
+        <h2>Krynova Technologies Products</h2>
+        <p>Krynova Technologies offers enterprise software products including HRMS System for human resource management, Property Management System for real estate, Task Management System for productivity, and WhatsApp Automation bot for business communication. Serving businesses in Agra, Delhi, Mumbai, Bangalore, and all major cities in India, as well as global clients worldwide.</p>
+        <ul>
+          <li>HRMS Software - Complete human resource management</li>
+          <li>Property Management System - Real estate management</li>
+          <li>Task Management System - Productivity and project management</li>
+          <li>WhatsApp Automation Bot - Business communication automation</li>
+        </ul>
+        <p>Available in all Indian cities and globally.</p>
+      </div>
+
+      {/* ========================================== */}
+      {/* ✅ SCHEMA.ORG - SEO + AEO + GEO */}
+      {/* ========================================== */}
       
+      {/* 📦 Product Collection Schema */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          "name": "Krynova Technologies Products",
+          "description": "Enterprise software products including HRMS, Property Management, Task Management, and WhatsApp Automation. Serving businesses in all Indian cities and globally.",
+          "url": `${siteUrl}/products`,
+          "provider": {
+            "@type": "Organization",
+            "name": "Krynova Technologies",
+            "address": {
+              "@type": "PostalAddress",
+              "addressLocality": "Agra",
+              "addressRegion": "Uttar Pradesh",
+              "addressCountry": "India"
+            }
+          },
+          "audience": {
+            "@type": "Audience",
+            "name": "Businesses Worldwide",
+            "geographicArea": {
+              "@type": "AdministrativeArea",
+              "name": `India, ${globalCountries.join(", ")}, Worldwide`
+            }
+          },
+          "inLanguage": ["en", "hi", "bn", "te", "ta", "ur", "gu", "mr", "kn", "ml", "pa"],
+          "isAccessibleForFree": true,
+          "speakable": {
+            "@type": "SpeakableSpecification",
+            "cssSelector": ".speakable"
+          }
+        })}
+      </script>
+
+      {/* 🏢 Local Business Schema - GEO Focus */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "LocalBusiness",
+          "name": "Krynova Technologies",
+          "description": "Best web development company in Agra, India. We provide custom web solutions, HRMS software, property management systems, and enterprise applications globally.",
+          "url": siteUrl,
+          "telephone": "+918630519082",
+          "email": "princeb744@gmail.com",
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Agra",
+            "addressRegion": "Uttar Pradesh",
+            "addressCountry": "India"
+          },
+          "geo": {
+            "@type": "GeoCoordinates",
+            "latitude": 27.1767,
+            "longitude": 78.0081
+          },
+          "priceRange": "₹25,000 - ₹5,00,000",
+          "openingHours": "Mo-Fr 09:00-18:00",
+          "areaServed": indianCities,
+          "availableLanguage": ["English", "Hindi", "Bengali", "Telugu", "Tamil", "Urdu", "Gujarati", "Marathi", "Kannada", "Malayalam", "Punjabi"],
+          "slogan": "Global Enterprise Solutions from India",
+          "globalLocationNumber": "IN-UP-AGRA",
+          "founder": {
+            "@type": "Person",
+            "name": "Shivam Sharma"
+          },
+          "foundingDate": "2024-03-01"
+        })}
+      </script>
+
+      {/* ❓ FAQ Schema - AEO Focus */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "What enterprise software products does Krynova Technologies offer?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Krynova Technologies offers HRMS System for human resource management, Property Management System for real estate, Task Management System for productivity, and WhatsApp Automation bot for business communication. Serving clients globally."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Where is Krynova Technologies located and where do you serve?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": `Krynova Technologies is based in Agra, Uttar Pradesh, India. We serve clients across all major cities in India including ${indianCities.slice(0, 10).join(", ")} and many more, as well as international clients in ${globalCountries.slice(0, 10).join(", ")} and worldwide.`
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What is the best web development company in India with global presence?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Krynova Technologies is recognized as one of the best web development companies in India with global reach. With over 8 years of experience and 50+ successful enterprise systems delivered to clients worldwide, we provide custom solutions that scale globally."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Do you serve international clients?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": `Yes! Krynova Technologies serves clients globally including ${globalCountries.join(", ")} and many other countries. We provide remote development and support services worldwide.`
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What services do you offer for businesses in different cities?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": `We offer custom web development, HRMS software, property management systems, WhatsApp automation, and enterprise solutions for businesses in ${indianCities.slice(0, 15).join(", ")}, and all other major cities in India, as well as international clients worldwide.`
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What makes Krynova Technologies the best choice for enterprise software?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Krynova Technologies combines 8+ years of experience, 50+ enterprise systems built, 100% client satisfaction, and global reach. We provide custom solutions, 24/7 support, and enterprise-grade security for businesses of all sizes."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What is the cost of enterprise software development?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Enterprise software development costs vary based on requirements. Krynova Technologies offers flexible pricing starting from ₹25,000 for basic solutions to custom quotes for complex enterprise systems. We provide free consultation to discuss your specific needs."
+              }
+            }
+          ]
+        })}
+      </script>
+
+      {/* 🗺️ Place Schema - GEO Targeting */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Place",
+          "name": "Krynova Technologies",
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Agra",
+            "addressRegion": "Uttar Pradesh",
+            "addressCountry": "India"
+          },
+          "geo": {
+            "@type": "GeoCoordinates",
+            "latitude": 27.1767,
+            "longitude": 78.0081
+          },
+          "areaServed": indianCities.map(city => ({
+            "@type": "City",
+            "name": city
+          })),
+          "globalLocationNumber": "IN-UP-AGRA"
+        })}
+      </script>
+
+      {/* ========================================== */}
+      {/* ✅ MAIN CONTENT */}
+      {/* ========================================== */}
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12">
         <div className="container mx-auto px-4 max-w-7xl">
           {/* Header */}
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-100 to-blue-50 text-blue-700 px-4 py-2 rounded-full text-sm font-medium mb-4 border border-blue-200">
               <FaRocket className="text-blue-600" aria-hidden="true" />
-              Enterprise Solutions
+              Enterprise Solutions - Global & Local
             </div>
             <h1 className="text-4xl md:text-5xl font-bold mb-4 text-gray-900">
               Our <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Products</span>
@@ -657,9 +780,23 @@ const Products = () => {
             <p className="text-gray-600 max-w-2xl mx-auto text-lg">
               Discover our comprehensive suite of business solutions designed to transform your organization
             </p>
+            <div className="flex flex-wrap justify-center gap-2 mt-3">
+              <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs">
+                <FaMapPin className="text-blue-500" /> {indianCities.length}+ Indian Cities
+              </span>
+              <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs">
+                <FaGlobe className="text-green-500" /> {globalCountries.length}+ Countries
+              </span>
+              <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs">
+                <FaMicrophone className="text-purple-500" /> Voice Search Ready
+              </span>
+              <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs">
+                <FaComments className="text-orange-500" /> FAQ Optimized
+              </span>
+            </div>
             <p className="text-sm text-blue-600 mt-2">
               <FaMapMarkerAlt className="inline mr-1" aria-hidden="true" />
-              Serving businesses in Agra, Uttar Pradesh, and across India
+              Serving businesses in Agra, Delhi, Mumbai, Bangalore, and across India & Worldwide
             </p>
           </div>
 
@@ -805,7 +942,7 @@ const Products = () => {
             </div>
           )}
 
-          {/* Call to Action */}
+          {/* Call to Action - Global & Local */}
           {!loading && projects.length > 0 && (
             <div className="mt-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-8 md:p-12 text-white text-center relative overflow-hidden">
               <div className="absolute inset-0 opacity-10">
@@ -815,8 +952,16 @@ const Products = () => {
               <div className="relative z-10 max-w-2xl mx-auto">
                 <h2 className="text-2xl md:text-3xl font-bold mb-3">Need a Custom Solution?</h2>
                 <p className="text-blue-100 mb-6 text-lg">
-                  We develop tailored systems for your specific business requirements. Serving clients in Agra, Uttar Pradesh, and across India.
+                  We develop tailored systems for your specific business requirements. Serving clients in Agra, Delhi, Mumbai, Bangalore, across India, and worldwide.
                 </p>
+                <div className="flex flex-wrap justify-center gap-3 mb-4">
+                  <span className="inline-flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full text-xs">
+                    <FaMapPin /> {indianCities.length}+ Indian Cities
+                  </span>
+                  <span className="inline-flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full text-xs">
+                    <FaGlobe /> {globalCountries.length}+ Countries
+                  </span>
+                </div>
                 <Link
                   to="/contact"
                   className="inline-flex items-center gap-2 bg-white text-blue-600 px-8 py-3.5 rounded-xl font-semibold hover:bg-blue-50 transition shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
@@ -825,7 +970,7 @@ const Products = () => {
                 </Link>
                 <p className="text-blue-200 text-sm mt-4">
                   <FaMapMarkerAlt className="inline mr-1" aria-hidden="true" />
-                  Based in Agra, Uttar Pradesh, India
+                  Based in Agra, Uttar Pradesh, India • Serving Global Clients
                 </p>
               </div>
             </div>
@@ -862,6 +1007,17 @@ const Products = () => {
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
+          }
+          .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
           }
         `}} />
       </div>

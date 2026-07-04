@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import axios from 'axios';
 import { 
   FaRocket, FaUsers, FaCode, FaShieldAlt, FaArrowRight, 
@@ -23,10 +24,10 @@ import {
   FaUserEdit, FaRegFilePdf, FaRegFileWord, FaRegFileExcel,
   FaRegFileAlt, FaRegFileArchive, FaRegFileImage,
   FaArrowUp, FaArrowDown, FaExchangeAlt,
-  // Website Creation Icons - ONLY USE EXISTING ONES
+  // Website Creation Icons
   FaPalette, FaReact, FaNode, FaPython,
-  FaDocker, FaAws, FaGitAlt, FaFigma
-  // REMOVED: FaSketch, FaPhotoshop, FaIllustrator - These don't exist in react-icons/fa
+  FaDocker, FaAws, FaGitAlt, FaFigma,
+  FaMicrophone, FaComments, FaMapPin
 } from 'react-icons/fa';
 
 // ============================================
@@ -36,99 +37,6 @@ import {
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 const PROJECTS_LIMIT = 4;
 const TESTIMONIALS_LIMIT = 3;
-
-// ============================================
-// SEO & META COMPONENT
-// ============================================
-
-const SEO = () => {
-  const siteTitle = "Krynova Technologies - Best Web Development Company in India | Website Design & Development";
-  const siteDescription = "Krynova Technologies - India's leading web development company in Agra. We create custom websites, web applications, and enterprise solutions. From basic websites to advanced web applications with SEO, animations, and security. Trusted by 50+ businesses. Affordable pricing starting from ₹15,000.";
-  const siteKeywords = "Krynova Technologies, web development company India, website design company, custom web development, website creation, web application development, best web development company Agra, affordable website design, professional web development, enterprise software development, India web developers";
-  const siteUrl = window.location.origin;
-  const siteImage = `${siteUrl}/logo.png`;
-
-  return (
-    <>
-      <title>{siteTitle}</title>
-      <meta name="title" content={siteTitle} />
-      <meta name="description" content={siteDescription} />
-      <meta name="keywords" content={siteKeywords} />
-      <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
-      <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large" />
-      <meta name="bingbot" content="index, follow, max-snippet:-1, max-image-preview:large" />
-      <meta name="language" content="English" />
-      <meta name="revisit-after" content="3 days" />
-      <meta name="author" content="Krynova Technologies" />
-      <meta name="copyright" content="Krynova Technologies" />
-      <meta name="geo.region" content="IN-UP" />
-      <meta name="geo.placename" content="Agra" />
-      <meta name="geo.position" content="27.1767;78.0081" />
-      <meta name="ICBM" content="27.1767, 78.0081" />
-      <meta name="city" content="Agra" />
-      <meta name="state" content="Uttar Pradesh" />
-      <meta name="country" content="India" />
-      
-      <meta property="og:type" content="website" />
-      <meta property="og:url" content={siteUrl} />
-      <meta property="og:title" content={siteTitle} />
-      <meta property="og:description" content={siteDescription} />
-      <meta property="og:image" content={siteImage} />
-      <meta property="og:image:width" content="1200" />
-      <meta property="og:image:height" content="630" />
-      <meta property="og:site_name" content="Krynova Technologies" />
-      <meta property="og:locale" content="en_IN" />
-      
-      <meta property="twitter:card" content="summary_large_image" />
-      <meta property="twitter:url" content={siteUrl} />
-      <meta property="twitter:title" content={siteTitle} />
-      <meta property="twitter:description" content={siteDescription} />
-      <meta property="twitter:image" content={siteImage} />
-
-      <script type="application/ld+json">
-        {JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "Organization",
-          "name": "Krynova Technologies",
-          "description": siteDescription,
-          "url": siteUrl,
-          "logo": `${siteUrl}/logo.png`,
-          "foundingDate": "2026-03",
-          "founders": [
-            {
-              "@type": "Person",
-              "name": "Shivam Sharma",
-              "jobTitle": "Founder & CEO",
-              "description": "Full Stack Developer with 8+ years of experience, building 50+ enterprise systems."
-            }
-          ],
-          "contactPoint": {
-            "@type": "ContactPoint",
-            "telephone": "+918630519082",
-            "contactType": "sales",
-            "email": "princeb744@gmail.com",
-            "availableLanguage": ["English", "Hindi"]
-          },
-          "address": {
-            "@type": "PostalAddress",
-            "addressLocality": "Agra",
-            "addressRegion": "Uttar Pradesh",
-            "addressCountry": "India"
-          },
-          "offers": {
-            "@type": "Offer",
-            "description": "Custom web solutions for businesses",
-            "priceSpecification": {
-              "@type": "PriceSpecification",
-              "price": "Starting from ₹15,000",
-              "priceCurrency": "INR"
-            }
-          }
-        })}
-      </script>
-    </>
-  );
-};
 
 // ============================================
 // UI COMPONENTS
@@ -360,6 +268,30 @@ const Counter = ({ target, label, icon: Icon, suffix = '' }) => {
   );
 };
 
+// ✅ Indian Cities for GEO Targeting
+const indianCities = [
+  "Agra", "Delhi", "Mumbai", "Bangalore", "Chennai", "Hyderabad", 
+  "Pune", "Kolkata", "Ahmedabad", "Surat", "Jaipur", "Lucknow", 
+  "Kanpur", "Nagpur", "Indore", "Thane", "Bhopal", "Visakhapatnam", 
+  "Patna", "Vadodara", "Ludhiana", "Nashik", "Faridabad", "Meerut", 
+  "Rajkot", "Varanasi", "Srinagar", "Aurangabad", "Dhanbad", "Amritsar", 
+  "Navi Mumbai", "Allahabad", "Ranchi", "Howrah", "Coimbatore", "Jabalpur", 
+  "Gwalior", "Vijayawada", "Jodhpur", "Madurai", "Raipur", "Kota", 
+  "Chandigarh", "Guwahati", "Solapur", "Hubballi-Dharwad", "Mysore", 
+  "Tiruchirappalli", "Bareilly", "Aligarh", "Moradabad", "Saharanpur", 
+  "Dehradun", "Noida", "Gurugram", "Ghaziabad", "Faridabad"
+];
+
+// ✅ Global Countries
+const globalCountries = [
+  "USA", "UK", "Canada", "Australia", "UAE", "Singapore", 
+  "Germany", "France", "Japan", "South Korea", "Netherlands", 
+  "Sweden", "Norway", "Denmark", "Finland", "New Zealand", 
+  "Ireland", "Malaysia", "Thailand", "Vietnam", "Indonesia", 
+  "Philippines", "South Africa", "Kenya", "Nigeria", "Egypt", 
+  "Saudi Arabia", "Qatar", "Kuwait", "Bahrain", "Oman"
+];
+
 // ============================================
 // MAIN HOME COMPONENT
 // ============================================
@@ -370,6 +302,8 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeFaq, setActiveFaq] = useState(null);
+
+  const siteUrl = window.location.origin;
 
   const fetchData = useCallback(async () => {
     try {
@@ -564,7 +498,143 @@ const Home = () => {
 
   return (
     <>
-      <SEO />
+      {/* ========================================== */}
+      {/* ✅ HELMET - SEO + AEO + GEO COMBINED */}
+      {/* ========================================== */}
+      <Helmet>
+        {/* ===== SEO TAGS ===== */}
+        <title>Krynova Technologies - Best Web Development Company in India | Website Design & Development</title>
+        <meta name="description" content="Krynova Technologies - India's leading web development company in Agra. We create custom websites, web applications, and enterprise solutions. From basic websites to advanced web applications with SEO, animations, and security. Trusted by 50+ businesses. Affordable pricing starting from ₹15,000. Serving clients in all Indian cities and globally." />
+        <meta name="keywords" content="Krynova Technologies, web development company India, website design company, custom web development, website creation, web application development, best web development company Agra, affordable website design, professional web development, enterprise software development, India web developers, global web development" />
+        <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
+        <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large" />
+        
+        {/* ✅ Canonical Tag */}
+        <link rel="canonical" href={siteUrl} />
+        
+        {/* ===== GEO TAGS - Local Targeting ===== */}
+        <meta name="geo.region" content="IN-UP" />
+        <meta name="geo.placename" content="Agra" />
+        <meta name="geo.position" content="27.1767;78.0081" />
+        <meta name="ICBM" content="27.1767, 78.0081" />
+        <meta name="city" content="Agra" />
+        <meta name="state" content="Uttar Pradesh" />
+        <meta name="country" content="India" />
+        <meta name="areaServed" content={indianCities.join(", ")} />
+        <meta name="serviceArea" content={`India, ${globalCountries.join(", ")}, Worldwide`} />
+        <meta name="coverage" content="Global, National, Local" />
+        
+        {/* ===== GEO TAGS - All Indian Cities ===== */}
+        <meta name="targetedCities" content={indianCities.join(", ")} />
+        <meta name="targetedStates" content="Uttar Pradesh, Delhi, Maharashtra, Karnataka, Tamil Nadu, Telangana, West Bengal, Gujarat, Rajasthan, Punjab, Haryana, Madhya Pradesh, Bihar, Odisha, Kerala, Andhra Pradesh, Jharkhand, Chhattisgarh, Uttarakhand, Himachal Pradesh, Goa, Assam, Jammu & Kashmir" />
+        <meta name="targetedCountries" content={globalCountries.join(", ")} />
+        
+        {/* ===== GEO TAGS - Multi-language ===== */}
+        <meta name="language" content="en, hi, bn, te, ta, ur, gu, mr, kn, ml, pa" />
+        <meta name="locales" content="en_IN, hi_IN, bn_IN, te_IN, ta_IN, ur_IN, gu_IN, mr_IN, kn_IN, ml_IN, pa_IN" />
+        
+        {/* ===== AEO TAGS - Answer Engine Optimization ===== */}
+        <meta name="question" content="Which is the best web development company in India?" />
+        <meta name="answer" content="Krynova Technologies is India's leading web development company based in Agra, offering custom websites, web applications, and enterprise solutions. Trusted by 50+ businesses with 8+ years of experience. Pricing starting from ₹15,000." />
+        <meta name="faq" content="true" />
+        <meta name="speakable" content="true" />
+        <meta name="speakable-type" content="text/html" />
+        <meta name="speakable-css" content=".speakable" />
+        <meta name="voice-search" content="true" />
+        <meta name="voice-search-keywords" content="web development company India, website design, custom web development, best web developer Agra, affordable website design, enterprise software India" />
+        
+        {/* ===== AEO - Rich Snippets ===== */}
+        <meta name="rich-snippet" content="organization" />
+        <meta name="structured-data" content="true" />
+        
+        {/* ===== Open Graph ===== */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={siteUrl} />
+        <meta property="og:title" content="Krynova Technologies - Best Web Development Company in India | Website Design & Development" />
+        <meta property="og:description" content="Krynova Technologies - India's leading web development company in Agra. Custom websites, web applications, and enterprise solutions. Trusted by 50+ businesses. Starting from ₹15,000." />
+        <meta property="og:image" content={`${siteUrl}/logo.png`} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:site_name" content="Krynova Technologies" />
+        <meta property="og:locale" content="en_IN" />
+        
+        {/* ===== Twitter Card ===== */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:url" content={siteUrl} />
+        <meta name="twitter:title" content="Krynova Technologies - Best Web Development Company in India" />
+        <meta name="twitter:description" content="Custom websites, web applications, and enterprise solutions. Trusted by 50+ businesses. Starting from ₹15,000." />
+        <meta name="twitter:image" content={`${siteUrl}/logo.png`} />
+      </Helmet>
+
+      {/* ========================================== */}
+      {/* ✅ AEO SPEAKABLE CONTENT */}
+      {/* ========================================== */}
+      <div className="speakable sr-only" aria-hidden="true">
+        <h1>Krynova Technologies - Best Web Development Company in India</h1>
+        <p>Krynova Technologies is India's leading web development company based in Agra, offering custom websites, web applications, and enterprise solutions. Trusted by 50+ businesses with 8+ years of experience.</p>
+        <p>We serve clients in Agra, Delhi, Mumbai, Bangalore, Hyderabad, Pune, Kolkata, and all major cities in India, as well as international clients in USA, UK, Canada, Australia, UAE, and worldwide.</p>
+        <ul>
+          <li>Custom Website Design - Beautiful, responsive websites</li>
+          <li>Web Application Development - Custom web applications</li>
+          <li>E-commerce Solutions - Online stores and marketplaces</li>
+          <li>Enterprise Web Solutions - Scalable enterprise websites</li>
+          <li>HRMS Software - Complete human resource management</li>
+          <li>Property Management System - Real estate management</li>
+          <li>WhatsApp Automation - AI-powered business communication</li>
+        </ul>
+        <p>Affordable pricing starting from ₹15,000. Free consultation available.</p>
+      </div>
+
+      {/* ========================================== */}
+      {/* ✅ SCHEMA.ORG - Organization Schema */}
+      {/* ========================================== */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          "name": "Krynova Technologies",
+          "description": "India's leading web development company in Agra. Custom websites, web applications, and enterprise solutions.",
+          "url": siteUrl,
+          "logo": `${siteUrl}/logo.png`,
+          "foundingDate": "2024-03",
+          "founders": [
+            {
+              "@type": "Person",
+              "name": "Shivam Sharma",
+              "jobTitle": "Founder & CEO",
+              "description": "Full Stack Developer with 8+ years of experience, building 50+ enterprise systems."
+            }
+          ],
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "telephone": "+918630519082",
+            "contactType": "sales",
+            "email": "princeb744@gmail.com",
+            "availableLanguage": ["English", "Hindi"]
+          },
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Agra",
+            "addressRegion": "Uttar Pradesh",
+            "addressCountry": "India"
+          },
+          "areaServed": indianCities,
+          "availableLanguage": ["English", "Hindi", "Bengali", "Telugu", "Tamil", "Urdu", "Gujarati", "Marathi", "Kannada", "Malayalam", "Punjabi"],
+          "offers": {
+            "@type": "Offer",
+            "description": "Custom web solutions for businesses",
+            "priceSpecification": {
+              "@type": "PriceSpecification",
+              "price": "Starting from ₹15,000",
+              "priceCurrency": "INR"
+            }
+          },
+          "speakable": {
+            "@type": "SpeakableSpecification",
+            "cssSelector": ".speakable"
+          }
+        })}
+      </script>
 
       {/* ========================================== */}
       {/* HERO SECTION */}
@@ -802,101 +872,99 @@ const Home = () => {
         </div>
       </section>
 
-    {/* ========================================== */}
-{/* FOUNDER SECTION - WITH YOUR PHOTO */}
-{/* ========================================== */}
-<section className="py-16 bg-gradient-to-r from-blue-50 to-indigo-50">
-  <div className="container">
-    <div className="max-w-5xl mx-auto">
-      <div className="text-center mb-12">
-        <span className="text-blue-600 font-semibold text-sm uppercase tracking-wider">Leadership</span>
-        <h2 className="text-3xl font-bold mt-2">Meet Our Founder</h2>
-        <p className="text-gray-600 mt-2">Driven by innovation and a passion for technology</p>
-      </div>
-      <div className="bg-white rounded-2xl shadow-xl p-8 md:p-12 border border-gray-100 hover:shadow-2xl transition-shadow duration-300">
-        <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
-          <div className="flex-shrink-0 relative">
-            <div className="w-32 h-32 md:w-48 md:h-48 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-white text-5xl md:text-7xl font-bold shadow-xl ring-4 ring-blue-200 overflow-hidden">
-              {/* ✅ FIXED: Using PNG format */}
-              <img 
-                src="/founder-shivam-sharma.png" 
-                alt="Shivam Sharma - Founder & CEO of Krynova Technologies" 
-                className="w-full h-full rounded-full object-cover hover:scale-105 transition-transform duration-300"
-                onError={(e) => {
-                  // If PNG fails, try without extension
-                  e.target.src = '/founder-shivam-sharma';
-                  e.target.onerror = () => {
-                    // If both fail, show initials
-                    e.target.style.display = 'none';
-                    const parent = e.target.parentElement;
-                    if (parent) {
-                      parent.innerHTML = '';
-                      const initials = document.createElement('span');
-                      initials.textContent = 'SS';
-                      initials.className = 'text-white text-5xl md:text-7xl font-bold';
-                      parent.appendChild(initials);
-                      parent.className = parent.className + ' flex items-center justify-center';
-                    }
-                  };
-                }}
-              />
+      {/* ========================================== */}
+      {/* FOUNDER SECTION */}
+      {/* ========================================== */}
+      <section className="py-16 bg-gradient-to-r from-blue-50 to-indigo-50">
+        <div className="container">
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-12">
+              <span className="text-blue-600 font-semibold text-sm uppercase tracking-wider">Leadership</span>
+              <h2 className="text-3xl font-bold mt-2">Meet Our Founder</h2>
+              <p className="text-gray-600 mt-2">Driven by innovation and a passion for technology</p>
             </div>
-            <div className="absolute -bottom-2 -right-2 bg-yellow-400 text-blue-900 px-3 py-1 rounded-full text-xs font-bold shadow-lg">
-              CEO
-            </div>
-          </div>
-          <div className="flex-1">
-            <h3 className="text-2xl font-bold text-gray-900">Shivam Sharma</h3>
-            <p className="text-blue-600 font-semibold">Founder & CEO, Krynova Technologies</p>
-            <div className="flex flex-wrap gap-2 mt-2">
-              <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-medium">Full Stack Developer</span>
-              <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium">8+ Years Experience</span>
-              <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-medium">Enterprise Solutions</span>
-              <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-medium">50+ Systems Built</span>
-              <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-medium">Data Analyst</span>
-            </div>
-            <p className="text-gray-600 mt-4 leading-relaxed">
-              Shivam Sharma is an experienced Full Stack Developer and Data Analyst with over 8 years of industry experience. 
-              He has successfully built and deployed 50+ enterprise systems for leading organizations including
-              <strong> Torrent Power Limited</strong>, <strong>Tech Mahindra</strong>, <strong>Romsons</strong>,
-              <strong> Agra Chain</strong>, and <strong>Anna Infrastructure Limited</strong>.
-              His expertise spans across custom software development, data analytics, and enterprise architecture.
-            </p>
-            <p className="text-gray-600 mt-2">
-              Shivam specializes in <strong>website creation from basic to advanced</strong>, custom web applications, 
-              and enterprise solutions with modern technologies like React, Node.js, Python, and cloud platforms.
-            </p>
-            <div className="flex flex-wrap gap-4 mt-4">
-              <a 
-                href="mailto:princeb744@gmail.com" 
-                className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition"
-              >
-                <FaEnvelope /> princeb744@gmail.com
-              </a>
-              <a 
-                href="tel:+918630519082" 
-                className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition"
-              >
-                <FaPhone /> +91 86305 19082
-              </a>
-            </div>
-            <div className="flex gap-3 mt-4">
-              <a href="#" className="text-gray-500 hover:text-blue-600 transition text-xl" aria-label="LinkedIn">
-                <FaLinkedin />
-              </a>
-              <a href="#" className="text-gray-500 hover:text-gray-900 transition text-xl" aria-label="GitHub">
-                <FaGithub />
-              </a>
-              <a href="#" className="text-gray-500 hover:text-blue-400 transition text-xl" aria-label="Twitter">
-                <FaTwitter />
-              </a>
+            <div className="bg-white rounded-2xl shadow-xl p-8 md:p-12 border border-gray-100 hover:shadow-2xl transition-shadow duration-300">
+              <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
+                <div className="flex-shrink-0 relative">
+                  <div className="w-32 h-32 md:w-48 md:h-48 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-white text-5xl md:text-7xl font-bold shadow-xl ring-4 ring-blue-200 overflow-hidden">
+                    <img 
+                      src="/founder-shivam-sharma.png" 
+                      alt="Shivam Sharma - Founder & CEO of Krynova Technologies" 
+                      className="w-full h-full rounded-full object-cover hover:scale-105 transition-transform duration-300"
+                      onError={(e) => {
+                        e.target.src = '/founder-shivam-sharma';
+                        e.target.onerror = () => {
+                          e.target.style.display = 'none';
+                          const parent = e.target.parentElement;
+                          if (parent) {
+                            parent.innerHTML = '';
+                            const initials = document.createElement('span');
+                            initials.textContent = 'SS';
+                            initials.className = 'text-white text-5xl md:text-7xl font-bold';
+                            parent.appendChild(initials);
+                            parent.className = parent.className + ' flex items-center justify-center';
+                          }
+                        };
+                      }}
+                    />
+                  </div>
+                  <div className="absolute -bottom-2 -right-2 bg-yellow-400 text-blue-900 px-3 py-1 rounded-full text-xs font-bold shadow-lg">
+                    CEO
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-2xl font-bold text-gray-900">Shivam Sharma</h3>
+                  <p className="text-blue-600 font-semibold">Founder & CEO, Krynova Technologies</p>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-medium">Full Stack Developer</span>
+                    <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium">8+ Years Experience</span>
+                    <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-medium">Enterprise Solutions</span>
+                    <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-medium">50+ Systems Built</span>
+                    <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-medium">Data Analyst</span>
+                  </div>
+                  <p className="text-gray-600 mt-4 leading-relaxed">
+                    Shivam Sharma is an experienced Full Stack Developer and Data Analyst with over 8 years of industry experience. 
+                    He has successfully built and deployed 50+ enterprise systems for leading organizations including
+                    <strong> Torrent Power Limited</strong>, <strong>Tech Mahindra</strong>, <strong>Romsons</strong>,
+                    <strong> Agra Chain</strong>, and <strong>Anna Infrastructure Limited</strong>.
+                    His expertise spans across custom software development, data analytics, and enterprise architecture.
+                  </p>
+                  <p className="text-gray-600 mt-2">
+                    Shivam specializes in <strong>website creation from basic to advanced</strong>, custom web applications, 
+                    and enterprise solutions with modern technologies like React, Node.js, Python, and cloud platforms.
+                  </p>
+                  <div className="flex flex-wrap gap-4 mt-4">
+                    <a 
+                      href="mailto:princeb744@gmail.com" 
+                      className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition"
+                    >
+                      <FaEnvelope /> princeb744@gmail.com
+                    </a>
+                    <a 
+                      href="tel:+918630519082" 
+                      className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition"
+                    >
+                      <FaPhone /> +91 86305 19082
+                    </a>
+                  </div>
+                  <div className="flex gap-3 mt-4">
+                    <a href="#" className="text-gray-500 hover:text-blue-600 transition text-xl" aria-label="LinkedIn">
+                      <FaLinkedin />
+                    </a>
+                    <a href="#" className="text-gray-500 hover:text-gray-900 transition text-xl" aria-label="GitHub">
+                      <FaGithub />
+                    </a>
+                    <a href="#" className="text-gray-500 hover:text-blue-400 transition text-xl" aria-label="Twitter">
+                      <FaTwitter />
+                    </a>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  </div>
-</section>
+      </section>
+
       {/* ========================================== */}
       {/* EXPERIENCE & CLIENTS */}
       {/* ========================================== */}
@@ -1108,7 +1176,7 @@ const Home = () => {
               },
               {
                 q: "Where is Krynova Technologies located?",
-                a: "We are based in Agra, Uttar Pradesh, India. We serve clients nationwide including Torrent Power (Gujarat), Tech Mahindra (Pune), Romsons, Agra Chain, and Anna Infrastructure Limited."
+                a: "We are based in Agra, Uttar Pradesh, India. We serve clients nationwide including Torrent Power (Gujarat), Tech Mahindra (Pune), Romsons, Agra Chain, and Anna Infrastructure Limited, as well as international clients worldwide."
               },
               {
                 q: "How long does it take to create a website?",
@@ -1139,6 +1207,7 @@ const Home = () => {
             ))}
           </div>
 
+          {/* ✅ FAQ Schema */}
           <script type="application/ld+json">
             {JSON.stringify({
               "@context": "https://schema.org",
@@ -1170,6 +1239,17 @@ const Home = () => {
               <br />
               <span className="text-yellow-300 text-lg">From basic websites to advanced web applications — we've got you covered!</span>
             </p>
+            <div className="flex flex-wrap justify-center gap-3 mb-6">
+              <span className="inline-flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full text-xs">
+                <FaMapPin /> {indianCities.length}+ Indian Cities
+              </span>
+              <span className="inline-flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full text-xs">
+                <FaGlobe /> {globalCountries.length}+ Countries
+              </span>
+              <span className="inline-flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full text-xs">
+                <FaTrophy /> 50+ Systems Built
+              </span>
+            </div>
             <div className="flex flex-wrap justify-center gap-4">
               <Link 
                 to="/contact" 
@@ -1191,7 +1271,7 @@ const Home = () => {
               </Link>
             </div>
             <p className="mt-6 text-blue-200 text-sm">
-              Join 50+ satisfied businesses already using our solutions | Trusted by enterprises across India
+              Join 50+ satisfied businesses already using our solutions | Trusted by enterprises across India and globally
             </p>
           </div>
         </div>
@@ -1243,6 +1323,17 @@ const Home = () => {
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
           overflow: hidden;
+        }
+        .sr-only {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          padding: 0;
+          margin: -1px;
+          overflow: hidden;
+          clip: rect(0, 0, 0, 0);
+          white-space: nowrap;
+          border-width: 0;
         }
         html { scroll-behavior: smooth; }
       `}} />

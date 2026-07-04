@@ -1,6 +1,7 @@
 // frontend/src/components/Footer.jsx
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { 
   FaFacebook, 
   FaTwitter, 
@@ -40,7 +41,10 @@ import {
   FaFileArchive,
   FaExchangeAlt,
   FaFileExport,
-  FaMagic
+  FaMagic,
+  FaMapPin,
+  FaMicrophone,
+  FaStar
 } from 'react-icons/fa';
 import { FaXTwitter } from 'react-icons/fa6';
 
@@ -88,294 +92,478 @@ const Footer = () => {
   ];
 
   return (
-    <footer className="bg-gray-900 text-white mt-16 relative overflow-hidden">
-      {/* Animated Background */}
-      <div className="absolute inset-0 opacity-5">
-        <div className="absolute top-0 -left-20 w-64 h-64 bg-blue-500 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 -right-20 w-64 h-64 bg-indigo-500 rounded-full blur-3xl"></div>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-grid-pattern opacity-10"></div>
-      </div>
+    <>
+      {/* ✅ Footer Schema.org - Organization with GEO */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          "name": "Krynova Technologies",
+          "description": "Leading web development company in Agra, India offering custom web solutions, HRMS software, property management systems, and enterprise applications.",
+          "url": "https://krynovatechnology.pythonanywhere.com",
+          "logo": "https://krynovatechnology.pythonanywhere.com/logo.png",
+          "foundingDate": "2024-03-01",
+          "founders": [
+            {
+              "@type": "Person",
+              "name": "Shivam Sharma",
+              "jobTitle": "Founder & CEO"
+            }
+          ],
+          "contactPoint": [
+            {
+              "@type": "ContactPoint",
+              "telephone": "+918630519082",
+              "contactType": "sales",
+              "email": "princeb744@gmail.com",
+              "availableLanguage": ["English", "Hindi"]
+            }
+          ],
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Agra",
+            "addressRegion": "Uttar Pradesh",
+            "addressCountry": "India"
+          },
+          "geo": {
+            "@type": "GeoCoordinates",
+            "latitude": 27.1767,
+            "longitude": 78.0081
+          },
+          "areaServed": [
+            "Agra", "Delhi", "Mumbai", "Bangalore", "Chennai", "Hyderabad",
+            "Pune", "Kolkata", "Ahmedabad", "Surat", "Jaipur", "Lucknow",
+            "Kanpur", "Nagpur", "Indore", "Thane", "Bhopal", "Visakhapatnam",
+            "Patna", "Vadodara", "Ludhiana", "Nashik", "Faridabad", "Meerut",
+            "Rajkot", "Varanasi", "Srinagar", "Aurangabad", "Dhanbad", "Amritsar",
+            "Navi Mumbai", "Allahabad", "Ranchi", "Howrah", "Coimbatore", "Jabalpur",
+            "Gwalior", "Vijayawada", "Jodhpur", "Madurai", "Raipur", "Kota",
+            "Chandigarh", "Guwahati", "Solapur", "Hubballi-Dharwad", "Mysore",
+            "Tiruchirappalli", "Bareilly", "Aligarh", "Moradabad", "Saharanpur",
+            "Dehradun", "Noida", "Gurugram", "Ghaziabad", "Faridabad",
+            "Worldwide"
+          ],
+          "availableLanguage": [
+            "English", "Hindi", "Bengali", "Telugu", "Tamil", 
+            "Urdu", "Gujarati", "Marathi", "Kannada", "Malayalam", "Punjabi"
+          ],
+          "sameAs": [
+            "https://www.facebook.com/krynovatechnology",
+            "https://www.twitter.com/krynovatechnology",
+            "https://www.linkedin.com/company/krynovatechnology",
+            "https://www.github.com/krynovatechnology",
+            "https://www.instagram.com/krynovatechnology",
+            "https://www.youtube.com/krynovatechnology"
+          ]
+        })}
+      </script>
 
-      <div className="container mx-auto px-4 py-12 relative z-10">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8">
-          {/* Brand Column */}
-          <div className="lg:col-span-1">
-            <Link to="/" className="flex items-center gap-3 mb-4 group">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center text-white text-2xl shadow-lg shadow-blue-500/25 group-hover:scale-110 transition-transform duration-300">
-                <FaCube />
-              </div>
-              <div>
-                <span className="text-xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
-                  Krynova
+      {/* ✅ Footer Schema - Local Business */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "LocalBusiness",
+          "name": "Krynova Technologies",
+          "description": "Best web development company in Agra, India. We provide custom web solutions, HRMS software, property management systems, and enterprise applications.",
+          "url": "https://krynovatechnology.pythonanywhere.com",
+          "logo": "https://krynovatechnology.pythonanywhere.com/logo.png",
+          "telephone": "+918630519082",
+          "email": "princeb744@gmail.com",
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Agra",
+            "addressRegion": "Uttar Pradesh",
+            "addressCountry": "India"
+          },
+          "geo": {
+            "@type": "GeoCoordinates",
+            "latitude": 27.1767,
+            "longitude": 78.0081
+          },
+          "priceRange": "₹15,000 - ₹5,00,000",
+          "openingHours": "Mo-Fr 09:00-18:00",
+          "areaServed": [
+            "India", "USA", "UK", "Canada", "Australia", "UAE", 
+            "Singapore", "Germany", "France", "Japan", "South Korea",
+            "Netherlands", "Sweden", "Norway", "Denmark", "Finland",
+            "New Zealand", "Ireland", "Malaysia", "Thailand", "Vietnam",
+            "Indonesia", "Philippines", "South Africa", "Kenya", "Nigeria",
+            "Egypt", "Saudi Arabia", "Qatar", "Kuwait", "Bahrain", "Oman",
+            "Worldwide"
+          ],
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.8",
+            "reviewCount": "50"
+          }
+        })}
+      </script>
+
+      {/* ✅ Site Navigation Schema */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          "name": "Krynova Technologies",
+          "description": "Leading web development company in Agra, India offering custom web solutions, HRMS software, property management systems, and enterprise applications.",
+          "url": "https://krynovatechnology.pythonanywhere.com",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "https://krynovatechnology.pythonanywhere.com/products?search={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+          }
+        })}
+      </script>
+
+      {/* ✅ Breadcrumb Schema */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Home",
+              "item": "https://krynovatechnology.pythonanywhere.com/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Products",
+              "item": "https://krynovatechnology.pythonanywhere.com/products"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "Services",
+              "item": "https://krynovatechnology.pythonanywhere.com/services"
+            },
+            {
+              "@type": "ListItem",
+              "position": 4,
+              "name": "Tools",
+              "item": "https://krynovatechnology.pythonanywhere.com/tools"
+            }
+          ]
+        })}
+      </script>
+
+      <footer className="bg-gray-900 text-white mt-16 relative overflow-hidden">
+        {/* Animated Background */}
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute top-0 -left-20 w-64 h-64 bg-blue-500 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 -right-20 w-64 h-64 bg-indigo-500 rounded-full blur-3xl"></div>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-grid-pattern opacity-10"></div>
+        </div>
+
+        <div className="container mx-auto px-4 py-12 relative z-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8">
+            {/* Brand Column */}
+            <div className="lg:col-span-1">
+              <Link to="/" className="flex items-center gap-3 mb-4 group" aria-label="Krynova Technologies Home">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center text-white text-2xl shadow-lg shadow-blue-500/25 group-hover:scale-110 transition-transform duration-300">
+                  <FaCube />
+                </div>
+                <div>
+                  <span className="text-xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
+                    Krynova
+                  </span>
+                  <span className="block text-[10px] font-medium text-gray-400 tracking-wider uppercase">
+                    Technologies
+                  </span>
+                </div>
+              </Link>
+              
+              <p className="text-gray-400 text-sm leading-relaxed mb-4">
+                Custom web solutions for any industry. Founded March 2026. 
+                We deliver enterprise-grade solutions with cutting-edge technology.
+              </p>
+              
+              {/* Trust Badges */}
+              <div className="flex flex-wrap gap-3">
+                <span className="inline-flex items-center gap-1.5 bg-green-500/10 text-green-400 px-3 py-1.5 rounded-full text-xs border border-green-500/20">
+                  <FaCheckCircle className="text-green-400" />
+                  Secure & Trusted
                 </span>
-                <span className="block text-[10px] font-medium text-gray-400 tracking-wider uppercase">
-                  Technologies
+                <span className="inline-flex items-center gap-1.5 bg-blue-500/10 text-blue-400 px-3 py-1.5 rounded-full text-xs border border-blue-500/20">
+                  <FaRocket className="text-blue-400" />
+                  50+ Systems
+                </span>
+                <span className="inline-flex items-center gap-1.5 bg-yellow-500/10 text-yellow-400 px-3 py-1.5 rounded-full text-xs border border-yellow-500/20">
+                  <FaHeart className="text-yellow-400" />
+                  8+ Years
+                </span>
+                <span className="inline-flex items-center gap-1.5 bg-purple-500/10 text-purple-400 px-3 py-1.5 rounded-full text-xs border border-purple-500/20">
+                  <FaStar className="text-purple-400" />
+                  4.8/5 Rating
                 </span>
               </div>
-            </Link>
-            
-            <p className="text-gray-400 text-sm leading-relaxed mb-4">
-              Custom web solutions for any industry. Founded March 2026. 
-              We deliver enterprise-grade solutions with cutting-edge technology.
-            </p>
-            
-            {/* Trust Badges */}
-            <div className="flex flex-wrap gap-3">
-              <span className="inline-flex items-center gap-1.5 bg-green-500/10 text-green-400 px-3 py-1.5 rounded-full text-xs border border-green-500/20">
-                <FaCheckCircle className="text-green-400" />
-                Secure & Trusted
-              </span>
-              <span className="inline-flex items-center gap-1.5 bg-blue-500/10 text-blue-400 px-3 py-1.5 rounded-full text-xs border border-blue-500/20">
-                <FaRocket className="text-blue-400" />
-                50+ Systems
-              </span>
-              <span className="inline-flex items-center gap-1.5 bg-yellow-500/10 text-yellow-400 px-3 py-1.5 rounded-full text-xs border border-yellow-500/20">
-                <FaHeart className="text-yellow-400" />
-                8+ Years
-              </span>
+
+              {/* Location with Map Pin */}
+              <div className="mt-4 flex items-center gap-2 text-gray-400 text-sm">
+                <FaMapMarkerAlt className="text-blue-400" />
+                <span>Agra, Uttar Pradesh, India</span>
+              </div>
+              <div className="mt-1 flex items-center gap-2 text-gray-500 text-xs">
+                <FaGlobe className="text-blue-400" />
+                <span>Serving 60+ Indian Cities & 30+ Countries</span>
+              </div>
             </div>
 
-            {/* Location */}
-            <div className="mt-4 flex items-center gap-2 text-gray-400 text-sm">
-              <FaMapMarkerAlt className="text-blue-400" />
-              <span>Agra, Uttar Pradesh, India</span>
+            {/* Quick Links */}
+            <div>
+              <h4 className="text-sm font-semibold uppercase tracking-wider text-gray-300 mb-4">
+                Quick Links
+              </h4>
+              <ul className="space-y-2.5">
+                {[
+                  { path: '/', label: 'Home' },
+                  { path: '/testimonials', label: 'Testimonials' },
+                  { path: '/contact', label: 'Contact' },
+                  { path: '/tools', label: 'Free Tools' },
+                ].map((link) => (
+                  <li key={link.path}>
+                    <Link 
+                      to={link.path} 
+                      className="text-gray-400 hover:text-white transition-all duration-300 flex items-center gap-2 group"
+                    >
+                      <span className="w-1.5 h-1.5 bg-blue-400 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300"></span>
+                      {link.label}
+                      <FaArrowRight className="text-xs opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             </div>
-          </div>
 
-          {/* Quick Links */}
-          <div>
-            <h4 className="text-sm font-semibold uppercase tracking-wider text-gray-300 mb-4">
-              Quick Links
-            </h4>
-            <ul className="space-y-2.5">
-              {[
-                { path: '/', label: 'Home' },
-                { path: '/testimonials', label: 'Testimonials' },
-                { path: '/contact', label: 'Contact' },
-              ].map((link) => (
-                <li key={link.path}>
+            {/* Services */}
+            <div>
+              <h4 className="text-sm font-semibold uppercase tracking-wider text-gray-300 mb-4 flex items-center gap-2">
+                <FaCog className="text-blue-400" /> Services
+              </h4>
+              <ul className="space-y-2.5">
+                {services.map((service) => {
+                  const Icon = service.icon;
+                  return (
+                    <li key={service.path}>
+                      <Link 
+                        to={service.path} 
+                        className="text-gray-400 hover:text-white transition-all duration-300 flex items-center gap-2 group"
+                      >
+                        <Icon className="text-xs text-blue-400" />
+                        {service.label}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+
+            {/* Products */}
+            <div>
+              <h4 className="text-sm font-semibold uppercase tracking-wider text-gray-300 mb-4 flex items-center gap-2">
+                <FaProjectDiagram className="text-blue-400" /> Products
+              </h4>
+              <ul className="space-y-2.5">
+                {products.map((product) => {
+                  const Icon = product.icon;
+                  return (
+                    <li key={product.path}>
+                      <Link 
+                        to={product.path} 
+                        className="text-gray-400 hover:text-white transition-all duration-300 flex items-center gap-2 group"
+                      >
+                        <Icon className="text-xs text-blue-400" />
+                        {product.label}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+
+            {/* Free Tools */}
+            <div>
+              <h4 className="text-sm font-semibold uppercase tracking-wider text-gray-300 mb-4 flex items-center gap-2">
+                <FaTools className="text-blue-400" /> Free Tools
+              </h4>
+              <ul className="space-y-2.5">
+                {tools.map((tool) => {
+                  const Icon = tool.icon;
+                  return (
+                    <li key={tool.path}>
+                      <Link 
+                        to={tool.path} 
+                        className="text-gray-400 hover:text-white transition-all duration-300 flex items-center gap-2 group"
+                      >
+                        <Icon className="text-xs text-blue-400" />
+                        {tool.label}
+                      </Link>
+                    </li>
+                  );
+                })}
+                <li>
                   <Link 
-                    to={link.path} 
-                    className="text-gray-400 hover:text-white transition-all duration-300 flex items-center gap-2 group"
+                    to="/tools" 
+                    className="text-blue-400 hover:text-white transition-all duration-300 flex items-center gap-2 group text-sm font-medium"
                   >
-                    <span className="w-1.5 h-1.5 bg-blue-400 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300"></span>
-                    {link.label}
-                    <FaArrowRight className="text-xs opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300" />
+                    <FaArrowRight className="text-xs" />
+                    View All 12 Tools
                   </Link>
                 </li>
-              ))}
-            </ul>
+              </ul>
+            </div>
+
+            {/* Contact & Social */}
+            <div>
+              <h4 className="text-sm font-semibold uppercase tracking-wider text-gray-300 mb-4">
+                Contact Us
+              </h4>
+              <ul className="space-y-3">
+                <li>
+                  <a 
+                    href="mailto:princeb744@gmail.com" 
+                    className="flex items-center gap-3 text-gray-400 hover:text-white transition-all duration-300 group"
+                    aria-label="Email us"
+                  >
+                    <div className="w-8 h-8 bg-blue-500/10 rounded-lg flex items-center justify-center group-hover:bg-blue-500/20 transition-all duration-300">
+                      <FaEnvelope className="text-blue-400 text-sm" />
+                    </div>
+                    <span>princeb744@gmail.com</span>
+                  </a>
+                </li>
+                <li>
+                  <a 
+                    href="tel:+918630519082" 
+                    className="flex items-center gap-3 text-gray-400 hover:text-white transition-all duration-300 group"
+                    aria-label="Call us"
+                  >
+                    <div className="w-8 h-8 bg-green-500/10 rounded-lg flex items-center justify-center group-hover:bg-green-500/20 transition-all duration-300">
+                      <FaPhone className="text-green-400 text-sm" />
+                    </div>
+                    <span>+91 86305 19082</span>
+                  </a>
+                </li>
+                <li>
+                  <a 
+                    href="https://wa.me/918630519082" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 text-gray-400 hover:text-white transition-all duration-300 group"
+                    aria-label="WhatsApp us"
+                  >
+                    <div className="w-8 h-8 bg-green-500/10 rounded-lg flex items-center justify-center group-hover:bg-green-500/20 transition-all duration-300">
+                      <FaWhatsapp className="text-green-400 text-sm" />
+                    </div>
+                    <span>WhatsApp</span>
+                  </a>
+                </li>
+              </ul>
+
+              {/* Social Links */}
+              <div className="mt-4">
+                <h5 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">
+                  Follow Us
+                </h5>
+                <div className="flex gap-2.5 flex-wrap">
+                  <a href="#" className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 hover:bg-blue-600 hover:text-white transition-all duration-300 hover:scale-110" aria-label="Facebook">
+                    <FaFacebook />
+                  </a>
+                  <a href="#" className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 hover:bg-black hover:text-white transition-all duration-300 hover:scale-110" aria-label="Twitter">
+                    <FaXTwitter />
+                  </a>
+                  <a href="#" className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 hover:bg-blue-700 hover:text-white transition-all duration-300 hover:scale-110" aria-label="LinkedIn">
+                    <FaLinkedin />
+                  </a>
+                  <a href="#" className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-700 hover:text-white transition-all duration-300 hover:scale-110" aria-label="GitHub">
+                    <FaGithub />
+                  </a>
+                  <a href="#" className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 hover:bg-pink-600 hover:text-white transition-all duration-300 hover:scale-110" aria-label="Instagram">
+                    <FaInstagram />
+                  </a>
+                  <a href="#" className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 hover:bg-red-600 hover:text-white transition-all duration-300 hover:scale-110" aria-label="YouTube">
+                    <FaYoutube />
+                  </a>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Services */}
-          <div>
-            <h4 className="text-sm font-semibold uppercase tracking-wider text-gray-300 mb-4 flex items-center gap-2">
-              <FaCog className="text-blue-400" /> Services
-            </h4>
-            <ul className="space-y-2.5">
-              {services.map((service) => {
-                const Icon = service.icon;
-                return (
-                  <li key={service.path}>
-                    <Link 
-                      to={service.path} 
-                      className="text-gray-400 hover:text-white transition-all duration-300 flex items-center gap-2 group"
-                    >
-                      <Icon className="text-xs text-blue-400" />
-                      {service.label}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-
-          {/* Products */}
-          <div>
-            <h4 className="text-sm font-semibold uppercase tracking-wider text-gray-300 mb-4 flex items-center gap-2">
-              <FaProjectDiagram className="text-blue-400" /> Products
-            </h4>
-            <ul className="space-y-2.5">
-              {products.map((product) => {
-                const Icon = product.icon;
-                return (
-                  <li key={product.path}>
-                    <Link 
-                      to={product.path} 
-                      className="text-gray-400 hover:text-white transition-all duration-300 flex items-center gap-2 group"
-                    >
-                      <Icon className="text-xs text-blue-400" />
-                      {product.label}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-
-          {/* Free Tools */}
-          <div>
-            <h4 className="text-sm font-semibold uppercase tracking-wider text-gray-300 mb-4 flex items-center gap-2">
-              <FaTools className="text-blue-400" /> Free Tools
-            </h4>
-            <ul className="space-y-2.5">
-              {tools.map((tool) => {
-                const Icon = tool.icon;
-                return (
-                  <li key={tool.path}>
-                    <Link 
-                      to={tool.path} 
-                      className="text-gray-400 hover:text-white transition-all duration-300 flex items-center gap-2 group"
-                    >
-                      <Icon className="text-xs text-blue-400" />
-                      {tool.label}
-                    </Link>
-                  </li>
-                );
-              })}
-              <li>
-                <Link 
-                  to="/tools" 
-                  className="text-blue-400 hover:text-white transition-all duration-300 flex items-center gap-2 group text-sm font-medium"
-                >
-                  <FaArrowRight className="text-xs" />
-                  View All 12 Tools
+          {/* Divider */}
+          <div className="border-t border-gray-800 mt-10 pt-8">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+              <div className="text-center md:text-left">
+                <p className="text-gray-400 text-sm">
+                  <FaRegCopyright className="inline mr-1" />
+                  {currentYear} Krynova Technologies. All rights reserved.
+                </p>
+                <p className="text-gray-500 text-xs mt-1 flex items-center justify-center md:justify-start gap-2 flex-wrap">
+                  <span>Enterprise Software Solutions</span>
+                  <span className="w-1 h-1 bg-gray-600 rounded-full"></span>
+                  <span>Agra, India</span>
+                  <span className="w-1 h-1 bg-gray-600 rounded-full"></span>
+                  <FaGlobe className="text-blue-400" />
+                  <span>Serving 60+ Cities, 30+ Countries</span>
+                </p>
+              </div>
+              
+              <div className="flex flex-wrap justify-center gap-4 text-xs">
+                <Link to="/privacy-policy" className="text-gray-500 hover:text-white transition-colors">
+                  Privacy Policy
                 </Link>
-              </li>
-            </ul>
-          </div>
+                <span className="text-gray-600">|</span>
+                <Link to="/terms-of-service" className="text-gray-500 hover:text-white transition-colors">
+                  Terms of Service
+                </Link>
+                <span className="text-gray-600">|</span>
+                <Link to="/sitemap" className="text-gray-500 hover:text-white transition-colors">
+                  Sitemap
+                </Link>
+                <span className="text-gray-600">|</span>
+                <Link to="/contact" className="text-gray-500 hover:text-white transition-colors">
+                  Support
+                </Link>
+              </div>
+            </div>
 
-          {/* Contact & Social */}
-          <div>
-            <h4 className="text-sm font-semibold uppercase tracking-wider text-gray-300 mb-4">
-              Contact Us
-            </h4>
-            <ul className="space-y-3">
-              <li>
-                <a 
-                  href="mailto:princeb744@gmail.com" 
-                  className="flex items-center gap-3 text-gray-400 hover:text-white transition-all duration-300 group"
-                >
-                  <div className="w-8 h-8 bg-blue-500/10 rounded-lg flex items-center justify-center group-hover:bg-blue-500/20 transition-all duration-300">
-                    <FaEnvelope className="text-blue-400 text-sm" />
-                  </div>
-                  <span>princeb744@gmail.com</span>
-                </a>
-              </li>
-              <li>
-                <a 
-                  href="tel:+918630519082" 
-                  className="flex items-center gap-3 text-gray-400 hover:text-white transition-all duration-300 group"
-                >
-                  <div className="w-8 h-8 bg-green-500/10 rounded-lg flex items-center justify-center group-hover:bg-green-500/20 transition-all duration-300">
-                    <FaPhone className="text-green-400 text-sm" />
-                  </div>
-                  <span>+91 86305 19082</span>
-                </a>
-              </li>
-              <li>
-                <a 
-                  href="https://wa.me/918630519082" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 text-gray-400 hover:text-white transition-all duration-300 group"
-                >
-                  <div className="w-8 h-8 bg-green-500/10 rounded-lg flex items-center justify-center group-hover:bg-green-500/20 transition-all duration-300">
-                    <FaWhatsapp className="text-green-400 text-sm" />
-                  </div>
-                  <span>WhatsApp</span>
-                </a>
-              </li>
-            </ul>
+            {/* Security Badge */}
+            <div className="flex justify-center mt-4">
+              <div className="inline-flex items-center gap-2 bg-gray-800/50 px-4 py-2 rounded-full border border-gray-700/50 flex-wrap justify-center">
+                <FaShieldAlt className="text-green-400 text-sm" />
+                <span className="text-xs text-gray-400">256-bit SSL Encrypted</span>
+                <span className="w-px h-4 bg-gray-700 hidden sm:block"></span>
+                <FaClock className="text-blue-400 text-sm" />
+                <span className="text-xs text-gray-400">24/7 Support</span>
+                <span className="w-px h-4 bg-gray-700 hidden sm:block"></span>
+                <FaMicrophone className="text-purple-400 text-sm" />
+                <span className="text-xs text-gray-400">Voice Search Ready</span>
+              </div>
+            </div>
 
-            {/* Social Links */}
-            <div className="mt-4">
-              <h5 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">
-                Follow Us
-              </h5>
-              <div className="flex gap-2.5 flex-wrap">
-                <a href="#" className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 hover:bg-blue-600 hover:text-white transition-all duration-300 hover:scale-110">
-                  <FaFacebook />
-                </a>
-                <a href="#" className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 hover:bg-black hover:text-white transition-all duration-300 hover:scale-110">
-                  <FaXTwitter />
-                </a>
-                <a href="#" className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 hover:bg-blue-700 hover:text-white transition-all duration-300 hover:scale-110">
-                  <FaLinkedin />
-                </a>
-                <a href="#" className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-700 hover:text-white transition-all duration-300 hover:scale-110">
-                  <FaGithub />
-                </a>
-                <a href="#" className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 hover:bg-pink-600 hover:text-white transition-all duration-300 hover:scale-110">
-                  <FaInstagram />
-                </a>
-                <a href="#" className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 hover:bg-red-600 hover:text-white transition-all duration-300 hover:scale-110">
-                  <FaYoutube />
-                </a>
+            {/* Geo Location Badge */}
+            <div className="flex justify-center mt-3">
+              <div className="inline-flex items-center gap-2 bg-blue-500/10 px-4 py-1.5 rounded-full border border-blue-500/20">
+                <FaMapPin className="text-blue-400 text-xs" />
+                <span className="text-xs text-gray-400">Based in Agra, Uttar Pradesh, India • Serving Worldwide</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Divider */}
-        <div className="border-t border-gray-800 mt-10 pt-8">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="text-center md:text-left">
-              <p className="text-gray-400 text-sm">
-                <FaRegCopyright className="inline mr-1" />
-                {currentYear} Krynova Technologies. All rights reserved.
-              </p>
-              <p className="text-gray-500 text-xs mt-1 flex items-center justify-center md:justify-start gap-2 flex-wrap">
-                <span>Enterprise Software Solutions</span>
-                <span className="w-1 h-1 bg-gray-600 rounded-full"></span>
-                <span>Agra, India</span>
-                <span className="w-1 h-1 bg-gray-600 rounded-full"></span>
-                <FaGlobe className="text-blue-400" />
-                <span>Serving Worldwide</span>
-              </p>
-            </div>
-            
-            <div className="flex flex-wrap justify-center gap-4 text-xs">
-              <Link to="/privacy-policy" className="text-gray-500 hover:text-white transition-colors">
-                Privacy Policy
-              </Link>
-              <span className="text-gray-600">|</span>
-              <Link to="/terms-of-service" className="text-gray-500 hover:text-white transition-colors">
-                Terms of Service
-              </Link>
-              <span className="text-gray-600">|</span>
-              <Link to="/sitemap" className="text-gray-500 hover:text-white transition-colors">
-                Sitemap
-              </Link>
-              <span className="text-gray-600">|</span>
-              <Link to="/contact" className="text-gray-500 hover:text-white transition-colors">
-                Support
-              </Link>
-            </div>
-          </div>
-
-          {/* Security Badge */}
-          <div className="flex justify-center mt-4">
-            <div className="inline-flex items-center gap-2 bg-gray-800/50 px-4 py-2 rounded-full border border-gray-700/50 flex-wrap justify-center">
-              <FaShieldAlt className="text-green-400 text-sm" />
-              <span className="text-xs text-gray-400">256-bit SSL Encrypted</span>
-              <span className="w-px h-4 bg-gray-700 hidden sm:block"></span>
-              <FaClock className="text-blue-400 text-sm" />
-              <span className="text-xs text-gray-400">24/7 Support</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <style dangerouslySetInnerHTML={{ __html: `
-        .bg-grid-pattern {
-          background-image: 
-            linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-          background-size: 30px 30px;
-        }
-      `}} />
-    </footer>
+        <style dangerouslySetInnerHTML={{ __html: `
+          .bg-grid-pattern {
+            background-image: 
+              linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 30px 30px;
+          }
+        `}} />
+      </footer>
+    </>
   );
 };
 

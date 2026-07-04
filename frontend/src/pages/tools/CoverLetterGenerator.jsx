@@ -1,5 +1,6 @@
 // src/pages/tools/CoverLetterGenerator.jsx
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { 
   FaSpinner, FaDownload, FaStar, FaLock, FaFileAlt, 
   FaCheckCircle, FaCircle, FaTimes, FaTrash, FaPlus,
@@ -11,7 +12,7 @@ import {
   FaChevronDown, FaChevronUp, FaClock, FaRegFileExcel,
   FaFilePdf, FaTrophy, FaMedal, FaExclamationTriangle,
   FaCheckDouble, FaBullseye, FaRocket as FaRocketIcon,
-  FaRegFileWord
+  FaRegFileWord, FaMapPin, FaMicrophone, FaComments
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { api } from '../../utils/api';
@@ -22,9 +23,34 @@ import * as XLSX from 'xlsx';
 import { Document, Packer, Paragraph, TextRun, AlignmentType } from 'docx';
 
 // ============================================
+// ✅ INDIAN CITIES FOR GEO TARGETING
+// ============================================
+const indianCities = [
+  "Agra", "Delhi", "Mumbai", "Bangalore", "Chennai", "Hyderabad", 
+  "Pune", "Kolkata", "Ahmedabad", "Surat", "Jaipur", "Lucknow", 
+  "Kanpur", "Nagpur", "Indore", "Thane", "Bhopal", "Visakhapatnam", 
+  "Patna", "Vadodara", "Ludhiana", "Nashik", "Faridabad", "Meerut", 
+  "Rajkot", "Varanasi", "Srinagar", "Aurangabad", "Dhanbad", "Amritsar", 
+  "Navi Mumbai", "Allahabad", "Ranchi", "Howrah", "Coimbatore", "Jabalpur", 
+  "Gwalior", "Vijayawada", "Jodhpur", "Madurai", "Raipur", "Kota", 
+  "Chandigarh", "Guwahati", "Solapur", "Hubballi-Dharwad", "Mysore", 
+  "Tiruchirappalli", "Bareilly", "Aligarh", "Moradabad", "Saharanpur", 
+  "Dehradun", "Noida", "Gurugram", "Ghaziabad", "Faridabad"
+];
+
+// ✅ GLOBAL COUNTRIES
+const globalCountries = [
+  "USA", "UK", "Canada", "Australia", "UAE", "Singapore", 
+  "Germany", "France", "Japan", "South Korea", "Netherlands", 
+  "Sweden", "Norway", "Denmark", "Finland", "New Zealand", 
+  "Ireland", "Malaysia", "Thailand", "Vietnam", "Indonesia", 
+  "Philippines", "South Africa", "Kenya", "Nigeria", "Egypt", 
+  "Saudi Arabia", "Qatar", "Kuwait", "Bahrain", "Oman"
+];
+
+// ============================================
 // TEMPLATES CONFIGURATION
 // ============================================
-
 const TEMPLATES = {
   professional: {
     id: 'professional',
@@ -59,7 +85,6 @@ const TEMPLATES = {
 // ============================================
 // COVER LETTER ATS KEYWORDS
 // ============================================
-
 const COVER_LETTER_KEYWORDS = {
   'opening': ['I am writing to express', 'I am excited to apply', 'I am applying for', 'I am interested in', 'With great enthusiasm', 'I would like to apply'],
   'skills': ['expertise', 'proven track record', 'experience in', 'skilled in', 'proficient in', 'strong background', 'deep understanding', 'extensive experience', 'technical proficiency', 'strategic thinking'],
@@ -70,7 +95,6 @@ const COVER_LETTER_KEYWORDS = {
 // ============================================
 // ATS SCORE COMPONENT FOR COVER LETTER
 // ============================================
-
 const CoverLetterATSScore = ({ data }) => {
   const [showDetails, setShowDetails] = useState(false);
 
@@ -243,7 +267,6 @@ const CoverLetterATSScore = ({ data }) => {
 // ============================================
 // KEYWORD SUGGESTIONS COMPONENT
 // ============================================
-
 const KeywordSuggestions = ({ onAdd }) => {
   const [selectedCategory, setSelectedCategory] = useState('opening');
   const [selectedKeywords, setSelectedKeywords] = useState([]);
@@ -322,7 +345,6 @@ const KeywordSuggestions = ({ onAdd }) => {
 // ============================================
 // COVER LETTER PREVIEW
 // ============================================
-
 const CoverLetterPreview = ({ data, template }) => {
   const templates = {
     professional: {
@@ -413,7 +435,6 @@ const CoverLetterPreview = ({ data, template }) => {
 // ============================================
 // MAIN COVER LETTER GENERATOR
 // ============================================
-
 const CoverLetterGenerator = () => {
   const [formData, setFormData] = useState({
     name: '',
@@ -436,6 +457,8 @@ const CoverLetterGenerator = () => {
   const [showKeywords, setShowKeywords] = useState(false);
   const [templateDropdownOpen, setTemplateDropdownOpen] = useState(false);
   const printRef = useRef(null);
+
+  const siteUrl = window.location.origin;
 
   // Check premium status
   useEffect(() => {
@@ -546,8 +569,6 @@ const CoverLetterGenerator = () => {
   // ============================================
   // DOWNLOAD FUNCTIONS
   // ============================================
-
-  // Download as PDF
   const handleDownloadPDF = async () => {
     if (!result) {
       toast.error('Please generate a cover letter first');
@@ -597,7 +618,6 @@ const CoverLetterGenerator = () => {
     }
   };
 
-  // Download as Word
   const handleDownloadWord = () => {
     if (!result) {
       toast.error('Please generate a cover letter first');
@@ -771,7 +791,6 @@ const CoverLetterGenerator = () => {
     }
   };
 
-  // Download as Excel
   const handleDownloadExcel = () => {
     if (!result) {
       toast.error('Please generate a cover letter first');
@@ -883,298 +902,469 @@ const CoverLetterGenerator = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8">
-      <div className="container mx-auto px-4 max-w-7xl">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 bg-purple-100 text-purple-700 px-4 py-2 rounded-full text-sm font-medium mb-4">
-            <FaPenFancy className="text-purple-500" />
-            Professional Cover Letter Generator
-          </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Cover Letter <span className="gradient-text">Generator</span>
-          </h1>
-          <p className="text-gray-600 max-w-2xl mx-auto">
-            Create professional cover letters that stand out with ATS optimization and real-time scoring
-          </p>
-          <div className="flex flex-wrap justify-center gap-3 mt-3">
-            <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm">
-              <FaStar className="text-yellow-400" /> Free: 3/day
-            </span>
-            <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">
-              <FaCrown className="text-yellow-500" /> Premium: Unlimited
-            </span>
-            <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm">
-              <FaSearch className="text-purple-500" /> ATS Score
-            </span>
-          </div>
-        </div>
+    <>
+      {/* ========================================== */}
+      {/* ✅ HELMET - SEO + AEO + GEO */}
+      {/* ========================================== */}
+      <Helmet>
+        <title>Free Cover Letter Generator - Professional Cover Letter Maker | Krynova Technologies</title>
+        <meta name="description" content="Create professional cover letters with our free cover letter generator. Get real-time ATS scoring, multiple templates, and download as PDF, Word, or Excel. No sign-up required. Best free cover letter maker in India and globally." />
+        <meta name="keywords" content="free cover letter generator, cover letter maker, professional cover letter, ATS friendly cover letter, cover letter templates, best cover letter builder, cover letter India, Krynova cover letter, job application letter, cover letter online" />
+        <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
+        <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large" />
+        
+        <link rel="canonical" href={`${siteUrl}/tools/cover-letter`} />
+        
+        <meta name="geo.region" content="IN-UP" />
+        <meta name="geo.placename" content="Agra" />
+        <meta name="geo.position" content="27.1767;78.0081" />
+        <meta name="ICBM" content="27.1767, 78.0081" />
+        <meta name="city" content="Agra" />
+        <meta name="state" content="Uttar Pradesh" />
+        <meta name="country" content="India" />
+        <meta name="areaServed" content={indianCities.join(", ")} />
+        <meta name="serviceArea" content={`India, ${globalCountries.join(", ")}, Worldwide`} />
+        <meta name="targetedCities" content={indianCities.join(", ")} />
+        <meta name="targetedCountries" content={globalCountries.join(", ")} />
+        <meta name="language" content="en, hi, bn, te, ta, ur, gu, mr, kn, ml, pa" />
+        
+        <meta name="question" content="What is the best free cover letter generator in India?" />
+        <meta name="answer" content="Krynova Technologies offers the best free cover letter generator in India with real-time ATS scoring, multiple templates, and PDF/Word/Excel export. No sign-up required." />
+        <meta name="faq" content="true" />
+        <meta name="speakable" content="true" />
+        <meta name="speakable-type" content="text/html" />
+        <meta name="speakable-css" content=".speakable" />
+        <meta name="voice-search" content="true" />
+        <meta name="voice-search-keywords" content="free cover letter generator, cover letter maker, professional cover letter, ATS cover letter, best cover letter builder" />
+        
+        <meta name="rich-snippet" content="tool" />
+        <meta name="structured-data" content="true" />
+        <meta name="application-category" content="Cover Letter Generator" />
+        <meta name="application-rating" content="4.8" />
+        
+        <meta property="og:title" content="Free Cover Letter Generator - Professional Cover Letter Maker | Krynova Technologies" />
+        <meta property="og:description" content="Create professional cover letters with our free cover letter generator. Real-time ATS scoring, multiple templates. No sign-up required." />
+        <meta property="og:url" content={`${siteUrl}/tools/cover-letter`} />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Krynova Technologies" />
+        <meta property="og:image" content={`${siteUrl}/logo.png`} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:locale" content="en_IN" />
+        
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Free Cover Letter Generator - Professional Cover Letter Maker" />
+        <meta name="twitter:description" content="Create professional cover letters with our free cover letter generator. No sign-up required." />
+        <meta name="twitter:image" content={`${siteUrl}/logo.png`} />
+      </Helmet>
 
-        {/* Usage Info */}
-        {usageInfo && (
-          <div className={`mb-6 p-4 rounded-lg flex flex-wrap items-center justify-between ${
-            usageInfo.isPremium ? 'bg-green-50 border border-green-200' :
-            usageInfo.remaining > 0 ? 'bg-blue-50 border border-blue-200' : 'bg-yellow-50 border border-yellow-200'
-          }`}>
-            <p className="text-sm flex items-center gap-2">
-              {usageInfo.isPremium ? (
-                <><FaCrown className="text-yellow-500" /> <span className="font-semibold">Premium:</span> Unlimited access</>
-              ) : (
-                <><FaClock className="text-blue-500" /> {usageInfo.used} used today • {usageInfo.remaining} free remaining</>
-              )}
+      {/* ========================================== */}
+      {/* ✅ AEO SPEAKABLE CONTENT */}
+      {/* ========================================== */}
+      <div className="speakable sr-only" aria-hidden="true">
+        <h2>Free Cover Letter Generator - Krynova Technologies</h2>
+        <p>Create professional cover letters with our free cover letter generator. Get real-time ATS scoring, multiple templates, and download as PDF, Word, or Excel.</p>
+        <p>Available for users in Agra, Delhi, Mumbai, Bangalore, and all Indian cities, as well as globally in USA, UK, Canada, Australia, and more.</p>
+        <ul>
+          <li>4 professional templates</li>
+          <li>Real-time ATS scoring</li>
+          <li>PDF, Word, and Excel export</li>
+          <li>Keyword suggestions</li>
+          <li>No sign-up required for free tier</li>
+        </ul>
+        <p>Best free cover letter maker for job seekers worldwide.</p>
+      </div>
+
+      {/* ========================================== */}
+      {/* ✅ SCHEMA.ORG - WebApplication */}
+      {/* ========================================== */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebApplication",
+          "name": "Cover Letter Generator",
+          "description": "Free online cover letter generator with 4 professional templates, real-time ATS scoring, and PDF/Word/Excel export.",
+          "url": `${siteUrl}/tools/cover-letter`,
+          "applicationCategory": "Productivity",
+          "operatingSystem": "All",
+          "browserRequirements": "Requires JavaScript",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "INR",
+            "description": "Free tier with 3 cover letters/day. Premium upgrade for unlimited access."
+          },
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.8",
+            "reviewCount": "120"
+          },
+          "provider": {
+            "@type": "Organization",
+            "name": "Krynova Technologies",
+            "address": {
+              "@type": "PostalAddress",
+              "addressLocality": "Agra",
+              "addressRegion": "Uttar Pradesh",
+              "addressCountry": "India"
+            }
+          },
+          "areaServed": indianCities,
+          "availableLanguage": ["English", "Hindi", "Bengali", "Telugu", "Tamil", "Urdu", "Gujarati", "Marathi", "Kannada", "Malayalam", "Punjabi"],
+          "speakable": {
+            "@type": "SpeakableSpecification",
+            "cssSelector": ".speakable"
+          }
+        })}
+      </script>
+
+      {/* ========================================== */}
+      {/* ✅ FAQ Schema */}
+      {/* ========================================== */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Is the cover letter generator free?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes! Our cover letter generator offers a free tier with 3 cover letters per day. Premium upgrade available for unlimited access."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Do I need to sign up to use the cover letter generator?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "No sign-up is required! You can create and download your cover letter instantly without creating an account."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What formats can I download my cover letter in?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "You can download your cover letter in PDF, Word (DOCX), and Excel (XLSX) formats."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How many templates are available?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Our cover letter generator offers 4 professional templates: Professional, Modern, Creative, and Minimal."
+              }
+            }
+          ]
+        })}
+      </script>
+
+      {/* ========================================== */}
+      {/* MAIN CONTENT */}
+      {/* ========================================== */}
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8">
+        <div className="container mx-auto px-4 max-w-7xl">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 bg-purple-100 text-purple-700 px-4 py-2 rounded-full text-sm font-medium mb-4">
+              <FaPenFancy className="text-purple-500" />
+              Professional Cover Letter Generator
+            </div>
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">
+              Cover Letter <span className="gradient-text">Generator</span>
+            </h1>
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              Create professional cover letters that stand out with ATS optimization and real-time scoring
             </p>
-            {!usageInfo.isPremium && (
-              <button onClick={handleUpgrade} className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition flex items-center gap-2">
-                <FaCrown /> Upgrade Now
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Template Dropdown */}
-        <div className="mb-6 relative">
-          <div className="flex items-center gap-4">
-            <button onClick={() => setTemplateDropdownOpen(!templateDropdownOpen)} className="flex-1 bg-white px-6 py-3 rounded-xl border-2 border-gray-200 hover:border-purple-300 transition flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-lg ${currentTemplate.preview} flex items-center justify-center text-white`}>
-                  <FaPenFancy className="text-lg" />
-                </div>
-                <div className="text-left">
-                  <p className="font-semibold text-gray-900">{currentTemplate.name}</p>
-                  <p className="text-xs text-gray-500">{currentTemplate.description}</p>
-                </div>
-              </div>
-              <FaChevronDown className={`text-gray-400 transition ${templateDropdownOpen ? 'rotate-180' : ''}`} />
-            </button>
+            <div className="flex flex-wrap justify-center gap-3 mt-3">
+              <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm">
+                <FaStar className="text-yellow-400" /> Free: 3/day
+              </span>
+              <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">
+                <FaCrown className="text-yellow-500" /> Premium: Unlimited
+              </span>
+              <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm">
+                <FaSearch className="text-purple-500" /> ATS Score
+              </span>
+              <span className="inline-flex items-center gap-1 bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-sm">
+                <FaMapPin className="text-yellow-500" /> {indianCities.length}+ Cities
+              </span>
+              <span className="inline-flex items-center gap-1 bg-cyan-100 text-cyan-700 px-3 py-1 rounded-full text-sm">
+                <FaGlobe className="text-cyan-500" /> {globalCountries.length}+ Countries
+              </span>
+            </div>
           </div>
 
-          {templateDropdownOpen && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 max-h-96 overflow-y-auto z-50">
-              {Object.entries(TEMPLATES).map(([key, template]) => {
-                const isSelected = selectedTemplate === key;
-                return (
-                  <button
-                    key={key}
-                    onClick={() => { setSelectedTemplate(key); setTemplateDropdownOpen(false); }}
-                    className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition border-b border-gray-100 last:border-0 ${
-                      isSelected ? 'bg-purple-50' : ''
-                    }`}
-                  >
-                    <div className={`w-10 h-10 rounded-lg ${template.preview} flex items-center justify-center text-white flex-shrink-0`}>
-                      <FaPenFancy className="text-lg" />
-                    </div>
-                    <div className="flex-1 text-left">
-                      <p className={`font-semibold text-sm ${isSelected ? 'text-purple-600' : 'text-gray-700'}`}>
-                        {template.name}
-                      </p>
-                      <p className="text-xs text-gray-500">{template.description}</p>
-                    </div>
-                    {isSelected && <FaCheckCircle className="text-purple-600" />}
-                  </button>
-                );
-              })}
+          {/* Usage Info */}
+          {usageInfo && (
+            <div className={`mb-6 p-4 rounded-lg flex flex-wrap items-center justify-between ${
+              usageInfo.isPremium ? 'bg-green-50 border border-green-200' :
+              usageInfo.remaining > 0 ? 'bg-blue-50 border border-blue-200' : 'bg-yellow-50 border border-yellow-200'
+            }`}>
+              <p className="text-sm flex items-center gap-2">
+                {usageInfo.isPremium ? (
+                  <><FaCrown className="text-yellow-500" /> <span className="font-semibold">Premium:</span> Unlimited access</>
+                ) : (
+                  <><FaClock className="text-blue-500" /> {usageInfo.used} used today • {usageInfo.remaining} free remaining</>
+                )}
+              </p>
+              {!usageInfo.isPremium && (
+                <button onClick={handleUpgrade} className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition flex items-center gap-2">
+                  <FaCrown /> Upgrade Now
+                </button>
+              )}
             </div>
           )}
-        </div>
 
-        {/* Quick Examples */}
-        <div className="mb-6">
-          <p className="text-sm text-gray-500 mb-2 flex items-center gap-2">
-            <FaMagic className="text-purple-500" /> Quick Examples:
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {examples.map((example, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => fillExample(example.data)}
-                className="px-3 py-1.5 bg-gray-100 hover:bg-purple-100 rounded-lg text-xs transition border border-gray-200 hover:border-purple-300"
-              >
-                <FaRocketIcon className="inline mr-1 text-purple-500" />
-                {example.label}
+          {/* Template Dropdown */}
+          <div className="mb-6 relative">
+            <div className="flex items-center gap-4">
+              <button onClick={() => setTemplateDropdownOpen(!templateDropdownOpen)} className="flex-1 bg-white px-6 py-3 rounded-xl border-2 border-gray-200 hover:border-purple-300 transition flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg ${currentTemplate.preview} flex items-center justify-center text-white`}>
+                    <FaPenFancy className="text-lg" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-semibold text-gray-900">{currentTemplate.name}</p>
+                    <p className="text-xs text-gray-500">{currentTemplate.description}</p>
+                  </div>
+                </div>
+                <FaChevronDown className={`text-gray-400 transition ${templateDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* Form Section */}
-          <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                <FaUser className="text-purple-600" /> Your Details
-              </h2>
-              <div className="flex gap-2">
-                <button onClick={() => setActiveTab('form')} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${activeTab === 'form' ? 'bg-purple-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                  <FaFileAlt className="inline mr-1" /> Form
-                </button>
-                <button onClick={() => setActiveTab('preview')} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${activeTab === 'preview' ? 'bg-purple-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                  <FaEye className="inline mr-1" /> Preview
-                </button>
-              </div>
             </div>
 
-            {activeTab === 'form' ? (
-              <form onSubmit={handleSubmit} className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-                {/* ATS Score Section */}
-                <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-3 rounded-lg border border-purple-200">
-                  <CoverLetterATSScore data={formData} />
-                </div>
-
-                {/* Personal Information */}
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                    <FaUser className="text-purple-500" /> Personal Information
-                  </h4>
-                  <div className="grid md:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Full Name *</label>
-                      <input type="text" name="name" placeholder="John Doe" value={formData.name} onChange={handleChange} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
-                      <input type="email" name="email" placeholder="john@example.com" value={formData.email} onChange={handleChange} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Phone</label>
-                      <input type="text" name="phone" placeholder="+91 98765 43210" value={formData.phone} onChange={handleChange} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Location</label>
-                      <input type="text" name="location" placeholder="Agra, India" value={formData.location} onChange={handleChange} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Job Information */}
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                    <FaBriefcase className="text-purple-500" /> Job Information
-                  </h4>
-                  <div className="grid md:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Position *</label>
-                      <input type="text" name="position" placeholder="Full Stack Developer" value={formData.position} onChange={handleChange} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Company *</label>
-                      <input type="text" name="company" placeholder="Tech Innovations Inc." value={formData.company} onChange={handleChange} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Skills & Experience */}
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                      <FaPenFancy className="text-purple-500" /> Skills & Experience
-                    </h4>
-                    <button type="button" onClick={() => setShowKeywords(!showKeywords)} className="text-xs text-purple-600 hover:text-purple-800 transition flex items-center gap-1">
-                      <FaSearch /> {showKeywords ? 'Hide Keywords' : 'Show Keywords'}
+            {templateDropdownOpen && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 max-h-96 overflow-y-auto z-50">
+                {Object.entries(TEMPLATES).map(([key, template]) => {
+                  const isSelected = selectedTemplate === key;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => { setSelectedTemplate(key); setTemplateDropdownOpen(false); }}
+                      className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition border-b border-gray-100 last:border-0 ${
+                        isSelected ? 'bg-purple-50' : ''
+                      }`}
+                    >
+                      <div className={`w-10 h-10 rounded-lg ${template.preview} flex items-center justify-center text-white flex-shrink-0`}>
+                        <FaPenFancy className="text-lg" />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <p className={`font-semibold text-sm ${isSelected ? 'text-purple-600' : 'text-gray-700'}`}>
+                          {template.name}
+                        </p>
+                        <p className="text-xs text-gray-500">{template.description}</p>
+                      </div>
+                      {isSelected && <FaCheckCircle className="text-purple-600" />}
                     </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Quick Examples */}
+          <div className="mb-6">
+            <p className="text-sm text-gray-500 mb-2 flex items-center gap-2">
+              <FaMagic className="text-purple-500" /> Quick Examples:
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {examples.map((example, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => fillExample(example.data)}
+                  className="px-3 py-1.5 bg-gray-100 hover:bg-purple-100 rounded-lg text-xs transition border border-gray-200 hover:border-purple-300"
+                >
+                  <FaRocketIcon className="inline mr-1 text-purple-500" />
+                  {example.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Main Content */}
+          <div className="grid lg:grid-cols-2 gap-6">
+            {/* Form Section */}
+            <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <FaUser className="text-purple-600" /> Your Details
+                </h2>
+                <div className="flex gap-2">
+                  <button onClick={() => setActiveTab('form')} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${activeTab === 'form' ? 'bg-purple-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                    <FaFileAlt className="inline mr-1" /> Form
+                  </button>
+                  <button onClick={() => setActiveTab('preview')} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${activeTab === 'preview' ? 'bg-purple-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                    <FaEye className="inline mr-1" /> Preview
+                  </button>
+                </div>
+              </div>
+
+              {activeTab === 'form' ? (
+                <form onSubmit={handleSubmit} className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                  {/* ATS Score Section */}
+                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-3 rounded-lg border border-purple-200">
+                    <CoverLetterATSScore data={formData} />
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Skills (comma separated) *</label>
-                    <input type="text" name="skills" placeholder="React, Python, Project Management" value={formData.skills} onChange={handleChange} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required />
-                    {skillsArray.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mt-2">
-                        {skillsArray.map((skill, idx) => (
-                          <span key={idx} className="bg-purple-50 text-purple-600 px-2 py-0.5 rounded text-xs">{skill}</span>
-                        ))}
+
+                  {/* Personal Information */}
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                      <FaUser className="text-purple-500" /> Personal Information
+                    </h4>
+                    <div className="grid md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Full Name *</label>
+                        <input type="text" name="name" placeholder="John Doe" value={formData.name} onChange={handleChange} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
+                        <input type="email" name="email" placeholder="john@example.com" value={formData.email} onChange={handleChange} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Phone</label>
+                        <input type="text" name="phone" placeholder="+91 98765 43210" value={formData.phone} onChange={handleChange} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Location</label>
+                        <input type="text" name="location" placeholder="Agra, India" value={formData.location} onChange={handleChange} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Job Information */}
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                      <FaBriefcase className="text-purple-500" /> Job Information
+                    </h4>
+                    <div className="grid md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Position *</label>
+                        <input type="text" name="position" placeholder="Full Stack Developer" value={formData.position} onChange={handleChange} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Company *</label>
+                        <input type="text" name="company" placeholder="Tech Innovations Inc." value={formData.company} onChange={handleChange} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Skills & Experience */}
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                        <FaPenFancy className="text-purple-500" /> Skills & Experience
+                      </h4>
+                      <button type="button" onClick={() => setShowKeywords(!showKeywords)} className="text-xs text-purple-600 hover:text-purple-800 transition flex items-center gap-1">
+                        <FaSearch /> {showKeywords ? 'Hide Keywords' : 'Show Keywords'}
+                      </button>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Skills (comma separated) *</label>
+                      <input type="text" name="skills" placeholder="React, Python, Project Management" value={formData.skills} onChange={handleChange} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required />
+                      {skillsArray.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {skillsArray.map((skill, idx) => (
+                            <span key={idx} className="bg-purple-50 text-purple-600 px-2 py-0.5 rounded text-xs">{skill}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-3">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Experience / Body Text *</label>
+                      <textarea name="experience" rows="4" placeholder="5+ years of experience in full-stack development, leading teams of 10+ engineers..." value={formData.experience} onChange={handleChange} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-y" required />
+                      <p className="text-xs text-gray-400 mt-1">{formData.experience?.length || 0} characters (Recommended: 200-800)</p>
+                    </div>
+                    {showKeywords && (
+                      <div className="mt-3">
+                        <KeywordSuggestions onAdd={handleKeywordAdd} />
                       </div>
                     )}
                   </div>
-                  <div className="mt-3">
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Experience / Body Text *</label>
-                    <textarea name="experience" rows="4" placeholder="5+ years of experience in full-stack development, leading teams of 10+ engineers..." value={formData.experience} onChange={handleChange} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-y" required />
-                    <p className="text-xs text-gray-400 mt-1">{formData.experience?.length || 0} characters (Recommended: 200-800)</p>
+
+                  {/* Premium Toggle */}
+                  <div className="flex items-center gap-3 pt-2 border-t border-gray-200">
+                    <input type="checkbox" name="is_premium" checked={formData.is_premium} onChange={handleChange} className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500" />
+                    <label className="text-sm text-gray-700 flex items-center gap-1">
+                      <FaCrown className="text-yellow-500" /> Premium Mode (Unlimited + All Templates)
+                    </label>
                   </div>
-                  {showKeywords && (
-                    <div className="mt-3">
-                      <KeywordSuggestions onAdd={handleKeywordAdd} />
-                    </div>
-                  )}
-                </div>
 
-                {/* Premium Toggle */}
-                <div className="flex items-center gap-3 pt-2 border-t border-gray-200">
-                  <input type="checkbox" name="is_premium" checked={formData.is_premium} onChange={handleChange} className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500" />
-                  <label className="text-sm text-gray-700 flex items-center gap-1">
-                    <FaCrown className="text-yellow-500" /> Premium Mode (Unlimited + All Templates)
-                  </label>
+                  <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-lg font-semibold hover:shadow-lg transition disabled:opacity-50 flex items-center justify-center gap-2">
+                    {loading ? <FaSpinner className="animate-spin" /> : <FaRocketIcon />}
+                    {loading ? 'Generating...' : 'Generate Cover Letter'}
+                  </button>
+                </form>
+              ) : (
+                <div className="max-h-[600px] overflow-y-auto custom-scrollbar">
+                  <CoverLetterPreview data={formData} template={currentTemplate} />
+                  <div className="mt-4 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                    <CoverLetterATSScore data={formData} />
+                  </div>
                 </div>
+              )}
+            </div>
 
-                <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-lg font-semibold hover:shadow-lg transition disabled:opacity-50 flex items-center justify-center gap-2">
-                  {loading ? <FaSpinner className="animate-spin" /> : <FaRocketIcon />}
-                  {loading ? 'Generating...' : 'Generate Cover Letter'}
-                </button>
-              </form>
-            ) : (
-              <div className="max-h-[600px] overflow-y-auto custom-scrollbar">
+            {/* Preview Section */}
+            <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <FaEye className="text-purple-600" /> Live Preview
+                </h2>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded-full flex items-center gap-1">
+                    <FaPalette className="text-xs" /> {currentTemplate.name}
+                  </span>
+                </div>
+              </div>
+              
+              <div ref={printRef} className="max-h-[600px] overflow-y-auto custom-scrollbar">
                 <CoverLetterPreview data={formData} template={currentTemplate} />
-                <div className="mt-4 p-3 bg-purple-50 rounded-lg border border-purple-200">
-                  <CoverLetterATSScore data={formData} />
+              </div>
+
+              {result && (
+                <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-gray-200">
+                  <button onClick={handleDownloadPDF} className="flex-1 bg-red-500 text-white py-2.5 rounded-lg hover:bg-red-600 transition flex items-center justify-center gap-2 text-sm font-semibold shadow-md hover:shadow-lg">
+                    <FaFilePdf /> PDF
+                  </button>
+                  <button onClick={handleDownloadWord} className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 text-sm font-semibold shadow-md hover:shadow-lg">
+                    <FaRegFileWord /> Word
+                  </button>
+                  <button onClick={handleDownloadExcel} className="flex-1 bg-green-600 text-white py-2.5 rounded-lg hover:bg-green-700 transition flex items-center justify-center gap-2 text-sm font-semibold shadow-md hover:shadow-lg">
+                    <FaRegFileExcel /> Excel
+                  </button>
+                  <button onClick={handleDownload} className="flex-1 bg-blue-500 text-white py-2.5 rounded-lg hover:bg-blue-600 transition flex items-center justify-center gap-2 text-sm font-semibold shadow-md hover:shadow-lg">
+                    <FaDownload /> Text
+                  </button>
+                  <button onClick={handleCopy} className="flex-1 bg-gray-500 text-white py-2.5 rounded-lg hover:bg-gray-600 transition flex items-center justify-center gap-2 text-sm font-semibold">
+                    <FaCopy /> Copy
+                  </button>
+                  <button onClick={handlePrint} className="flex-1 bg-gray-600 text-white py-2.5 rounded-lg hover:bg-gray-700 transition flex items-center justify-center gap-2 text-sm font-semibold">
+                    <FaPrint /> Print
+                  </button>
                 </div>
-              </div>
-            )}
-          </div>
-
-          {/* Preview Section */}
-          <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                <FaEye className="text-purple-600" /> Live Preview
-              </h2>
-              <div className="flex items-center gap-2">
-                <span className="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded-full flex items-center gap-1">
-                  <FaPalette className="text-xs" /> {currentTemplate.name}
-                </span>
-              </div>
+              )}
             </div>
-            
-            <div ref={printRef} className="max-h-[600px] overflow-y-auto custom-scrollbar">
-              <CoverLetterPreview data={formData} template={currentTemplate} />
+          </div>
+
+          {/* Upgrade CTA */}
+          <div className="mt-8 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl p-6 text-white text-center relative overflow-hidden">
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute top-0 -right-20 w-64 h-64 bg-white rounded-full blur-3xl"></div>
+              <div className="absolute -bottom-20 -left-20 w-48 h-48 bg-white rounded-full blur-3xl"></div>
             </div>
-
-            {result && (
-              <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-gray-200">
-                <button onClick={handleDownloadPDF} className="flex-1 bg-red-500 text-white py-2.5 rounded-lg hover:bg-red-600 transition flex items-center justify-center gap-2 text-sm font-semibold shadow-md hover:shadow-lg">
-                  <FaFilePdf /> PDF
-                </button>
-                <button onClick={handleDownloadWord} className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 text-sm font-semibold shadow-md hover:shadow-lg">
-                  <FaRegFileWord /> Word
-                </button>
-                <button onClick={handleDownloadExcel} className="flex-1 bg-green-600 text-white py-2.5 rounded-lg hover:bg-green-700 transition flex items-center justify-center gap-2 text-sm font-semibold shadow-md hover:shadow-lg">
-                  <FaRegFileExcel /> Excel
-                </button>
-                <button onClick={handleDownload} className="flex-1 bg-blue-500 text-white py-2.5 rounded-lg hover:bg-blue-600 transition flex items-center justify-center gap-2 text-sm font-semibold shadow-md hover:shadow-lg">
-                  <FaDownload /> Text
-                </button>
-                <button onClick={handleCopy} className="flex-1 bg-gray-500 text-white py-2.5 rounded-lg hover:bg-gray-600 transition flex items-center justify-center gap-2 text-sm font-semibold">
-                  <FaCopy /> Copy
-                </button>
-                <button onClick={handlePrint} className="flex-1 bg-gray-600 text-white py-2.5 rounded-lg hover:bg-gray-700 transition flex items-center justify-center gap-2 text-sm font-semibold">
-                  <FaPrint /> Print
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Upgrade CTA */}
-        <div className="mt-8 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl p-6 text-white text-center relative overflow-hidden">
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-0 -right-20 w-64 h-64 bg-white rounded-full blur-3xl"></div>
-            <div className="absolute -bottom-20 -left-20 w-48 h-48 bg-white rounded-full blur-3xl"></div>
-          </div>
-          <div className="relative z-10 max-w-2xl mx-auto">
-            <FaCrown className="text-4xl text-yellow-400 mx-auto mb-3" />
-            <h3 className="text-xl font-bold mb-2">🚀 Unlock Premium Features</h3>
-            <p className="text-purple-100 mb-4">Get unlimited cover letter generation, access to all templates, ATS scoring, and priority support.</p>
-            <button onClick={handleUpgrade} className="bg-white text-purple-600 px-8 py-3 rounded-xl font-semibold hover:shadow-lg transition hover:-translate-y-0.5">
-              Upgrade Now — ₹499/month
-            </button>
+            <div className="relative z-10 max-w-2xl mx-auto">
+              <FaCrown className="text-4xl text-yellow-400 mx-auto mb-3" />
+              <h3 className="text-xl font-bold mb-2">🚀 Unlock Premium Features</h3>
+              <p className="text-purple-100 mb-4">Get unlimited cover letter generation, access to all templates, ATS scoring, and priority support.</p>
+              <button onClick={handleUpgrade} className="bg-white text-purple-600 px-8 py-3 rounded-xl font-semibold hover:shadow-lg transition hover:-translate-y-0.5">
+                Upgrade Now — ₹499/month
+              </button>
+              <p className="text-purple-200 text-xs mt-3">Available in {indianCities.length}+ Indian cities and {globalCountries.length}+ countries worldwide</p>
+            </div>
           </div>
         </div>
       </div>
@@ -1193,12 +1383,23 @@ const CoverLetterGenerator = () => {
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+        .sr-only {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          padding: 0;
+          margin: -1px;
+          overflow: hidden;
+          clip: rect(0, 0, 0, 0);
+          white-space: nowrap;
+          border-width: 0;
+        }
         @media print {
           .no-print { display: none !important; }
           .print-preview { background: white !important; box-shadow: none !important; }
         }
       `}} />
-    </div>
+    </>
   );
 };
 

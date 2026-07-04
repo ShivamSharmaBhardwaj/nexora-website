@@ -1,5 +1,7 @@
+// src/App.jsx
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
+import { HelmetProvider } from 'react-helmet-async'; // ✅ ADD THIS
 import { Toaster } from 'react-hot-toast';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -37,7 +39,7 @@ function App() {
   useSecurity();
 
   return (
-    <>
+    <HelmetProvider> {/* ✅ WRAP EVERYTHING WITH HelmetProvider */}
       <Toaster 
         position="top-right"
         toastOptions={{
@@ -96,7 +98,7 @@ function App() {
         <Route path="/services/enterprise-software" element={<EnterpriseSoftware />} />
       </Routes>
       <Footer />
-    </>
+    </HelmetProvider>
   );
 }
 

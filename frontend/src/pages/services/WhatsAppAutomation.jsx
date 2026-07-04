@@ -1,16 +1,47 @@
 // frontend/src/pages/services/WhatsAppAutomation.jsx
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { api } from '../../utils/api';
 import { 
   FaCheckCircle, FaArrowRight, FaWhatsapp, FaRobot, FaUsers, 
-  FaChartLine, FaComment, FaClock, FaMobileAlt 
+  FaChartLine, FaComment, FaClock, FaMobileAlt,
+  FaMapPin, FaGlobe, FaMicrophone, FaComments, 
+  FaStar, FaTrophy, FaMedal, FaAward, FaCrown,
+  FaRocket, FaShieldAlt, FaHeadset
 } from 'react-icons/fa';
 
 const WhatsAppAutomation = () => {
   const [serviceData, setServiceData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // ✅ Get current URL for canonical
+  const siteUrl = window.location.origin;
+
+  // ✅ All major Indian cities for GEO targeting
+  const indianCities = [
+    "Agra", "Delhi", "Mumbai", "Bangalore", "Chennai", "Hyderabad", 
+    "Pune", "Kolkata", "Ahmedabad", "Surat", "Jaipur", "Lucknow", 
+    "Kanpur", "Nagpur", "Indore", "Thane", "Bhopal", "Visakhapatnam", 
+    "Patna", "Vadodara", "Ludhiana", "Nashik", "Faridabad", "Meerut", 
+    "Rajkot", "Varanasi", "Srinagar", "Aurangabad", "Dhanbad", "Amritsar", 
+    "Navi Mumbai", "Allahabad", "Ranchi", "Howrah", "Coimbatore", "Jabalpur", 
+    "Gwalior", "Vijayawada", "Jodhpur", "Madurai", "Raipur", "Kota", 
+    "Chandigarh", "Guwahati", "Solapur", "Hubballi-Dharwad", "Mysore", 
+    "Tiruchirappalli", "Bareilly", "Aligarh", "Moradabad", "Saharanpur", 
+    "Dehradun", "Noida", "Gurugram", "Ghaziabad", "Faridabad"
+  ];
+
+  // ✅ Global countries for international reach
+  const globalCountries = [
+    "USA", "UK", "Canada", "Australia", "UAE", "Singapore", 
+    "Germany", "France", "Japan", "South Korea", "Netherlands", 
+    "Sweden", "Norway", "Denmark", "Finland", "New Zealand", 
+    "Ireland", "Malaysia", "Thailand", "Vietnam", "Indonesia", 
+    "Philippines", "South Africa", "Kenya", "Nigeria", "Egypt", 
+    "Saudi Arabia", "Qatar", "Kuwait", "Bahrain", "Oman"
+  ];
 
   useEffect(() => {
     const fetchServiceData = async () => {
@@ -56,15 +87,232 @@ const WhatsAppAutomation = () => {
 
   const { title, meta_description, keywords, hero, services, features, why_choose, faqs } = serviceData;
 
-  document.title = title || 'WhatsApp Automation Bot | Krynova Technologies';
-
   const serviceIcons = [FaUsers, FaComment, FaClock, FaChartLine];
 
   return (
     <>
-      <meta name="description" content={meta_description} />
-      <meta name="keywords" content={keywords} />
+      {/* ========================================== */}
+      {/* ✅ HELMET - SEO + AEO + GEO COMBINED */}
+      {/* ========================================== */}
+      <Helmet>
+        {/* ===== SEO TAGS ===== */}
+        <title>WhatsApp Automation Bot - AI-Powered Chatbot for Business | Krynova Technologies</title>
+        <meta name="description" content="Krynova Technologies offers the best WhatsApp automation bot in India for lead generation, customer support, and automated communication. AI-powered chatbot with 24/7 support. Trusted by 50+ businesses in Agra, Delhi, Mumbai, Bangalore, and globally. Free demo available." />
+        <meta name="keywords" content="WhatsApp automation bot India, WhatsApp chatbot, AI chatbot for business, WhatsApp marketing automation, lead generation WhatsApp, customer support bot, WhatsApp automation Agra, best WhatsApp bot Delhi, Krynova WhatsApp automation, WhatsApp business API India, global WhatsApp automation" />
+        <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
+        <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large" />
+        
+        {/* ✅ Canonical Tag */}
+        <link rel="canonical" href={`${siteUrl}/services/whatsapp-automation`} />
+        
+        {/* ===== GEO TAGS - Local Targeting ===== */}
+        <meta name="geo.region" content="IN-UP" />
+        <meta name="geo.placename" content="Agra" />
+        <meta name="geo.position" content="27.1767;78.0081" />
+        <meta name="ICBM" content="27.1767, 78.0081" />
+        <meta name="city" content="Agra" />
+        <meta name="state" content="Uttar Pradesh" />
+        <meta name="country" content="India" />
+        <meta name="areaServed" content={indianCities.join(", ")} />
+        <meta name="serviceArea" content={`India, ${globalCountries.join(", ")}, Worldwide`} />
+        <meta name="coverage" content="Global, National, Local" />
+        
+        {/* ===== GEO TAGS - All Indian Cities ===== */}
+        <meta name="targetedCities" content={indianCities.join(", ")} />
+        <meta name="targetedStates" content="Uttar Pradesh, Delhi, Maharashtra, Karnataka, Tamil Nadu, Telangana, West Bengal, Gujarat, Rajasthan, Punjab, Haryana, Madhya Pradesh, Bihar, Odisha, Kerala, Andhra Pradesh, Jharkhand, Chhattisgarh, Uttarakhand, Himachal Pradesh, Goa, Assam, Jammu & Kashmir" />
+        <meta name="targetedCountries" content={globalCountries.join(", ")} />
+        
+        {/* ===== GEO TAGS - Multi-language ===== */}
+        <meta name="language" content="en, hi, bn, te, ta, ur, gu, mr, kn, ml, pa" />
+        <meta name="locales" content="en_IN, hi_IN, bn_IN, te_IN, ta_IN, ur_IN, gu_IN, mr_IN, kn_IN, ml_IN, pa_IN" />
+        
+        {/* ===== AEO TAGS - Answer Engine Optimization ===== */}
+        <meta name="question" content="What is the best WhatsApp automation bot in India?" />
+        <meta name="answer" content="Krynova Technologies offers the best WhatsApp automation bot in India with AI-powered features including lead generation, customer support, automated replies, broadcast messages, and analytics. Trusted by 50+ businesses across India and globally." />
+        <meta name="faq" content="true" />
+        <meta name="speakable" content="true" />
+        <meta name="speakable-type" content="text/html" />
+        <meta name="speakable-css" content=".speakable" />
+        <meta name="voice-search" content="true" />
+        <meta name="voice-search-keywords" content="WhatsApp automation, WhatsApp chatbot, AI bot for business, WhatsApp marketing, lead generation bot, customer support WhatsApp, best WhatsApp automation India" />
+        
+        {/* ===== AEO - Rich Snippets ===== */}
+        <meta name="rich-snippet" content="service" />
+        <meta name="structured-data" content="true" />
+        <meta name="service-type" content="WhatsApp Automation Bot" />
+        <meta name="service-availability" content="India, Worldwide" />
+        
+        {/* ===== Open Graph ===== */}
+        <meta property="og:title" content="WhatsApp Automation Bot - AI-Powered Chatbot for Business | Krynova Technologies" />
+        <meta property="og:description" content="Krynova Technologies offers the best WhatsApp automation bot in India with AI-powered lead generation, customer support, and automated communication. Free demo available." />
+        <meta property="og:url" content={`${siteUrl}/services/whatsapp-automation`} />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Krynova Technologies" />
+        <meta property="og:image" content={`${siteUrl}/logo.png`} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:locale" content="en_IN" />
+        
+        {/* ===== Twitter Card ===== */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="WhatsApp Automation Bot - AI-Powered Chatbot for Business" />
+        <meta name="twitter:description" content="Krynova Technologies offers the best WhatsApp automation bot in India. Free demo available." />
+        <meta name="twitter:image" content={`${siteUrl}/logo.png`} />
+      </Helmet>
+
+      {/* ========================================== */}
+      {/* ✅ AEO SPEAKABLE CONTENT */}
+      {/* ========================================== */}
+      <div className="speakable sr-only" aria-hidden="true">
+        <h2>WhatsApp Automation Bot - Krynova Technologies</h2>
+        <p>Krynova Technologies offers the best WhatsApp automation bot in India with AI-powered features including lead generation, customer support automation, automated replies, broadcast messages, and real-time analytics.</p>
+        <p>Trusted by 50+ businesses in Agra, Delhi, Mumbai, Bangalore, Hyderabad, Pune, Kolkata, and all major cities in India, as well as international clients worldwide.</p>
+        <ul>
+          <li>Lead Generation - Automated lead capture and qualification</li>
+          <li>Customer Support - 24/7 automated customer support</li>
+          <li>Broadcast Messages - Send bulk messages to customers</li>
+          <li>Automated Replies - Instant responses to customer queries</li>
+          <li>Analytics - Real-time performance tracking and insights</li>
+        </ul>
+        <p>Free demo available for businesses in India and globally.</p>
+      </div>
+
+      {/* ========================================== */}
+      {/* ✅ SCHEMA.ORG - SEO + AEO + GEO */}
+      {/* ========================================== */}
       
+      {/* 📦 Service Schema - WhatsApp Automation */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Service",
+          "name": "WhatsApp Automation Bot",
+          "description": "AI-powered WhatsApp automation bot for lead generation, customer support, automated communication, and broadcast messaging.",
+          "provider": {
+            "@type": "Organization",
+            "name": "Krynova Technologies",
+            "address": {
+              "@type": "PostalAddress",
+              "addressLocality": "Agra",
+              "addressRegion": "Uttar Pradesh",
+              "addressCountry": "India"
+            }
+          },
+          "areaServed": indianCities,
+          "availableLanguage": ["English", "Hindi", "Bengali", "Telugu", "Tamil", "Urdu", "Gujarati", "Marathi", "Kannada", "Malayalam", "Punjabi"],
+          "audience": {
+            "@type": "Audience",
+            "name": "Businesses in India and Worldwide",
+            "geographicArea": {
+              "@type": "AdministrativeArea",
+              "name": `India, ${globalCountries.join(", ")}, Worldwide`
+            }
+          },
+          "speakable": {
+            "@type": "SpeakableSpecification",
+            "cssSelector": ".speakable"
+          },
+          "offers": {
+            "@type": "Offer",
+            "description": "WhatsApp automation bot with flexible pricing for businesses of all sizes",
+            "priceSpecification": {
+              "@type": "PriceSpecification",
+              "price": "Starting from ₹15,000",
+              "priceCurrency": "INR"
+            }
+          }
+        })}
+      </script>
+
+      {/* 🏢 Local Business Schema - GEO Focus */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "LocalBusiness",
+          "name": "Krynova Technologies",
+          "description": "Best WhatsApp automation bot provider in India. Serving businesses in Agra, Delhi, Mumbai, Bangalore, and globally.",
+          "url": siteUrl,
+          "telephone": "+918630519082",
+          "email": "princeb744@gmail.com",
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Agra",
+            "addressRegion": "Uttar Pradesh",
+            "addressCountry": "India"
+          },
+          "geo": {
+            "@type": "GeoCoordinates",
+            "latitude": 27.1767,
+            "longitude": 78.0081
+          },
+          "areaServed": indianCities,
+          "availableLanguage": ["English", "Hindi", "Bengali", "Telugu", "Tamil", "Urdu", "Gujarati", "Marathi", "Kannada", "Malayalam", "Punjabi"],
+          "slogan": "Best WhatsApp Automation Bot in India",
+          "globalLocationNumber": "IN-UP-AGRA"
+        })}
+      </script>
+
+      {/* ❓ FAQ Schema - AEO Focus */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "What is a WhatsApp automation bot?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "A WhatsApp automation bot is an AI-powered tool that automates customer communication, lead generation, support, and marketing on WhatsApp, helping businesses engage with customers 24/7."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What is the best WhatsApp automation bot in India?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Krynova Technologies offers one of the best WhatsApp automation bots in India with AI-powered features including lead generation, customer support, automated replies, broadcast messages, and analytics."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Where is Krynova Technologies located?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Krynova Technologies is based in Agra, Uttar Pradesh, India. We serve businesses across all major cities in India including Delhi, Mumbai, Bangalore, Chennai, Hyderabad, Pune, Kolkata, and many more, as well as international clients worldwide."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How much does a WhatsApp automation bot cost?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Our WhatsApp automation bot starts from ₹15,000 with flexible pricing options for businesses of all sizes. Contact us for a custom quote tailored to your specific requirements."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Do you offer a free demo for WhatsApp automation?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes! Krynova Technologies offers free demos for our WhatsApp automation bot. You can request a personalized demo to see how our solution can transform your business communication."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What features does Krynova WhatsApp automation include?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Krynova WhatsApp automation includes lead generation, customer support automation, automated replies, broadcast messages, analytics and reporting, integration with CRM, and multi-agent support."
+              }
+            }
+          ]
+        })}
+      </script>
+
+      {/* ========================================== */}
+      {/* ✅ MAIN CONTENT */}
+      {/* ========================================== */}
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
         {/* Hero */}
         <section className="bg-gradient-to-br from-teal-900 via-teal-800 to-cyan-900 text-white py-20 relative overflow-hidden">
@@ -74,6 +322,20 @@ const WhatsAppAutomation = () => {
           </div>
           <div className="container mx-auto px-4 relative z-10">
             <div className="max-w-4xl mx-auto text-center">
+              <div className="flex flex-wrap justify-center gap-2 mb-4">
+                <span className="inline-flex items-center gap-1 bg-white/10 px-3 py-1 rounded-full text-xs">
+                  <FaMapPin className="text-yellow-400" /> {indianCities.length}+ Indian Cities
+                </span>
+                <span className="inline-flex items-center gap-1 bg-white/10 px-3 py-1 rounded-full text-xs">
+                  <FaGlobe className="text-yellow-400" /> {globalCountries.length}+ Countries
+                </span>
+                <span className="inline-flex items-center gap-1 bg-white/10 px-3 py-1 rounded-full text-xs">
+                  <FaStar className="text-yellow-400" /> 4.8/5 Rating
+                </span>
+              </div>
+              <div className="flex justify-center mb-4">
+                <FaWhatsapp className="text-6xl text-green-400 animate-pulse" />
+              </div>
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4">
                 {hero?.title || 'WhatsApp Automation Bot'}
               </h1>
@@ -110,6 +372,9 @@ const WhatsAppAutomation = () => {
             <div className="text-center mb-12">
               <h2 className="text-3xl font-bold text-gray-900">WhatsApp Automation Services</h2>
               <p className="text-gray-600 mt-2">AI-powered solutions for your business communication</p>
+              <p className="text-sm text-teal-600 mt-2">
+                <FaMapPin className="inline mr-1" /> Serving businesses in all major Indian cities and globally
+              </p>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
               {services && services.map((service, index) => {
@@ -137,6 +402,7 @@ const WhatsAppAutomation = () => {
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
               <h2 className="text-3xl font-bold text-gray-900">Why Choose Krynova WhatsApp Automation?</h2>
+              <p className="text-gray-600 mt-2">Trusted by businesses in India and worldwide</p>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
               {why_choose && why_choose.map((reason, index) => (
@@ -154,6 +420,7 @@ const WhatsAppAutomation = () => {
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
               <h2 className="text-3xl font-bold text-gray-900">Key Features</h2>
+              <p className="text-gray-600 mt-2">AI-powered features for modern business communication</p>
             </div>
             <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
               {features && features.map((feature, index) => (
@@ -171,6 +438,7 @@ const WhatsAppAutomation = () => {
           <div className="container mx-auto px-4 max-w-4xl">
             <div className="text-center mb-12">
               <h2 className="text-3xl font-bold text-gray-900">Frequently Asked Questions</h2>
+              <p className="text-gray-600 mt-2">Quick answers about WhatsApp automation</p>
             </div>
             <div className="space-y-3">
               {faqs && faqs.map((faq, index) => (
@@ -186,19 +454,49 @@ const WhatsAppAutomation = () => {
           </div>
         </section>
 
-        {/* CTA */}
+        {/* CTA - Global & Local */}
         <section className="py-16 bg-gradient-to-r from-teal-900 to-cyan-900 text-white">
           <div className="container mx-auto px-4 text-center">
             <h2 className="text-3xl font-bold mb-4">Ready to Automate Your WhatsApp?</h2>
             <p className="text-teal-100 text-lg mb-8 max-w-2xl mx-auto">
               Get started with our WhatsApp automation bot and transform your business communication.
+              Serving businesses in Agra, Delhi, Mumbai, Bangalore, across India, and worldwide.
             </p>
+            <div className="flex flex-wrap justify-center gap-3 mb-6">
+              <span className="inline-flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full text-xs">
+                <FaMapPin /> {indianCities.length}+ Indian Cities
+              </span>
+              <span className="inline-flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full text-xs">
+                <FaGlobe /> {globalCountries.length}+ Countries
+              </span>
+              <span className="inline-flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full text-xs">
+                <FaTrophy /> 50+ Happy Clients
+              </span>
+            </div>
             <Link to="/contact" className="bg-white text-teal-700 px-8 py-3 rounded-lg font-semibold hover:shadow-2xl transition-all duration-300 inline-flex items-center gap-2">
               Try Demo <FaArrowRight />
             </Link>
+            <p className="text-teal-200 text-sm mt-4">
+              <FaMapPin className="inline mr-1" />
+              Based in Agra, Uttar Pradesh, India • Serving Global Clients
+            </p>
           </div>
         </section>
       </div>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        .sr-only {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          padding: 0;
+          margin: -1px;
+          overflow: hidden;
+          clip: rect(0, 0, 0, 0);
+          white-space: nowrap;
+          border-width: 0;
+        }
+      `}} />
     </>
   );
 };

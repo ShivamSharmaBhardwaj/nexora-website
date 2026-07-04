@@ -1,5 +1,6 @@
 // src/pages/tools/ImageToPDF.jsx
 import React, { useState, useEffect, useRef } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { 
   FaSpinner, FaDownload, FaStar, FaLock, FaImage, 
   FaFilePdf, FaCheckCircle, FaCircle, FaTimes, 
@@ -7,11 +8,40 @@ import {
   FaGripLines, FaArrowRight, FaUpload, FaClock,
   FaHistory, FaChevronDown, FaChevronUp, FaCog,
   FaFile, FaInfoCircle, FaRegFilePdf, FaRegFileImage,
-  FaSort, FaSortUp, FaSortDown, FaEdit, FaSave
+  FaSort, FaSortUp, FaSortDown, FaEdit, FaSave,
+  FaGlobe, FaMapMarkerAlt, FaLanguage, FaHeadphones
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { api } from '../../utils/api';
 import PaymentModal from '../../components/PaymentModal';
+
+// ============================================
+// SEO DATA
+// ============================================
+
+const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://krynovatechnology.pythonanywhere.com';
+
+const indianCities = [
+  "Agra", "Lucknow", "Kanpur", "Varanasi", "Prayagraj", "Mathura", "Aligarh", "Bareilly",
+  "Meerut", "Ghaziabad", "Noida", "Delhi", "Mumbai", "Pune", "Bengaluru", "Chennai",
+  "Hyderabad", "Kolkata", "Ahmedabad", "Surat", "Jaipur", "Indore", "Bhopal", "Nagpur",
+  "Patna", "Ranchi", "Bhubaneswar", "Guwahati", "Chandigarh", "Dehradun", "Shimla",
+  "Srinagar", "Jammu", "Amritsar", "Ludhiana", "Jalandhar", "Panchkula", "Mohali",
+  "Gurugram", "Faridabad", "Aurangabad", "Nashik", "Vadodara", "Rajkot",
+  "Jodhpur", "Udaipur", "Kota", "Bikaner", "Gwalior", "Jabalpur", "Ujjain", "Sagar",
+  "Raipur", "Bilaspur", "Durgapur", "Asansol", "Siliguri", "Dhanbad", "Bhagalpur",
+  "Muzaffarpur", "Gaya", "Nanded", "Solapur", "Mysore", "Tiruchirappalli", "Coimbatore",
+  "Madurai", "Kochi", "Thiruvananthapuram", "Goa", "Panaji", "Puducherry"
+];
+
+const globalCountries = [
+  "United States", "United Kingdom", "Canada", "Australia", "Germany", "France",
+  "United Arab Emirates", "Saudi Arabia", "Singapore", "Malaysia", "Indonesia",
+  "Philippines", "South Africa", "Nigeria", "Kenya", "Tanzania", "Uganda", "Rwanda",
+  "Egypt", "Morocco", "Turkey", "Russia", "Japan", "South Korea", "China", "Hong Kong",
+  "Brazil", "Argentina", "Mexico", "New Zealand", "Ireland", "Netherlands", "Italy",
+  "Spain", "Portugal", "Sweden", "Norway", "Denmark", "Finland", "Switzerland", "Austria"
+];
 
 // ============================================
 // IMAGE PREVIEW COMPONENT
@@ -30,7 +60,7 @@ const ImagePreview = ({ file, index, onRemove, onMoveUp, onMoveDown }) => {
     <div className="relative group bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-md transition">
       <div className="aspect-square">
         {preview ? (
-          <img src={preview} alt={file.name} className="w-full h-full object-cover" />
+          <img src={preview} alt={file.name} className="w-full h-full object-cover" loading="lazy" />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gray-100">
             <FaImage className="text-3xl text-gray-300" />
@@ -350,105 +380,98 @@ const ImageToPDF = () => {
     setConversionResults([]);
   };
 
-  // In ImageToPDF.jsx - Update the handleSubmit function
-
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  if (files.length === 0) {
-    toast.error('Please select at least one image');
-    return;
-  }
-
-  // Check if it's bulk (more than 1 image)
-  const isBulk = files.length > 1;
-  
-  // For bulk, check local limit before API call
-  if (!isPremium && isBulk) {
-    const today = new Date().toDateString();
-    const bulkUsage = JSON.parse(localStorage.getItem('bulkImageToPdf') || '{"date":"","count":0}');
-    
-    if (bulkUsage.date === today && bulkUsage.count >= 2) {
-      toast.error('Bulk conversion limit reached! Free users can convert 2 bulk conversions per day. Upgrade to premium for unlimited.');
-      setShowPaymentModal(true);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (files.length === 0) {
+      toast.error('Please select at least one image');
       return;
     }
-  }
 
-  setLoading(true);
-  setProgress(0);
-  setProgressStatus('Starting conversion...');
-  setConversionResults([]);
-  
-  const formData = new FormData();
-  files.forEach(file => formData.append('files', file));
-  formData.append('is_premium', isPremium);
-  formData.append('options', JSON.stringify(conversionOptions));
-  
-  try {
-    setProgress(30);
-    setProgressStatus('Processing images...');
+    const isBulk = files.length > 1;
     
-    const response = await api.imageToPdf(formData);
-    
-    setProgress(90);
-    setProgressStatus('Generating PDF...');
-    
-    if (response.data.success) {
-      setResult(response.data);
-      setUsageInfo({
-        used: response.data.usage_count,
-        remaining: response.data.remaining_free,
-        isPremium: response.data.is_premium,
-        bulk_remaining: response.data.bulk_remaining,
-        is_bulk: response.data.is_bulk
-      });
+    if (!isPremium && isBulk) {
+      const today = new Date().toDateString();
+      const bulkUsage = JSON.parse(localStorage.getItem('bulkImageToPdf') || '{"date":"","count":0}');
       
-      // Track bulk usage locally only if not premium
-      if (!isPremium && isBulk) {
-        const today = new Date().toDateString();
-        const bulkUsage = JSON.parse(localStorage.getItem('bulkImageToPdf') || '{"date":"","count":0}');
-        if (bulkUsage.date === today) {
-          bulkUsage.count += 1;
-        } else {
-          bulkUsage.date = today;
-          bulkUsage.count = 1;
-        }
-        localStorage.setItem('bulkImageToPdf', JSON.stringify(bulkUsage));
-        
-        // Show remaining bulk conversions
-        const remaining = 2 - bulkUsage.count;
-        if (remaining > 0) {
-          toast.success(`✅ ${response.data.pages} images converted! ${remaining} bulk conversion${remaining > 1 ? 's' : ''} left today.`);
-        } else {
-          toast.success(`✅ ${response.data.pages} images converted! No more bulk conversions today. Upgrade to premium for unlimited.`);
-        }
-      } else {
-        toast.success(`✅ ${response.data.pages} images converted to PDF!`);
+      if (bulkUsage.date === today && bulkUsage.count >= 2) {
+        toast.error('Bulk conversion limit reached! Free users can convert 2 bulk conversions per day. Upgrade to premium for unlimited.');
+        setShowPaymentModal(true);
+        return;
       }
     }
-  } catch (error) {
+
+    setLoading(true);
     setProgress(0);
-    setProgressStatus('❌ Conversion failed');
+    setProgressStatus('Starting conversion...');
+    setConversionResults([]);
     
-    if (error.response?.data?.limit_reached) {
-      const limitType = error.response.data.limit_type;
-      if (limitType === 'bulk') {
-        toast.error('Bulk conversion limit reached! Free users get 2 bulk conversions per day. Upgrade to premium for unlimited.');
-        // Update local storage to reflect used bulk
-        const today = new Date().toDateString();
-        localStorage.setItem('bulkImageToPdf', JSON.stringify({ date: today, count: 2 }));
-      } else {
-        toast.error('Free limit reached! Upgrade to premium for unlimited conversions.');
+    const formData = new FormData();
+    files.forEach(file => formData.append('files', file));
+    formData.append('is_premium', isPremium);
+    formData.append('options', JSON.stringify(conversionOptions));
+    
+    try {
+      setProgress(30);
+      setProgressStatus('Processing images...');
+      
+      const response = await api.imageToPdf(formData);
+      
+      setProgress(90);
+      setProgressStatus('Generating PDF...');
+      
+      if (response.data.success) {
+        setResult(response.data);
+        setUsageInfo({
+          used: response.data.usage_count,
+          remaining: response.data.remaining_free,
+          isPremium: response.data.is_premium,
+          bulk_remaining: response.data.bulk_remaining,
+          is_bulk: response.data.is_bulk
+        });
+        
+        if (!isPremium && isBulk) {
+          const today = new Date().toDateString();
+          const bulkUsage = JSON.parse(localStorage.getItem('bulkImageToPdf') || '{"date":"","count":0}');
+          if (bulkUsage.date === today) {
+            bulkUsage.count += 1;
+          } else {
+            bulkUsage.date = today;
+            bulkUsage.count = 1;
+          }
+          localStorage.setItem('bulkImageToPdf', JSON.stringify(bulkUsage));
+          
+          const remaining = 2 - bulkUsage.count;
+          if (remaining > 0) {
+            toast.success(`✅ ${response.data.pages} images converted! ${remaining} bulk conversion${remaining > 1 ? 's' : ''} left today.`);
+          } else {
+            toast.success(`✅ ${response.data.pages} images converted! No more bulk conversions today. Upgrade to premium for unlimited.`);
+          }
+        } else {
+          toast.success(`✅ ${response.data.pages} images converted to PDF!`);
+        }
       }
-      setShowPaymentModal(true);
-    } else {
-      toast.error(error.response?.data?.error || 'Failed to convert images');
+    } catch (error) {
+      setProgress(0);
+      setProgressStatus('❌ Conversion failed');
+      
+      if (error.response?.data?.limit_reached) {
+        const limitType = error.response.data.limit_type;
+        if (limitType === 'bulk') {
+          toast.error('Bulk conversion limit reached! Free users get 2 bulk conversions per day. Upgrade to premium for unlimited.');
+          const today = new Date().toDateString();
+          localStorage.setItem('bulkImageToPdf', JSON.stringify({ date: today, count: 2 }));
+        } else {
+          toast.error('Free limit reached! Upgrade to premium for unlimited conversions.');
+        }
+        setShowPaymentModal(true);
+      } else {
+        toast.error(error.response?.data?.error || 'Failed to convert images');
+      }
+    } finally {
+      setLoading(false);
+      setTimeout(() => setProgress(0), 3000);
     }
-  } finally {
-    setLoading(false);
-    setTimeout(() => setProgress(0), 3000);
-  }
-};
+  };
 
   const downloadFile = () => {
     if (!result) return;
@@ -499,372 +522,538 @@ const handleSubmit = async (e) => {
   const isBulk = files.length > 1;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8">
-      <div className="container mx-auto px-4 max-w-6xl">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 bg-purple-100 text-purple-700 px-4 py-2 rounded-full text-sm font-medium mb-4">
-            <FaImage className="text-purple-500" />
-            Image to PDF Converter
-          </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Image to <span className="gradient-text">PDF Converter</span>
-          </h1>
-          <p className="text-gray-600 max-w-2xl mx-auto">
-            Convert single or multiple images to PDF. Free users get unlimited single conversions and 2 bulk conversions per day.
-          </p>
-          <div className="flex flex-wrap justify-center gap-3 mt-3">
-            <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm">
-              <FaStar className="text-yellow-400" /> Free: Unlimited Single
-            </span>
-            <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-sm">
-              <FaUpload className="text-orange-500" /> Free: 2 Bulk/day
-            </span>
-            <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">
-              <FaCrown className="text-yellow-500" /> Premium: Unlimited
-            </span>
-            <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm">
-              <FaGripLines className="text-purple-500" /> Multiple Images
-            </span>
-          </div>
-        </div>
+    <>
+      {/* ============================================ */}
+      {/* SEO + AEO + GEO Helmet Implementation */}
+      {/* ============================================ */}
+      <Helmet>
+        <title>Free Image to PDF Converter - Convert JPG to PDF Online | Krynova Technologies</title>
+        <meta name="description" content="Convert images to PDF online for free with Krynova Technologies. Convert JPG, PNG, GIF, BMP, WEBP to PDF. Free users get unlimited single conversions and 2 bulk conversions per day." />
+        <meta name="keywords" content="image to PDF converter, convert JPG to PDF, PNG to PDF free, image to PDF online, free PDF converter, bulk image to PDF, Krynova image converter, JPG to PDF converter India, best image to PDF tool" />
+        <link rel="canonical" href={`${siteUrl}/tools/image-to-pdf`} />
+        
+        {/* GEO Meta Tags */}
+        <meta name="geo.region" content="IN-UP" />
+        <meta name="geo.placename" content="Agra" />
+        <meta name="geo.position" content="27.1767;78.0081" />
+        <meta name="ICBM" content="27.1767, 78.0081" />
+        <meta name="areaServed" content={indianCities.join(", ")} />
+        <meta name="serviceArea" content={`India, ${globalCountries.join(", ")}, Worldwide`} />
+        <meta name="targetGeo" content="India" />
+        
+        {/* AEO Meta Tags */}
+        <meta name="question" content="How to convert image to PDF for free in India?" />
+        <meta name="answer" content="Krynova Technologies offers a free image to PDF converter in India. Upload your images (JPG, PNG, GIF, BMP, WEBP), choose your conversion options, and download your PDF instantly. Free users get unlimited single conversions and 2 bulk conversions per day." />
+        <meta name="faq" content="true" />
+        <meta name="speakable" content="true" />
+        <meta name="voice-search" content="true" />
+        
+        {/* Open Graph */}
+        <meta property="og:title" content="Free Image to PDF Converter - Convert JPG to PDF Online | Krynova Technologies" />
+        <meta property="og:description" content="Convert images to PDF online for free. JPG, PNG, GIF, BMP, WEBP to PDF. Unlimited single conversions and 2 bulk conversions per day." />
+        <meta property="og:url" content={`${siteUrl}/tools/image-to-pdf`} />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Krynova Technologies" />
+        
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Free Image to PDF Converter - Convert JPG to PDF Online" />
+        <meta name="twitter:description" content="Convert images to PDF online for free with Krynova Technologies." />
+      </Helmet>
 
-        {/* Usage Info */}
-        {usageInfo && (
-          <div className={`mb-6 p-4 rounded-lg flex flex-wrap items-center justify-between ${
-            usageInfo.isPremium ? 'bg-green-50 border border-green-200' :
-            usageInfo.remaining > 0 ? 'bg-blue-50 border border-blue-200' : 'bg-yellow-50 border border-yellow-200'
-          }`}>
-            <p className="text-sm flex items-center gap-2">
-              {usageInfo.isPremium ? (
-                <><FaCrown className="text-yellow-500" /> <span className="font-semibold">Premium:</span> Unlimited conversions</>
-              ) : (
-                <><FaClock className="text-blue-500" /> {usageInfo.used} used today • {usageInfo.remaining} free remaining</>
-              )}
+      {/* ============================================ */}
+      {/* Speakable Content for Voice Assistants */}
+      {/* ============================================ */}
+      <div className="speakable sr-only" aria-hidden="true">
+        <h2>Free Image to PDF Converter - Krynova Technologies</h2>
+        <p>Convert images to PDF online for free. Convert JPG, PNG, GIF, BMP, and WEBP images to PDF documents.</p>
+        <ul>
+          <li>Free image to PDF conversion - Unlimited single conversions</li>
+          <li>2 bulk conversions per day for free users</li>
+          <li>Supports JPG, PNG, GIF, BMP, WEBP formats</li>
+          <li>Multiple page sizes - A4, A3, A5, Letter, Legal</li>
+          <li>Reorder images before conversion</li>
+          <li>Premium - Unlimited conversions, advanced options</li>
+          <li>Secure and encrypted file processing</li>
+        </ul>
+        <p>Krynova Technologies is the best image to PDF converter in India, serving cities like Agra, Delhi, Mumbai, Bengaluru, Chennai, Hyderabad, and all across India.</p>
+      </div>
+
+      {/* ============================================ */}
+      {/* Schema.org WebApplication */}
+      {/* ============================================ */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebApplication",
+          "name": "Image to PDF Converter",
+          "description": "Free online image to PDF converter. Convert JPG, PNG, GIF, BMP, WEBP to PDF. Supports unlimited single conversions and 2 bulk conversions per day.",
+          "url": `${siteUrl}/tools/image-to-pdf`,
+          "applicationCategory": "Utilities",
+          "operatingSystem": "All",
+          "browserRequirements": "Requires JavaScript",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "INR",
+            "description": "Free image to PDF converter with unlimited single conversions. Premium upgrade available for unlimited bulk conversions."
+          },
+          "provider": {
+            "@type": "Organization",
+            "name": "Krynova Technologies",
+            "url": siteUrl,
+            "address": {
+              "@type": "PostalAddress",
+              "addressLocality": "Agra",
+              "addressRegion": "Uttar Pradesh",
+              "addressCountry": "India"
+            }
+          },
+          "areaServed": indianCities,
+          "availableLanguage": ["English", "Hindi", "Marathi", "Bengali", "Tamil", "Telugu", "Kannada", "Malayalam", "Gujarati", "Punjabi", "Urdu"],
+          "potentialAction": {
+            "@type": "CreateAction",
+            "target": `${siteUrl}/tools/image-to-pdf`,
+            "result": {
+              "@type": "DigitalDocument",
+              "contentUrl": `${siteUrl}/api/image-to-pdf`
+            }
+          }
+        })}
+      </script>
+
+      {/* ============================================ */}
+      {/* FAQ Schema */}
+      {/* ============================================ */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "How to convert image to PDF for free?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "To convert images to PDF for free, visit Krynova Technologies' Image to PDF Converter, upload your images (JPG, PNG, GIF, BMP, WEBP), choose your conversion options, and click convert. Download your PDF instantly. Free users get unlimited single conversions and 2 bulk conversions per day."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What image formats are supported?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Krynova Technologies' Image to PDF converter supports JPG, PNG, GIF, BMP, and WEBP formats. You can upload multiple images and convert them into a single PDF file."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Can I convert multiple images to one PDF?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes, you can convert multiple images to a single PDF file. Free users get 2 bulk conversions per day. Premium users get unlimited bulk conversions with advanced options like image fit, orientation, and page size customization."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What is the best image to PDF converter in India?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Krynova Technologies offers one of the best free image to PDF converters in India. It supports multiple image formats, offers bulk conversion, provides advanced options, and serves users across all major Indian cities including Agra, Delhi, Mumbai, Bengaluru, Chennai, and Hyderabad."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Is it safe to upload images to convert to PDF?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes, Krynova Technologies ensures secure image conversion with encrypted file processing. All uploaded images are automatically deleted after conversion, and your files are never shared with third parties."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Can I reorder images before converting to PDF?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes, you can easily reorder images by dragging them or using the move up and move down buttons. This allows you to arrange images in the desired order before converting to PDF."
+              }
+            }
+          ]
+        })}
+      </script>
+
+      {/* ============================================ */}
+      {/* Main Component */}
+      {/* ============================================ */}
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8">
+        <div className="container mx-auto px-4 max-w-6xl">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 bg-purple-100 text-purple-700 px-4 py-2 rounded-full text-sm font-medium mb-4">
+              <FaImage className="text-purple-500" />
+              Free Image to PDF Converter
+            </div>
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">
+              Image to <span className="gradient-text">PDF Converter</span>
+            </h1>
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              Convert single or multiple images to PDF instantly. Free users get unlimited single conversions and 2 bulk conversions per day.
             </p>
-            {!usageInfo.isPremium && (
-              <button
-                onClick={handleUpgrade}
-                className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition flex items-center gap-2"
-              >
-                <FaCrown /> Upgrade Now
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Progress Bar */}
-        {loading && progress > 0 && (
-          <div className="mb-6 bg-white rounded-xl p-4 border border-purple-200 shadow-lg">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                <FaSpinner className="animate-spin text-purple-500" />
-                {progressStatus}
+            <div className="flex flex-wrap justify-center gap-3 mt-3">
+              <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm">
+                <FaStar className="text-yellow-400" /> Free: Unlimited Single
               </span>
-              <span className="text-sm font-semibold text-purple-600">{Math.round(progress)}%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-              <div 
-                className="bg-gradient-to-r from-purple-500 to-pink-600 h-2.5 rounded-full transition-all duration-500"
-                style={{ width: `${progress}%` }}
-              />
+              <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-sm">
+                <FaUpload className="text-orange-500" /> Free: 2 Bulk/day
+              </span>
+              <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">
+                <FaCrown className="text-yellow-500" /> Premium: Unlimited
+              </span>
+              <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm">
+                <FaGripLines className="text-purple-500" /> Multiple Formats
+              </span>
+              <span className="inline-flex items-center gap-1 bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-sm">
+                <FaGlobe className="text-indigo-500" /> Serving 60+ Indian Cities
+              </span>
             </div>
           </div>
-        )}
 
-        {/* Main Card */}
-        <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* File Upload Area */}
-            <div 
-              className={`border-2 border-dashed rounded-xl p-8 text-center transition ${
-                dragActive ? 'border-purple-500 bg-purple-50' : 'border-gray-300 hover:border-purple-400'
-              }`}
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-            >
-              {files.length > 0 ? (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className="font-medium text-gray-900">
-                      {files.length} image{files.length > 1 ? 's' : ''} selected
-                      {isBulk && !isPremium && (
-                        <span className="ml-2 text-xs text-orange-500 bg-orange-50 px-2 py-0.5 rounded">
-                          Bulk ({2 - (JSON.parse(localStorage.getItem('bulkImageToPdf') || '{"date":"","count":0}')).count || 2} left today)
-                        </span>
-                      )}
-                    </p>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="text-purple-600 hover:text-purple-700 transition text-sm flex items-center gap-1"
-                      >
-                        <FaPlus /> Add More
-                      </button>
-                      <button
-                        type="button"
-                        onClick={clearAll}
-                        className="text-red-500 hover:text-red-700 transition text-sm flex items-center gap-1"
-                      >
-                        <FaTrash /> Clear All
-                      </button>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-96 overflow-y-auto p-2">
-                    {files.map((file, index) => (
-                      <ImagePreview
-                        key={index}
-                        file={file}
-                        index={index}
-                        onRemove={removeFile}
-                        onMoveUp={moveUp}
-                        onMoveDown={moveDown}
-                      />
-                    ))}
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-3 text-center text-sm">
-                    <div className="bg-gray-50 p-2 rounded-lg">
-                      <p className="font-bold text-gray-900">{files.length}</p>
-                      <p className="text-xs text-gray-500">Images</p>
-                    </div>
-                    <div className="bg-gray-50 p-2 rounded-lg">
-                      <p className="font-bold text-gray-900">{formatFileSize(files.reduce((acc, f) => acc + f.size, 0))}</p>
-                      <p className="text-xs text-gray-500">Total Size</p>
-                    </div>
-                    <div className="bg-gray-50 p-2 rounded-lg">
-                      <p className="font-bold text-gray-900">{isBulk ? 'Bulk' : 'Single'}</p>
-                      <p className="text-xs text-gray-500">Mode</p>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="text-6xl text-purple-400 mx-auto">
-                    <FaImage className="mx-auto" />
-                  </div>
-                  <div>
-                    <p className="text-gray-600 text-lg">Drop your images here</p>
-                    <p className="text-sm text-gray-400">or click to browse</p>
-                  </div>
-                  <p className="text-xs text-gray-400">
-                    Supports JPG, PNG, GIF, BMP, WEBP (up to 20MB total)
-                  </p>
-                  <p className="text-xs text-purple-500">
-                    {isPremium ? '✨ Unlimited conversions' : '📄 Single: Unlimited | Bulk: 2/day'}
-                  </p>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleFileChange}
-                    className="hidden"
-                    id="image-upload"
-                  />
-                  <label
-                    htmlFor="image-upload"
-                    className="inline-block px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition cursor-pointer"
-                  >
-                    Choose Images
-                  </label>
-                </div>
+          {/* Usage Info */}
+          {usageInfo && (
+            <div className={`mb-6 p-4 rounded-lg flex flex-wrap items-center justify-between ${
+              usageInfo.isPremium ? 'bg-green-50 border border-green-200' :
+              usageInfo.remaining > 0 ? 'bg-blue-50 border border-blue-200' : 'bg-yellow-50 border border-yellow-200'
+            }`}>
+              <p className="text-sm flex items-center gap-2">
+                {usageInfo.isPremium ? (
+                  <><FaCrown className="text-yellow-500" /> <span className="font-semibold">✨ Premium:</span> Unlimited conversions</>
+                ) : (
+                  <><FaClock className="text-blue-500" /> {usageInfo.used} used today • {usageInfo.remaining} free remaining</>
+                )}
+              </p>
+              {!usageInfo.isPremium && (
+                <button
+                  onClick={handleUpgrade}
+                  className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition flex items-center gap-2"
+                >
+                  <FaCrown /> Upgrade Now
+                </button>
               )}
             </div>
+          )}
 
-            {/* Conversion Options */}
-            <ConversionOptions 
-              options={conversionOptions}
-              onChange={setConversionOptions}
-            />
-
-            {/* Premium Toggle */}
-            <div className="flex items-center gap-3 pt-2">
-              <input
-                type="checkbox"
-                checked={isPremium}
-                onChange={(e) => setIsPremium(e.target.checked)}
-                className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
-              />
-              <label className="text-sm text-gray-700 flex items-center gap-1">
-                <FaCrown className="text-yellow-500" /> Premium Mode (Unlimited conversions)
-              </label>
-              {!isPremium && isBulk && (
-                <span className="text-xs text-orange-500 ml-2">
-                  Bulk uses 1 of 2 free daily conversions
+          {/* Progress Bar */}
+          {loading && progress > 0 && (
+            <div className="mb-6 bg-white rounded-xl p-4 border border-purple-200 shadow-lg">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <FaSpinner className="animate-spin text-purple-500" />
+                  {progressStatus}
                 </span>
-              )}
+                <span className="text-sm font-semibold text-purple-600">{Math.round(progress)}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                <div 
+                  className="bg-gradient-to-r from-purple-500 to-pink-600 h-2.5 rounded-full transition-all duration-500"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
             </div>
+          )}
 
-            <button
-              type="submit"
-              disabled={loading || files.length === 0}
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3.5 rounded-xl font-semibold hover:shadow-lg hover:shadow-purple-500/30 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-lg"
-            >
-              {loading ? <FaSpinner className="animate-spin" /> : <FaFilePdf />}
-              {loading ? 'Converting...' : `Convert ${files.length} Image${files.length > 1 ? 's' : ''} to PDF`}
-            </button>
-          </form>
+          {/* Main Card */}
+          <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* File Upload Area */}
+              <div 
+                className={`border-2 border-dashed rounded-xl p-8 text-center transition ${
+                  dragActive ? 'border-purple-500 bg-purple-50' : 'border-gray-300 hover:border-purple-400'
+                }`}
+                onDragEnter={handleDrag}
+                onDragLeave={handleDrag}
+                onDragOver={handleDrag}
+                onDrop={handleDrop}
+              >
+                {files.length > 0 ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium text-gray-900">
+                        {files.length} image{files.length > 1 ? 's' : ''} selected
+                        {isBulk && !isPremium && (
+                          <span className="ml-2 text-xs text-orange-500 bg-orange-50 px-2 py-0.5 rounded">
+                            Bulk ({2 - (JSON.parse(localStorage.getItem('bulkImageToPdf') || '{"date":"","count":0}')).count || 2} left today)
+                          </span>
+                        )}
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="text-purple-600 hover:text-purple-700 transition text-sm flex items-center gap-1"
+                        >
+                          <FaPlus /> Add More
+                        </button>
+                        <button
+                          type="button"
+                          onClick={clearAll}
+                          className="text-red-500 hover:text-red-700 transition text-sm flex items-center gap-1"
+                        >
+                          <FaTrash /> Clear All
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-96 overflow-y-auto p-2">
+                      {files.map((file, index) => (
+                        <ImagePreview
+                          key={index}
+                          file={file}
+                          index={index}
+                          onRemove={removeFile}
+                          onMoveUp={moveUp}
+                          onMoveDown={moveDown}
+                        />
+                      ))}
+                    </div>
 
-          {/* Results */}
-          {result && (
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-200">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center text-white">
-                    <FaCheckCircle />
+                    <div className="grid grid-cols-3 gap-3 text-center text-sm">
+                      <div className="bg-gray-50 p-2 rounded-lg">
+                        <p className="font-bold text-gray-900">{files.length}</p>
+                        <p className="text-xs text-gray-500">Images</p>
+                      </div>
+                      <div className="bg-gray-50 p-2 rounded-lg">
+                        <p className="font-bold text-gray-900">{formatFileSize(files.reduce((acc, f) => acc + f.size, 0))}</p>
+                        <p className="text-xs text-gray-500">Total Size</p>
+                      </div>
+                      <div className="bg-gray-50 p-2 rounded-lg">
+                        <p className="font-bold text-gray-900">{isBulk ? 'Bulk' : 'Single'}</p>
+                        <p className="text-xs text-gray-500">Mode</p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-purple-800">✅ Conversion Complete!</p>
-                    <p className="text-sm text-purple-600">{result.pages} images converted to PDF</p>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="text-6xl text-purple-400 mx-auto">
+                      <FaImage className="mx-auto" />
+                    </div>
+                    <div>
+                      <p className="text-gray-600 text-lg">Drop your images here</p>
+                      <p className="text-sm text-gray-400">or click to browse</p>
+                    </div>
+                    <p className="text-xs text-gray-400">
+                      Supports JPG, PNG, GIF, BMP, WEBP (up to 20MB total)
+                    </p>
+                    <p className="text-xs text-purple-500">
+                      {isPremium ? '✨ Unlimited conversions' : '📄 Single: Unlimited | Bulk: 2/day'}
+                    </p>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleFileChange}
+                      className="hidden"
+                      id="image-upload"
+                    />
+                    <label
+                      htmlFor="image-upload"
+                      className="inline-block px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition cursor-pointer"
+                    >
+                      Choose Images
+                    </label>
                   </div>
-                </div>
-                <div className="flex flex-wrap gap-3 mt-4">
-                  <button
-                    onClick={downloadFile}
-                    className="flex-1 bg-purple-500 text-white py-2.5 rounded-lg hover:bg-purple-600 transition flex items-center justify-center gap-2 font-semibold shadow-md hover:shadow-lg"
-                  >
-                    <FaDownload /> Download PDF
-                  </button>
-                  {files.length > 1 && (
+                )}
+              </div>
+
+              {/* Conversion Options */}
+              <ConversionOptions 
+                options={conversionOptions}
+                onChange={setConversionOptions}
+              />
+
+              {/* Premium Toggle */}
+              <div className="flex items-center gap-3 pt-2">
+                <input
+                  type="checkbox"
+                  checked={isPremium}
+                  onChange={(e) => setIsPremium(e.target.checked)}
+                  className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                />
+                <label className="text-sm text-gray-700 flex items-center gap-1">
+                  <FaCrown className="text-yellow-500" /> Premium Mode (Unlimited conversions)
+                </label>
+                {!isPremium && isBulk && (
+                  <span className="text-xs text-orange-500 ml-2">
+                    Bulk uses 1 of 2 free daily conversions
+                  </span>
+                )}
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading || files.length === 0}
+                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3.5 rounded-xl font-semibold hover:shadow-lg hover:shadow-purple-500/30 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-lg"
+              >
+                {loading ? <FaSpinner className="animate-spin" /> : <FaFilePdf />}
+                {loading ? 'Converting...' : `Convert ${files.length} Image${files.length > 1 ? 's' : ''} to PDF`}
+              </button>
+            </form>
+
+            {/* Results */}
+            {result && (
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-200">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center text-white">
+                      <FaCheckCircle />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-purple-800">✅ Conversion Complete!</p>
+                      <p className="text-sm text-purple-600">{result.pages} images converted to PDF</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-3 mt-4">
+                    <button
+                      onClick={downloadFile}
+                      className="flex-1 bg-purple-500 text-white py-2.5 rounded-lg hover:bg-purple-600 transition flex items-center justify-center gap-2 font-semibold shadow-md hover:shadow-lg"
+                    >
+                      <FaDownload /> Download PDF
+                    </button>
+                    {files.length > 1 && (
+                      <button
+                        onClick={() => {
+                          files.forEach((file, index) => {
+                            setTimeout(() => downloadIndividualPDF(file), index * 500);
+                          });
+                        }}
+                        className="flex-1 bg-blue-500 text-white py-2.5 rounded-lg hover:bg-blue-600 transition flex items-center justify-center gap-2 font-semibold shadow-md hover:shadow-lg"
+                      >
+                        <FaDownload /> Download All (Individual)
+                      </button>
+                    )}
                     <button
                       onClick={() => {
-                        // Download individual PDFs
-                        files.forEach((file, index) => {
-                          setTimeout(() => downloadIndividualPDF(file), index * 500);
-                        });
+                        clearAll();
                       }}
-                      className="flex-1 bg-blue-500 text-white py-2.5 rounded-lg hover:bg-blue-600 transition flex items-center justify-center gap-2 font-semibold shadow-md hover:shadow-lg"
+                      className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg hover:bg-gray-300 transition flex items-center justify-center gap-2 font-semibold"
                     >
-                      <FaDownload /> Download All (Individual)
+                      <FaPlus /> Convert Another
                     </button>
-                  )}
-                  <button
-                    onClick={() => {
-                      clearAll();
-                    }}
-                    className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg hover:bg-gray-300 transition flex items-center justify-center gap-2 font-semibold"
-                  >
-                    <FaPlus /> Convert Another
-                  </button>
+                  </div>
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Conversion History */}
+          {conversionHistory.length > 0 && (
+            <div className="mt-6 bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                <div className="flex items-center gap-2">
+                  <FaHistory className="text-purple-500" />
+                  <span className="font-semibold text-gray-700">Conversion History</span>
+                  <span className="text-xs text-gray-400">({conversionHistory.length})</span>
+                </div>
+              </div>
+              <div className="p-3 space-y-2 max-h-40 overflow-y-auto">
+                {conversionHistory.slice(0, 5).map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <FaFilePdf className="text-red-400 flex-shrink-0" />
+                      <span className="text-sm truncate">{item.filename || 'converted.pdf'}</span>
+                      <span className="text-xs text-gray-400 flex-shrink-0">
+                        {item.imageCount || 0} images
+                      </span>
+                      <span className="text-xs text-gray-400 flex-shrink-0">
+                        {new Date(item.timestamp).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {item.status === 'completed' && (
+                        <span className="text-xs text-green-500 flex items-center gap-1">
+                          <FaCheckCircle className="text-xs" /> Done
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Features Section */}
+          <div className="mt-8 grid md:grid-cols-4 gap-4">
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
+              <FaImage className="text-3xl text-purple-500 mx-auto mb-2" />
+              <h4 className="font-semibold text-gray-900">Multiple Images</h4>
+              <p className="text-xs text-gray-500">Convert multiple images to one PDF</p>
+            </div>
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
+              <FaGripLines className="text-3xl text-purple-500 mx-auto mb-2" />
+              <h4 className="font-semibold text-gray-900">Reorder Images</h4>
+              <p className="text-xs text-gray-500">Drag or use buttons to reorder</p>
+            </div>
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
+              <FaShieldAlt className="text-3xl text-purple-500 mx-auto mb-2" />
+              <h4 className="font-semibold text-gray-900">Secure Conversion</h4>
+              <p className="text-xs text-gray-500">Files are encrypted and automatically deleted</p>
+            </div>
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
+              <FaRocket className="text-3xl text-purple-500 mx-auto mb-2" />
+              <h4 className="font-semibold text-gray-900">Fast Processing</h4>
+              <p className="text-xs text-gray-500">Convert images in seconds</p>
+            </div>
+          </div>
+
+          {/* Upgrade CTA */}
+          {!isPremium && (
+            <div className="mt-8 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl p-6 text-white text-center relative overflow-hidden">
+              <div className="absolute inset-0 opacity-10">
+                <div className="absolute top-0 -right-20 w-64 h-64 bg-white rounded-full blur-3xl"></div>
+                <div className="absolute -bottom-20 -left-20 w-48 h-48 bg-white rounded-full blur-3xl"></div>
+              </div>
+              <div className="relative z-10 max-w-2xl mx-auto">
+                <FaCrown className="text-4xl text-yellow-400 mx-auto mb-3" />
+                <h3 className="text-xl font-bold mb-2">🚀 Unlock Premium Features</h3>
+                <p className="text-purple-100 mb-4">
+                  Get unlimited bulk conversions, advanced options, priority support, and more.
+                </p>
+                <button
+                  onClick={handleUpgrade}
+                  className="bg-white text-purple-600 px-8 py-3 rounded-xl font-semibold hover:shadow-lg transition hover:-translate-y-0.5"
+                >
+                  Upgrade Now — ₹499/month
+                </button>
               </div>
             </div>
           )}
         </div>
 
-        {/* Conversion History */}
-        {conversionHistory.length > 0 && (
-          <div className="mt-6 bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-              <div className="flex items-center gap-2">
-                <FaHistory className="text-purple-500" />
-                <span className="font-semibold text-gray-700">Conversion History</span>
-                <span className="text-xs text-gray-400">({conversionHistory.length})</span>
-              </div>
-            </div>
-            <div className="p-3 space-y-2 max-h-40 overflow-y-auto">
-              {conversionHistory.slice(0, 5).map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <FaFilePdf className="text-red-400 flex-shrink-0" />
-                    <span className="text-sm truncate">{item.filename || 'converted.pdf'}</span>
-                    <span className="text-xs text-gray-400 flex-shrink-0">
-                      {item.imageCount || 0} images
-                    </span>
-                    <span className="text-xs text-gray-400 flex-shrink-0">
-                      {new Date(item.timestamp).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {item.status === 'completed' && (
-                      <span className="text-xs text-green-500 flex items-center gap-1">
-                        <FaCheckCircle className="text-xs" /> Done
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Payment Modal */}
+        <PaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          userEmail={localStorage.getItem('userEmail') || ''}
+          userId={localStorage.getItem('userId') || ''}
+        />
 
-        {/* Features Section */}
-        <div className="mt-8 grid md:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
-            <FaImage className="text-3xl text-purple-500 mx-auto mb-2" />
-            <h4 className="font-semibold text-gray-900">Multiple Images</h4>
-            <p className="text-xs text-gray-500">Convert multiple images to one PDF</p>
-          </div>
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
-            <FaGripLines className="text-3xl text-purple-500 mx-auto mb-2" />
-            <h4 className="font-semibold text-gray-900">Reorder Images</h4>
-            <p className="text-xs text-gray-500">Drag or use buttons to reorder</p>
-          </div>
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
-            <FaShieldAlt className="text-3xl text-purple-500 mx-auto mb-2" />
-            <h4 className="font-semibold text-gray-900">Secure Conversion</h4>
-            <p className="text-xs text-gray-500">Files are encrypted and automatically deleted</p>
-          </div>
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
-            <FaRocket className="text-3xl text-purple-500 mx-auto mb-2" />
-            <h4 className="font-semibold text-gray-900">Fast Processing</h4>
-            <p className="text-xs text-gray-500">Convert images in seconds</p>
-          </div>
-        </div>
-
-        {/* Upgrade CTA */}
-        {!isPremium && (
-          <div className="mt-8 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl p-6 text-white text-center relative overflow-hidden">
-            <div className="absolute inset-0 opacity-10">
-              <div className="absolute top-0 -right-20 w-64 h-64 bg-white rounded-full blur-3xl"></div>
-              <div className="absolute -bottom-20 -left-20 w-48 h-48 bg-white rounded-full blur-3xl"></div>
-            </div>
-            <div className="relative z-10 max-w-2xl mx-auto">
-              <FaCrown className="text-4xl text-yellow-400 mx-auto mb-3" />
-              <h3 className="text-xl font-bold mb-2">🚀 Unlock Premium Features</h3>
-              <p className="text-purple-100 mb-4">
-                Get unlimited bulk conversions, advanced options, priority support, and more.
-              </p>
-              <button
-                onClick={handleUpgrade}
-                className="bg-white text-purple-600 px-8 py-3 rounded-xl font-semibold hover:shadow-lg transition hover:-translate-y-0.5"
-              >
-                Upgrade Now — ₹499/month
-              </button>
-            </div>
-          </div>
-        )}
+        <style dangerouslySetInnerHTML={{ __html: `
+          .gradient-text {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+          }
+          @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+          }
+          .animate-pulse {
+            animation: pulse 1.5s ease-in-out infinite;
+          }
+        `}} />
       </div>
-
-      {/* Payment Modal */}
-      <PaymentModal
-        isOpen={showPaymentModal}
-        onClose={() => setShowPaymentModal(false)}
-        userEmail={localStorage.getItem('userEmail') || ''}
-        userId={localStorage.getItem('userId') || ''}
-      />
-
-      <style dangerouslySetInnerHTML={{ __html: `
-        .gradient-text {
-          background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-        }
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
-        .animate-pulse {
-          animation: pulse 1.5s ease-in-out infinite;
-        }
-      `}} />
-    </div>
+    </>
   );
 };
 
