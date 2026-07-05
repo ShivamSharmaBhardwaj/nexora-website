@@ -15,6 +15,20 @@ import { api } from '../../utils/api';
 import PaymentModal from '../../components/PaymentModal';
 
 // ============================================
+// ✅ SAFE ARRAY HELPERS - Fix for .map() errors
+// ============================================
+
+const safeMap = (data, callback) => {
+  if (!data) return null;
+  const arr = Array.isArray(data) ? data : [];
+  return arr.map(callback);
+};
+
+const safeArray = (data) => {
+  return Array.isArray(data) ? data : [];
+};
+
+// ============================================
 // SEO DATA
 // ============================================
 
@@ -138,7 +152,7 @@ const PDFToImage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (files.length === 0) {
+    if (safeArray(files).length === 0) {
       toast.error('Please select at least one PDF file');
       return;
     }
@@ -154,11 +168,11 @@ const PDFToImage = () => {
     let totalPagesConverted = 0;
 
     try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+      for (let i = 0; i < safeArray(files).length; i++) {
+        const file = safeArray(files)[i];
         setCurrentFileIndex(i);
-        setTotalFiles(files.length);
-        setProgressStatus(`Processing file ${i + 1} of ${files.length}: ${file.name}`);
+        setTotalFiles(safeArray(files).length);
+        setProgressStatus(`Processing file ${i + 1} of ${safeArray(files).length}: ${file.name}`);
 
         const formData = new FormData();
         formData.append('file', file);
@@ -170,7 +184,7 @@ const PDFToImage = () => {
           if (response.data.success) {
             allResults.push({
               fileName: file.name,
-              images: response.data.images,
+              images: safeArray(response.data.images),
               totalPages: response.data.total_pages,
               converted: response.data.converted,
               success: true
@@ -178,9 +192,9 @@ const PDFToImage = () => {
             
             totalPagesConverted += response.data.converted;
             
-            const progressPercentage = ((i + 1) / files.length) * 100;
+            const progressPercentage = ((i + 1) / safeArray(files).length) * 100;
             setProgress(progressPercentage);
-            setProgressStatus(`Completed ${i + 1} of ${files.length} files`);
+            setProgressStatus(`Completed ${i + 1} of ${safeArray(files).length} files`);
 
             setUsageInfo({
               used: response.data.usage_count,
@@ -225,9 +239,9 @@ const PDFToImage = () => {
 
       const allImages = allResults
         .filter(r => r.success)
-        .flatMap(r => r.images);
+        .flatMap(r => safeArray(r.images));
 
-      if (allImages.length > 0) {
+      if (safeArray(allImages).length > 0) {
         setResult({
           images: allImages,
           total_pages: allImages.length,
@@ -261,7 +275,7 @@ const PDFToImage = () => {
       setTimeout(() => {
         const link = document.createElement('a');
         link.download = `page-${index + 1}.png`;
-        link.href = result.images[index].image;
+        link.href = safeArray(result?.images)[index]?.image;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -271,9 +285,9 @@ const PDFToImage = () => {
   };
 
   const downloadAll = () => {
-    if (!result || !result.images) return;
+    if (!result || !safeArray(result?.images)) return;
     
-    result.images.forEach((img, index) => {
+    safeArray(result.images).forEach((img, index) => {
       setTimeout(() => {
         const link = document.createElement('a');
         link.download = `page-${img.page || index + 1}.png`;
@@ -283,7 +297,7 @@ const PDFToImage = () => {
         document.body.removeChild(link);
       }, index * 200);
     });
-    toast.success(`Downloading ${result.images.length} images...`);
+    toast.success(`Downloading ${safeArray(result.images).length} images...`);
   };
 
   const handleUpgrade = () => {
@@ -291,7 +305,7 @@ const PDFToImage = () => {
   };
 
   const getTotalPages = () => {
-    return files.length > 0 ? `${files.length} file(s) selected` : 'No files selected';
+    return safeArray(files).length > 0 ? `${safeArray(files).length} file(s) selected` : 'No files selected';
   };
 
   return (
@@ -543,13 +557,13 @@ const PDFToImage = () => {
           )}
 
           {/* Conversion Results Summary */}
-          {conversionResults.length > 0 && !loading && (
+          {safeArray(conversionResults).length > 0 && !loading && (
             <div className="mb-6 bg-white rounded-xl p-4 border border-gray-200">
               <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                 <FaList className="text-blue-500" /> Conversion Summary
               </h4>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                {conversionResults.map((result, idx) => (
+                {safeArray(conversionResults).map((result, idx) => (
                   <div key={idx} className="flex items-center gap-2 text-sm p-2 bg-gray-50 rounded-lg">
                     {result.success ? (
                       <FaCheck className="text-green-500" />
@@ -574,7 +588,7 @@ const PDFToImage = () => {
                 className={`border-2 border-dashed rounded-xl p-8 text-center transition-all ${
                   isDragging 
                     ? 'border-blue-500 bg-blue-50' 
-                    : files.length > 0 
+                    : safeArray(files).length > 0 
                       ? 'border-green-400 bg-green-50' 
                       : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'
                 }`}
@@ -582,14 +596,14 @@ const PDFToImage = () => {
                 onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
                 onDrop={handleDrop}
               >
-                {files.length > 0 ? (
+                {safeArray(files).length > 0 ? (
                   <div className="space-y-3">
                     <div className="flex items-center justify-center gap-2 text-green-600">
                       <FaCheck className="text-2xl" />
-                      <span className="font-medium">{files.length} PDF(s) selected</span>
+                      <span className="font-medium">{safeArray(files).length} PDF(s) selected</span>
                     </div>
                     <div className="max-h-32 overflow-y-auto">
-                      {files.map((file, index) => (
+                      {safeArray(files).map((file, index) => (
                         <div key={index} className="flex items-center justify-between p-2 bg-white rounded-lg shadow-sm mb-1">
                           <div className="flex items-center gap-2 truncate">
                             <FaFilePdf className="text-red-500 flex-shrink-0" />
@@ -643,7 +657,7 @@ const PDFToImage = () => {
                   multiple
                 />
                 
-                {files.length === 0 && (
+                {safeArray(files).length === 0 && (
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
@@ -669,14 +683,14 @@ const PDFToImage = () => {
                 </label>
                 {!isPremium && (
                   <span className="text-xs text-amber-600 ml-auto">
-                    ⚡ {files.length} file(s) selected • Pages limited to 3/day
+                    ⚡ {safeArray(files).length} file(s) selected • Pages limited to 3/day
                   </span>
                 )}
               </div>
 
               <button
                 type="submit"
-                disabled={loading || files.length === 0}
+                disabled={loading || safeArray(files).length === 0}
                 className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-lg font-semibold hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {loading ? (
@@ -687,30 +701,30 @@ const PDFToImage = () => {
                 ) : (
                   <>
                     <FaPlay />
-                    Convert {files.length} PDF(s) to Images
+                    Convert {safeArray(files).length} PDF(s) to Images
                   </>
                 )}
               </button>
             </form>
 
             {/* Results */}
-            {result && result.images && result.images.length > 0 && (
+            {result && safeArray(result?.images).length > 0 && (
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                     <FaImage className="text-blue-600" /> 
                     Converted Images 
                     <span className="text-sm font-normal text-gray-500">
-                      ({result.images.length} pages)
+                      ({safeArray(result.images).length} pages)
                     </span>
                   </h3>
                   <div className="flex gap-2 flex-wrap">
                     <button
                       onClick={downloadSelected}
-                      disabled={selectedImages.length === 0}
+                      disabled={safeArray(selectedImages).length === 0}
                       className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <FaDownload /> Selected ({selectedImages.length})
+                      <FaDownload /> Selected ({safeArray(selectedImages).length})
                     </button>
                     <button
                       onClick={downloadAll}
@@ -722,7 +736,7 @@ const PDFToImage = () => {
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {result.images.map((img, index) => (
+                  {safeArray(result.images).map((img, index) => (
                     <div key={index} className="relative group border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition">
                       <img 
                         src={img.image} 
@@ -737,12 +751,12 @@ const PDFToImage = () => {
                       <button
                         onClick={() => toggleImageSelection(index)}
                         className={`absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center transition ${
-                          selectedImages.includes(index) 
+                          safeArray(selectedImages).includes(index) 
                             ? 'bg-blue-500 text-white' 
                             : 'bg-white/80 text-gray-600 hover:bg-white'
                         }`}
                       >
-                        {selectedImages.includes(index) ? <FaCheckCircle className="text-sm" /> : <FaCircle className="text-sm" />}
+                        {safeArray(selectedImages).includes(index) ? <FaCheckCircle className="text-sm" /> : <FaCircle className="text-sm" />}
                       </button>
                       <a
                         href={img.image}

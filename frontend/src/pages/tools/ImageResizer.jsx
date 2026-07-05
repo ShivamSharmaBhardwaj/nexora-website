@@ -19,6 +19,20 @@ import { api } from '../../utils/api';
 import PaymentModal from '../../components/PaymentModal';
 
 // ============================================
+// ✅ SAFE ARRAY HELPERS - Fix for .map() errors
+// ============================================
+
+const safeMap = (data, callback) => {
+  if (!data) return null;
+  const arr = Array.isArray(data) ? data : [];
+  return arr.map(callback);
+};
+
+const safeArray = (data) => {
+  return Array.isArray(data) ? data : [];
+};
+
+// ============================================
 // ✅ INDIAN CITIES FOR GEO TARGETING
 // ============================================
 const indianCities = [
@@ -184,7 +198,7 @@ const ResizeHistory = ({ history, onReuse }) => {
         <div className="flex items-center gap-2">
           <FaHistory className="text-pink-500" />
           <span className="font-semibold text-gray-700">Resize History</span>
-          <span className="text-xs text-gray-400">({history.length})</span>
+          <span className="text-xs text-gray-400">({safeArray(history).length})</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-400">
@@ -196,7 +210,7 @@ const ResizeHistory = ({ history, onReuse }) => {
       
       {expanded && (
         <div className="border-t border-gray-200 p-3 space-y-2 max-h-60 overflow-y-auto">
-          {history.map((item, idx) => (
+          {safeArray(history).map((item, idx) => (
             <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
               <div className="flex items-center gap-3 min-w-0">
                 <FaImage className="text-pink-400 flex-shrink-0" />
@@ -936,10 +950,10 @@ const ImageResizer = () => {
                   <div className="space-y-3">
                     <div className="flex items-center justify-center gap-2 text-green-600">
                       <FaCheckCircle className="text-2xl" />
-                      <span className="font-medium">{files.length} image(s) added to queue</span>
+                      <span className="font-medium">{safeArray(files).length} image(s) added to queue</span>
                     </div>
                     <div className="max-h-32 overflow-y-auto space-y-1">
-                      {files.map((f, idx) => (
+                      {safeArray(files).map((f, idx) => (
                         <div key={idx} className="flex items-center justify-between text-sm bg-gray-50 p-2 rounded">
                           <span className="truncate">{f.name}</span>
                           <span className="text-gray-400 text-xs ml-2">{formatSize(f.size)}</span>
@@ -1007,7 +1021,7 @@ const ImageResizer = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Quick Presets</label>
                 <div className="flex flex-wrap gap-2">
-                  {presets.map((preset, index) => {
+                  {safeArray(presets).map((preset, index) => {
                     const isPremiumPreset = preset.w > MAX_DIMENSION_FREE || preset.h > MAX_DIMENSION_FREE;
                     return (
                       <button
@@ -1112,19 +1126,19 @@ const ImageResizer = () => {
                 {loading ? <FaSpinner className="animate-spin" /> : <FaArrowsAlt />}
                 {loading 
                   ? batchMode ? `Resizing... ${Math.round(progress)}%` : 'Resizing...'
-                  : batchMode ? `Resize ${files.length} Images to ${width}x${height}` : `Resize to ${width}x${height}`
+                  : batchMode ? `Resize ${safeArray(files).length} Images to ${width}x${height}` : `Resize to ${width}x${height}`
                 }
               </button>
             </form>
 
             {/* Batch Results */}
-            {conversionResults.length > 0 && !loading && (
+            {safeArray(conversionResults).length > 0 && !loading && (
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="font-semibold text-gray-700 flex items-center gap-2">
                     <FaCheckCircle className="text-green-500" /> Resize Results
                   </h4>
-                  {conversionResults.filter(r => r.success).length > 0 && (
+                  {safeArray(conversionResults).filter(r => r.success).length > 0 && (
                     <button
                       onClick={downloadAllBatch}
                       className="text-sm bg-pink-500 text-white px-4 py-1.5 rounded-lg hover:bg-pink-600 transition flex items-center gap-2"
@@ -1134,7 +1148,7 @@ const ImageResizer = () => {
                   )}
                 </div>
                 <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {conversionResults.map((item, idx) => (
+                  {safeArray(conversionResults).map((item, idx) => (
                     <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center gap-3 min-w-0">
                         {item.success ? (
@@ -1252,7 +1266,7 @@ const ImageResizer = () => {
                   onClick={handleUpgrade}
                   className="bg-white text-pink-600 px-8 py-3 rounded-xl font-semibold hover:shadow-lg transition hover:-translate-y-0.5"
                 >
-                  Upgrade Now — ₹499/month
+                  Upgrade Now — ₹99/month
                 </button>
                 <p className="text-pink-200 text-xs mt-3">Available in {indianCities.length}+ Indian cities and {globalCountries.length}+ countries worldwide</p>
               </div>

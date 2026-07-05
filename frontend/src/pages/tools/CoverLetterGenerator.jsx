@@ -23,6 +23,20 @@ import * as XLSX from 'xlsx';
 import { Document, Packer, Paragraph, TextRun, AlignmentType } from 'docx';
 
 // ============================================
+// ✅ SAFE ARRAY HELPERS - Fix for .map() errors
+// ============================================
+
+const safeMap = (data, callback) => {
+  if (!data) return null;
+  const arr = Array.isArray(data) ? data : [];
+  return arr.map(callback);
+};
+
+const safeArray = (data) => {
+  return Array.isArray(data) ? data : [];
+};
+
+// ============================================
 // ✅ INDIAN CITIES FOR GEO TARGETING
 // ============================================
 const indianCities = [
@@ -320,7 +334,7 @@ const KeywordSuggestions = ({ onAdd }) => {
       </div>
 
       <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
-        {COVER_LETTER_KEYWORDS[selectedCategory]?.map((keyword, index) => (
+        {safeArray(COVER_LETTER_KEYWORDS[selectedCategory]).map((keyword, index) => (
           <button
             key={`${selectedCategory}-${keyword}-${index}`}
             onClick={() => toggleKeyword(keyword)}
@@ -1171,7 +1185,7 @@ const CoverLetterGenerator = () => {
               <FaMagic className="text-purple-500" /> Quick Examples:
             </p>
             <div className="flex flex-wrap gap-2">
-              {examples.map((example, idx) => (
+              {safeArray(examples).map((example, idx) => (
                 <button
                   key={idx}
                   type="button"
@@ -1265,9 +1279,9 @@ const CoverLetterGenerator = () => {
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Skills (comma separated) *</label>
                       <input type="text" name="skills" placeholder="React, Python, Project Management" value={formData.skills} onChange={handleChange} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required />
-                      {skillsArray.length > 0 && (
+                      {safeArray(skillsArray).length > 0 && (
                         <div className="flex flex-wrap gap-1.5 mt-2">
-                          {skillsArray.map((skill, idx) => (
+                          {safeArray(skillsArray).map((skill, idx) => (
                             <span key={idx} className="bg-purple-50 text-purple-600 px-2 py-0.5 rounded text-xs">{skill}</span>
                           ))}
                         </div>
@@ -1361,7 +1375,7 @@ const CoverLetterGenerator = () => {
               <h3 className="text-xl font-bold mb-2">🚀 Unlock Premium Features</h3>
               <p className="text-purple-100 mb-4">Get unlimited cover letter generation, access to all templates, ATS scoring, and priority support.</p>
               <button onClick={handleUpgrade} className="bg-white text-purple-600 px-8 py-3 rounded-xl font-semibold hover:shadow-lg transition hover:-translate-y-0.5">
-                Upgrade Now — ₹499/month
+                Upgrade Now — ₹99/month
               </button>
               <p className="text-purple-200 text-xs mt-3">Available in {indianCities.length}+ Indian cities and {globalCountries.length}+ countries worldwide</p>
             </div>

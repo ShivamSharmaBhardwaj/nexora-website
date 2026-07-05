@@ -19,20 +19,286 @@ import base64
 import re
 from docx import Document
 import openpyxl
-import img2pdf
 import shutil
-import fitz 
-from io import BytesIO
+import hashlib
+import magic
+import mimetypes
 
 # Create blueprint WITHOUT url_prefix
 tools_bp = Blueprint('tools_bp', __name__)
 tools_bp.strict_slashes = False
 
 # ============================================
-# FREE USAGE TRACKING
+# ✅ GLOBAL VARIABLES - MUST BE AT TOP
 # ============================================
 
 usage_tracking = {}
+
+# ============================================
+# 🔒 SECURITY CONFIGURATIONS
+# ============================================
+
+# File size limits (in bytes)
+MAX_FILE_SIZE = {
+    'default': 10 * 1024 * 1024,      # 10MB
+    'pdf': 10 * 1024 * 1024,           # 10MB
+    'image': 10 * 1024 * 1024,         # 10MB
+    'batch': 15 * 1024 * 1024,         # 15MB (for batch operations)
+}
+
+# Allowed file extensions and MIME types
+ALLOWED_EXTENSIONS = {
+    'pdf': '.pdf',
+    'image': ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff'],
+    'all': ['.pdf', '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff']
+}
+
+ALLOWED_MIME_TYPES = {
+    'pdf': 'application/pdf',
+    'image': [
+        'image/jpeg', 'image/png', 'image/gif', 'image/bmp', 
+        'image/webp', 'image/tiff', 'image/x-ms-bmp'
+    ]
+}
+
+# ============================================
+# 🔒 SECURITY FUNCTIONS
+# ============================================
+
+def validate_file_type(file, expected_type='pdf'):
+    """
+    Validate file type using both extension and MIME type
+    Returns: (is_valid, error_message)
+    """
+    try:
+        # Check file extension
+        filename = file.filename or ''
+        ext = os.path.splitext(filename)[1].lower()
+        
+        if expected_type == 'pdf':
+            if ext != '.pdf':
+                return False, "Only PDF files are allowed"
+        
+        elif expected_type == 'image':
+            if ext not in ALLOWED_EXTENSIONS['image']:
+                return False, "Only image files are allowed (JPG, PNG, GIF, BMP, WEBP, TIFF)"
+        
+        # Check MIME type using python-magic
+        file_bytes = file.read(1024)
+        file.seek(0)  # Reset file pointer
+        
+        mime = magic.from_buffer(file_bytes, mime=True)
+        
+        expected_mimes = ALLOWED_MIME_TYPES.get(expected_type, [])
+        if isinstance(expected_mimes, str):
+            expected_mimes = [expected_mimes]
+        
+        if expected_type == 'pdf' and mime != 'application/pdf':
+            return False, "Invalid PDF file (MIME type mismatch)"
+        
+        if expected_type == 'image' and mime not in expected_mimes:
+            return False, f"Invalid image file (MIME type: {mime})"
+        
+        return True, ""
+        
+    except Exception as e:
+        print(f"File validation error: {str(e)}")
+        # Fallback: check extension only
+        return True, ""
+
+def validate_file_size(file, max_size=None):
+    """
+    Validate file size
+    """
+    max_size = max_size or MAX_FILE_SIZE['default']
+    
+    # Get file size
+    file.seek(0, 2)
+    size = file.tell()
+    file.seek(0)
+    
+    if size > max_size:
+        return False, f"File size exceeds {max_size // (1024*1024)}MB limit (Current: {size // (1024*1024)}MB)"
+    
+    return True, ""
+
+def detect_malicious_content(file_bytes):
+    """
+    Detect potentially malicious content in files
+    """
+    try:
+        # Check for executable signatures
+        executable_signatures = [
+            b'MZ',  # Windows EXE
+            b'\x7fELF',  # Linux ELF
+            b'PK\x03\x04',  # ZIP (could be malicious)
+            b'%PDF',  # PDF (valid)
+        ]
+        
+        # Check first 50 bytes for suspicious patterns
+        header = file_bytes[:50]
+        
+        # Check for script injection patterns
+        suspicious_patterns = [
+            b'<script>', b'javascript:', b'data:text/html',
+            b'exec(', b'eval(', b'system(', b'passthru(',
+            b'<?php', b'<%%', b'<%', b'<jsp:'
+        ]
+        
+        for pattern in suspicious_patterns:
+            if pattern in header:
+                return True, f"Potentially malicious content detected (pattern: {pattern.decode('utf-8', errors='ignore')})"
+        
+        # Check for double extensions (e.g., file.pdf.exe)
+        return False, ""
+        
+    except Exception as e:
+        print(f"Malicious content detection error: {str(e)}")
+        return False, ""
+
+def sanitize_filename(filename):
+    """
+    Sanitize filename to prevent path traversal attacks
+    """
+    # Remove path traversal attempts
+    filename = filename.replace('../', '').replace('..\\', '')
+    filename = filename.replace('/../', '').replace('\\..\\', '')
+    
+    # Remove dangerous characters
+    dangerous_chars = [';', '&', '|', '`', '$', '(', ')', '<', '>', '{', '}', '[', ']', '*', '?']
+    for char in dangerous_chars:
+        filename = filename.replace(char, '')
+    
+    # Use secure_filename from werkzeug
+    filename = secure_filename(filename)
+    
+    # If filename becomes empty, generate a random one
+    if not filename:
+        filename = f"file_{uuid.uuid4().hex[:8]}"
+    
+    return filename
+
+def cleanup_temp_files(file_paths):
+    """
+    Safely cleanup temporary files
+    """
+    for path in file_paths:
+        try:
+            if os.path.exists(path):
+                os.remove(path)
+        except Exception as e:
+            print(f"Cleanup error for {path}: {str(e)}")
+
+def get_client_ip(request):
+    """
+    Get client IP address safely
+    """
+    # Check for proxy headers
+    forwarded = request.headers.get('X-Forwarded-For')
+    if forwarded:
+        # Get the first IP in the list (client IP)
+        ips = forwarded.split(',')
+        ip = ips[0].strip()
+        # Validate IP format (basic check)
+        if re.match(r'^(\d{1,3}\.){3}\d{1,3}$', ip):
+            return ip
+    
+    return request.remote_addr or '0.0.0.0'
+
+def is_rate_limited(ip, tool_name, limit=10, window=60):
+    """
+    Rate limiting: Max 'limit' requests per 'window' seconds
+    """
+    key = f"rate_limit:{tool_name}:{ip}"
+    current_time = datetime.now().timestamp()
+    
+    # Clean old entries (if too many)
+    if key in usage_tracking and 'requests' in usage_tracking[key]:
+        # Remove requests older than window
+        cutoff = current_time - window
+        usage_tracking[key]['requests'] = [
+            t for t in usage_tracking[key]['requests'] 
+            if t > cutoff
+        ]
+        
+        # Check if limit exceeded
+        if len(usage_tracking[key]['requests']) >= limit:
+            return True
+    
+    return False
+
+def track_request(ip, tool_name):
+    """
+    Track request for rate limiting
+    """
+    key = f"rate_limit:{tool_name}:{ip}"
+    current_time = datetime.now().timestamp()
+    
+    if key not in usage_tracking:
+        usage_tracking[key] = {'requests': []}
+    
+    if 'requests' not in usage_tracking[key]:
+        usage_tracking[key]['requests'] = []
+    
+    usage_tracking[key]['requests'].append(current_time)
+
+# ============================================
+# WATERMARK CONFIGURATION
+# ============================================
+
+WATERMARK_TEXT = "Made with ❤️ by Krynova Technologies"
+WATERMARK_FOOTER = "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nMade with ❤️ by Krynova Technologies\nVisit: https://krynovatechnology.pythonanywhere.com\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+def should_add_watermark(is_premium):
+    """Determine if watermark should be added"""
+    return not is_premium
+
+def add_watermark_to_text(content, is_premium):
+    """Add watermark footer to text content"""
+    if is_premium:
+        return content
+    return content + WATERMARK_FOOTER
+
+def add_watermark_to_image(image, is_premium):
+    """Add watermark to image using PIL"""
+    if is_premium:
+        return image
+    
+    try:
+        draw = ImageDraw.Draw(image)
+        try:
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12)
+        except:
+            font = ImageFont.load_default()
+        
+        watermark_text = "Made with ❤️ by Krynova"
+        bbox = draw.textbbox((0, 0), watermark_text, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+        
+        x = (image.width - text_width) // 2
+        y = image.height - text_height - 20
+        
+        # Semi-transparent background
+        overlay = Image.new('RGBA', image.size, (255, 255, 255, 0))
+        overlay_draw = ImageDraw.Draw(overlay)
+        overlay_draw.rectangle(
+            [x-10, y-10, x+text_width+10, y+text_height+10],
+            fill=(255, 255, 255, 180)
+        )
+        image = Image.alpha_composite(image.convert('RGBA'), overlay)
+        
+        draw = ImageDraw.Draw(image)
+        draw.text((x, y), watermark_text, fill=(80, 80, 80, 200), font=font)
+        
+        return image
+    except Exception as e:
+        print(f"Watermark error: {str(e)}")
+        return image
+
+# ============================================
+# ✅ USAGE TRACKING FUNCTIONS
+# ============================================
 
 def get_usage_count(tool_name, ip_address):
     """Get usage count for a specific tool and IP"""
@@ -62,12 +328,19 @@ def increment_usage(tool_name, ip_address):
     return usage_tracking[key]['count']
 
 # ============================================
-# TEST ROUTE - To verify tools are working
+# TEST ROUTE
 # ============================================
 
-@tools_bp.route('/test', methods=['GET'])
+@tools_bp.route('/test', methods=['GET', 'OPTIONS'])
 def test_tools():
     """Test route to verify tools blueprint is working"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+        return response
+    
     return jsonify({
         'success': True,
         'message': 'Tools API is working!',
@@ -90,7 +363,7 @@ def test_tools():
     })
 
 # ============================================
-# 1. RESUME BUILDER - FIXED (no trailing slash)
+# 1. RESUME BUILDER
 # ============================================
 
 @tools_bp.route('/resume-builder', methods=['POST', 'OPTIONS'])
@@ -108,7 +381,16 @@ def build_resume():
         if not data:
             return jsonify({'success': False, 'error': 'No data provided'}), 400
         
-        ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+        ip_address = get_client_ip(request)
+        
+        # Rate limiting: 20 requests per minute
+        if is_rate_limited(ip_address, 'resume_builder', limit=20, window=60):
+            return jsonify({
+                'success': False,
+                'error': 'Too many requests. Please try again later.'
+            }), 429
+        
+        track_request(ip_address, 'resume_builder')
         
         usage_count = get_usage_count('resume_builder', ip_address)
         is_premium = data.get('is_premium', False)
@@ -128,8 +410,16 @@ def build_resume():
             if not data.get(field):
                 return jsonify({'success': False, 'error': f'Missing field: {field}'}), 400
         
+        # Sanitize inputs
+        name = sanitize_input(data.get('name', ''))
+        email = sanitize_input(data.get('email', ''))
+        skills = sanitize_input(data.get('skills', ''))
+        
         # Generate resume content
         resume_content = generate_resume_content(data)
+        
+        # ✅ Add watermark for free users
+        resume_content = add_watermark_to_text(resume_content, is_premium)
         
         increment_usage('resume_builder', ip_address)
         
@@ -138,15 +428,16 @@ def build_resume():
             'resume': resume_content,
             'usage_count': get_usage_count('resume_builder', ip_address),
             'remaining_free': max(0, 3 - get_usage_count('resume_builder', ip_address)),
-            'is_premium': is_premium
+            'is_premium': is_premium,
+            'has_watermark': should_add_watermark(is_premium)
         })
         
     except Exception as e:
         print(f"Resume Builder Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'Internal server error'}), 500
 
 # ============================================
-# 2. COVER LETTER GENERATOR - FIXED (no trailing slash)
+# 2. COVER LETTER GENERATOR
 # ============================================
 
 @tools_bp.route('/cover-letter', methods=['POST', 'OPTIONS'])
@@ -164,7 +455,16 @@ def generate_cover_letter():
         if not data:
             return jsonify({'success': False, 'error': 'No data provided'}), 400
         
-        ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+        ip_address = get_client_ip(request)
+        
+        # Rate limiting
+        if is_rate_limited(ip_address, 'cover_letter', limit=20, window=60):
+            return jsonify({
+                'success': False,
+                'error': 'Too many requests. Please try again later.'
+            }), 429
+        
+        track_request(ip_address, 'cover_letter')
         
         usage_count = get_usage_count('cover_letter', ip_address)
         is_premium = data.get('is_premium', False)
@@ -185,6 +485,9 @@ def generate_cover_letter():
         
         cover_letter = generate_cover_letter_content(data)
         
+        # ✅ Add watermark for free users
+        cover_letter = add_watermark_to_text(cover_letter, is_premium)
+        
         increment_usage('cover_letter', ip_address)
         
         return jsonify({
@@ -192,15 +495,16 @@ def generate_cover_letter():
             'cover_letter': cover_letter,
             'usage_count': get_usage_count('cover_letter', ip_address),
             'remaining_free': max(0, 3 - get_usage_count('cover_letter', ip_address)),
-            'is_premium': is_premium
+            'is_premium': is_premium,
+            'has_watermark': should_add_watermark(is_premium)
         })
         
     except Exception as e:
         print(f"Cover Letter Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'Internal server error'}), 500
 
 # ============================================
-# 3. QR CODE GENERATOR - FIXED (no trailing slash)
+# 3. QR CODE GENERATOR
 # ============================================
 
 @tools_bp.route('/qr-generator', methods=['POST', 'OPTIONS'])
@@ -218,7 +522,16 @@ def generate_qr():
         if not data:
             return jsonify({'success': False, 'error': 'No data provided'}), 400
         
-        ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+        ip_address = get_client_ip(request)
+        
+        # Rate limiting
+        if is_rate_limited(ip_address, 'qr_generator', limit=30, window=60):
+            return jsonify({
+                'success': False,
+                'error': 'Too many requests. Please try again later.'
+            }), 429
+        
+        track_request(ip_address, 'qr_generator')
         
         usage_count = get_usage_count('qr_generator', ip_address)
         is_premium = data.get('is_premium', False)
@@ -236,9 +549,12 @@ def generate_qr():
         if not content:
             return jsonify({'success': False, 'error': 'Content is required'}), 400
         
+        # Sanitize content - limit length
+        content = content[:5000]  # Max 5000 chars
+        
         # Get style and size from request
         style = data.get('style', 'default')
-        size = data.get('size', 250)
+        size = min(int(data.get('size', 250)), 1000)  # Max 1000px
         
         # Generate QR code
         qr = qrcode.QRCode(
@@ -267,6 +583,10 @@ def generate_qr():
         if size and size != 250:
             img = img.resize((size, size), Image.Resampling.LANCZOS)
         
+        # ✅ Add watermark for free users
+        if should_add_watermark(is_premium):
+            img = add_watermark_to_image(img, is_premium)
+        
         # Convert to base64
         buffered = BytesIO()
         img.save(buffered, format="PNG")
@@ -279,19 +599,21 @@ def generate_qr():
             'qr_code': f"data:image/png;base64,{img_base64}",
             'usage_count': get_usage_count('qr_generator', ip_address),
             'remaining_free': max(0, 5 - get_usage_count('qr_generator', ip_address)),
-            'is_premium': is_premium
+            'is_premium': is_premium,
+            'has_watermark': should_add_watermark(is_premium)
         })
         
     except Exception as e:
         print(f"QR Generator Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'Internal server error'}), 500
 
-# In tools.py - Replace the existing pdf_to_image function with this:
-
+# ============================================
+# 4. PDF TO IMAGE
+# ============================================
 
 @tools_bp.route('/pdf-to-image', methods=['POST', 'OPTIONS'])
 def pdf_to_image():
-    """Convert PDF to Image using PyMuPDF (Free: 3 pages per day, Premium: Unlimited)"""
+    """Convert PDF to Image (Free: 3 pages per day, Premium: Unlimited)"""
     if request.method == 'OPTIONS':
         response = jsonify({'success': True})
         response.headers.add('Access-Control-Allow-Origin', '*')
@@ -304,7 +626,27 @@ def pdf_to_image():
     
     try:
         file = request.files['file']
-        ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+        ip_address = get_client_ip(request)
+        
+        # Rate limiting
+        if is_rate_limited(ip_address, 'pdf_to_image', limit=15, window=60):
+            return jsonify({
+                'success': False,
+                'error': 'Too many requests. Please try again later.'
+            }), 429
+        
+        track_request(ip_address, 'pdf_to_image')
+        
+        # ✅ Security: Validate file type
+        is_valid, error = validate_file_type(file, 'pdf')
+        if not is_valid:
+            return jsonify({'success': False, 'error': error}), 400
+        
+        # ✅ Security: Validate file size
+        is_valid, error = validate_file_size(file, MAX_FILE_SIZE['pdf'])
+        if not is_valid:
+            return jsonify({'success': False, 'error': error}), 400
+        
         is_premium = request.form.get('is_premium', 'false').lower() == 'true'
         
         usage_count = get_usage_count('pdf_to_image', ip_address)
@@ -319,38 +661,74 @@ def pdf_to_image():
                 'remaining_pages': max(0, 3 - usage_count)
             }), 403
         
-        # Save uploaded file
-        filename = secure_filename(file.filename)
-        temp_path = os.path.join(tempfile.gettempdir(), filename)
+        # Save uploaded file with secure filename
+        filename = sanitize_filename(file.filename)
+        temp_path = os.path.join(tempfile.gettempdir(), f"{uuid.uuid4().hex}_{filename}")
         file.save(temp_path)
         
-        # Open PDF with PyMuPDF
-        doc = fitz.open(temp_path)
-        total_pages = len(doc)
+        # ✅ Security: Check for malicious content
+        with open(temp_path, 'rb') as f:
+            file_bytes = f.read()
+            is_malicious, error = detect_malicious_content(file_bytes)
+            if is_malicious:
+                cleanup_temp_files([temp_path])
+                return jsonify({'success': False, 'error': error}), 400
         
-        # Determine how many pages to convert
-        limit = total_pages if is_premium else min(3, total_pages)
-        
-        # Convert pages to images
-        image_list = []
-        for i in range(limit):
-            page = doc[i]
-            # Render page with 2x zoom for better quality
-            mat = fitz.Matrix(2.0, 2.0)
-            pix = page.get_pixmap(matrix=mat)
+        # Use PyPDF2 to extract pages (NO PyMuPDF)
+        with open(temp_path, 'rb') as f:
+            pdf_reader = PyPDF2.PdfReader(f)
+            total_pages = len(pdf_reader.pages)
             
-            # Convert to PNG bytes
-            img_data = pix.tobytes("png")
-            img_base64 = base64.b64encode(img_data).decode()
+            # Determine how many pages to convert
+            limit = total_pages if is_premium else min(3, total_pages)
             
-            image_list.append({
-                'page': i + 1,
-                'image': f"data:image/png;base64,{img_base64}"
-            })
+            image_list = []
+            for i in range(limit):
+                page = pdf_reader.pages[i]
+                
+                # Extract text (for preview)
+                text = page.extract_text() or ''
+                
+                # Create image representation using PIL
+                img = Image.new('RGB', (800, 1000), color='white')
+                draw = ImageDraw.Draw(img)
+                
+                try:
+                    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14)
+                except:
+                    font = ImageFont.load_default()
+                
+                # Draw page content (text preview)
+                draw.text((50, 50), f"Page {i+1} of {total_pages}", fill='black', font=font)
+                draw.text((50, 80), f"Content preview:", fill='black', font=font)
+                
+                # Show extracted text (first 200 chars)
+                preview_text = text[:200] if text else 'No text extracted (scanned page)'
+                y_pos = 110
+                for line in preview_text.split('\n')[:10]:
+                    draw.text((50, y_pos), line[:80], fill='gray', font=font)
+                    y_pos += 20
+                
+                # Convert to base64
+                img_buffer = BytesIO()
+                img.save(img_buffer, format='PNG')
+                
+                # ✅ Add watermark for free users
+                if should_add_watermark(is_premium):
+                    watermarked_img = Image.open(img_buffer)
+                    watermarked_img = add_watermark_to_image(watermarked_img, is_premium)
+                    img_buffer = BytesIO()
+                    watermarked_img.save(img_buffer, format='PNG')
+                
+                img_base64 = base64.b64encode(img_buffer.getvalue()).decode()
+                
+                image_list.append({
+                    'page': i + 1,
+                    'image': f"data:image/png;base64,{img_base64}"
+                })
         
         # Clean up
-        doc.close()
-        os.remove(temp_path)
+        cleanup_temp_files([temp_path])
         
         # Increment usage for each page converted
         for _ in range(len(image_list)):
@@ -363,15 +741,18 @@ def pdf_to_image():
             'converted': len(image_list),
             'usage_count': get_usage_count('pdf_to_image', ip_address),
             'remaining_free': max(0, 3 - get_usage_count('pdf_to_image', ip_address)) if not is_premium else "Unlimited",
-            'is_premium': is_premium
+            'is_premium': is_premium,
+            'has_watermark': should_add_watermark(is_premium)
         })
         
     except Exception as e:
         print(f"PDF to Image Error: {str(e)}")
         import traceback
         traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500# ============================================
-# 5. PDF TO WORD - FIXED (no trailing slash)
+        return jsonify({'success': False, 'error': 'Internal server error'}), 500
+
+# ============================================
+# 5. PDF TO WORD
 # ============================================
 
 @tools_bp.route('/pdf-to-word', methods=['POST', 'OPTIONS'])
@@ -389,7 +770,27 @@ def pdf_to_word():
     
     try:
         file = request.files['file']
-        ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+        ip_address = get_client_ip(request)
+        
+        # Rate limiting
+        if is_rate_limited(ip_address, 'pdf_to_word', limit=15, window=60):
+            return jsonify({
+                'success': False,
+                'error': 'Too many requests. Please try again later.'
+            }), 429
+        
+        track_request(ip_address, 'pdf_to_word')
+        
+        # ✅ Security: Validate file type
+        is_valid, error = validate_file_type(file, 'pdf')
+        if not is_valid:
+            return jsonify({'success': False, 'error': error}), 400
+        
+        # ✅ Security: Validate file size
+        is_valid, error = validate_file_size(file, MAX_FILE_SIZE['pdf'])
+        if not is_valid:
+            return jsonify({'success': False, 'error': error}), 400
+        
         is_premium = request.form.get('is_premium', 'false').lower() == 'true'
         
         usage_count = get_usage_count('pdf_to_word', ip_address)
@@ -403,9 +804,17 @@ def pdf_to_word():
                 'max_free': 2
             }), 403
         
-        filename = secure_filename(file.filename)
-        temp_path = os.path.join(tempfile.gettempdir(), filename)
+        filename = sanitize_filename(file.filename)
+        temp_path = os.path.join(tempfile.gettempdir(), f"{uuid.uuid4().hex}_{filename}")
         file.save(temp_path)
+        
+        # ✅ Security: Check for malicious content
+        with open(temp_path, 'rb') as f:
+            file_bytes = f.read()
+            is_malicious, error = detect_malicious_content(file_bytes)
+            if is_malicious:
+                cleanup_temp_files([temp_path])
+                return jsonify({'success': False, 'error': error}), 400
         
         text = extract_text_from_pdf(temp_path)
         
@@ -413,12 +822,20 @@ def pdf_to_word():
         doc.add_heading('PDF Content', 0)
         doc.add_paragraph(text)
         
+        # ✅ Add watermark for free users
+        if should_add_watermark(is_premium):
+            doc.add_paragraph()
+            doc.add_paragraph('─' * 50)
+            doc.add_paragraph('Made with ❤️ by Krynova Technologies')
+            doc.add_paragraph('Visit: https://krynovatechnology.pythonanywhere.com')
+            doc.add_paragraph('─' * 50)
+        
         doc_bytes = BytesIO()
         doc.save(doc_bytes)
         doc_bytes.seek(0)
         doc_base64 = base64.b64encode(doc_bytes.read()).decode()
         
-        os.remove(temp_path)
+        cleanup_temp_files([temp_path])
         
         increment_usage('pdf_to_word', ip_address)
         
@@ -428,15 +845,16 @@ def pdf_to_word():
             'filename': filename.replace('.pdf', '.docx'),
             'usage_count': get_usage_count('pdf_to_word', ip_address),
             'remaining_free': max(0, 2 - get_usage_count('pdf_to_word', ip_address)),
-            'is_premium': is_premium
+            'is_premium': is_premium,
+            'has_watermark': should_add_watermark(is_premium)
         })
         
     except Exception as e:
         print(f"PDF to Word Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'Internal server error'}), 500
 
 # ============================================
-# 6. PDF TO EXCEL - FIXED (no trailing slash)
+# 6. PDF TO EXCEL
 # ============================================
 
 @tools_bp.route('/pdf-to-excel', methods=['POST', 'OPTIONS'])
@@ -454,7 +872,27 @@ def pdf_to_excel():
     
     try:
         file = request.files['file']
-        ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+        ip_address = get_client_ip(request)
+        
+        # Rate limiting
+        if is_rate_limited(ip_address, 'pdf_to_excel', limit=15, window=60):
+            return jsonify({
+                'success': False,
+                'error': 'Too many requests. Please try again later.'
+            }), 429
+        
+        track_request(ip_address, 'pdf_to_excel')
+        
+        # ✅ Security: Validate file type
+        is_valid, error = validate_file_type(file, 'pdf')
+        if not is_valid:
+            return jsonify({'success': False, 'error': error}), 400
+        
+        # ✅ Security: Validate file size
+        is_valid, error = validate_file_size(file, MAX_FILE_SIZE['pdf'])
+        if not is_valid:
+            return jsonify({'success': False, 'error': error}), 400
+        
         is_premium = request.form.get('is_premium', 'false').lower() == 'true'
         
         usage_count = get_usage_count('pdf_to_excel', ip_address)
@@ -468,9 +906,17 @@ def pdf_to_excel():
                 'max_free': 2
             }), 403
         
-        filename = secure_filename(file.filename)
-        temp_path = os.path.join(tempfile.gettempdir(), filename)
+        filename = sanitize_filename(file.filename)
+        temp_path = os.path.join(tempfile.gettempdir(), f"{uuid.uuid4().hex}_{filename}")
         file.save(temp_path)
+        
+        # ✅ Security: Check for malicious content
+        with open(temp_path, 'rb') as f:
+            file_bytes = f.read()
+            is_malicious, error = detect_malicious_content(file_bytes)
+            if is_malicious:
+                cleanup_temp_files([temp_path])
+                return jsonify({'success': False, 'error': error}), 400
         
         text = extract_text_from_pdf(temp_path)
         
@@ -481,14 +927,23 @@ def pdf_to_excel():
         # Split text into rows
         lines = text.split('\n')
         for i, line in enumerate(lines):
-            ws.cell(row=i+1, column=1, value=line)
+            if i < 10000:  # Limit rows to prevent abuse
+                ws.cell(row=i+1, column=1, value=line[:1000])  # Limit cell length
+        
+        # ✅ Add watermark for free users
+        if should_add_watermark(is_premium):
+            max_row = ws.max_row + 2
+            ws.cell(row=max_row, column=1, value='─' * 30)
+            ws.cell(row=max_row+1, column=1, value='Made with ❤️ by Krynova Technologies')
+            ws.cell(row=max_row+2, column=1, value='Visit: https://krynovatechnology.pythonanywhere.com')
+            ws.cell(row=max_row+3, column=1, value='─' * 30)
         
         excel_bytes = BytesIO()
         wb.save(excel_bytes)
         excel_bytes.seek(0)
         excel_base64 = base64.b64encode(excel_bytes.read()).decode()
         
-        os.remove(temp_path)
+        cleanup_temp_files([temp_path])
         
         increment_usage('pdf_to_excel', ip_address)
         
@@ -498,14 +953,17 @@ def pdf_to_excel():
             'filename': filename.replace('.pdf', '.xlsx'),
             'usage_count': get_usage_count('pdf_to_excel', ip_address),
             'remaining_free': max(0, 2 - get_usage_count('pdf_to_excel', ip_address)),
-            'is_premium': is_premium
+            'is_premium': is_premium,
+            'has_watermark': should_add_watermark(is_premium)
         })
         
     except Exception as e:
         print(f"PDF to Excel Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'Internal server error'}), 500
 
-# In tools.py - Update the image_to_pdf function
+# ============================================
+# 7. IMAGE TO PDF
+# ============================================
 
 @tools_bp.route('/image-to-pdf', methods=['POST', 'OPTIONS'])
 def image_to_pdf():
@@ -522,8 +980,28 @@ def image_to_pdf():
     
     try:
         files = request.files.getlist('files')
-        ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+        ip_address = get_client_ip(request)
+        
+        # Rate limiting
+        if is_rate_limited(ip_address, 'image_to_pdf', limit=15, window=60):
+            return jsonify({
+                'success': False,
+                'error': 'Too many requests. Please try again later.'
+            }), 429
+        
+        track_request(ip_address, 'image_to_pdf')
+        
         is_premium = request.form.get('is_premium', 'false').lower() == 'true'
+        
+        # ✅ Security: Validate each file
+        for file in files:
+            is_valid, error = validate_file_type(file, 'image')
+            if not is_valid:
+                return jsonify({'success': False, 'error': f'Invalid file: {file.filename} - {error}'}), 400
+            
+            is_valid, error = validate_file_size(file, MAX_FILE_SIZE['image'])
+            if not is_valid:
+                return jsonify({'success': False, 'error': f'File too large: {file.filename} - {error}'}), 400
         
         # Get options from request
         options = {}
@@ -540,7 +1018,6 @@ def image_to_pdf():
         today = datetime.now().strftime('%Y-%m-%d')
         
         if not is_premium and is_bulk:
-            # Check bulk usage
             bulk_data = usage_tracking.get(bulk_key, {'date': '', 'count': 0})
             if bulk_data['date'] != today:
                 bulk_data = {'date': today, 'count': 0}
@@ -555,68 +1032,117 @@ def image_to_pdf():
                     'used_today': bulk_data['count']
                 }), 403
             
-            # Increment bulk usage
             bulk_data['count'] += 1
             usage_tracking[bulk_key] = bulk_data
         
-        # For single images, only track total usage for display purposes
-        usage_key = f"image_to_pdf:{ip_address}"
-        usage_count = get_usage_count('image_to_pdf', ip_address)
+        # Process images to PDF using PIL
+        image_list = []
+        temp_paths = []
         
-        # Process images
-        images_paths = []
         for file in files:
-            filename = secure_filename(file.filename)
-            temp_path = os.path.join(tempfile.gettempdir(), filename)
+            filename = sanitize_filename(file.filename)
+            temp_path = os.path.join(tempfile.gettempdir(), f"{uuid.uuid4().hex}_{filename}")
             file.save(temp_path)
-            images_paths.append(temp_path)
+            temp_paths.append(temp_path)
+            
+            # Open and convert image
+            img = Image.open(temp_path)
+            if img.mode != 'RGB':
+                img = img.convert('RGB')
+            
+            # Resize if too large (max 2000px)
+            max_dim = 2000
+            if img.width > max_dim or img.height > max_dim:
+                img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
+            
+            image_list.append(img)
         
-        # Convert to PDF
-        pdf_bytes = img2pdf.convert(images_paths)
+        # Create PDF from images
+        pdf_buffer = BytesIO()
+        if image_list:
+            image_list[0].save(
+                pdf_buffer,
+                format='PDF',
+                save_all=True,
+                append_images=image_list[1:] if len(image_list) > 1 else [],
+                resolution=100.0,
+                quality=85 if not is_premium else 95
+            )
+        
+        pdf_bytes = pdf_buffer.getvalue()
+        
+        # ✅ Add watermark for free users (as text footer using PyPDF2)
+        if should_add_watermark(is_premium):
+            try:
+                from PyPDF2 import PdfReader, PdfWriter
+                from reportlab.pdfgen import canvas
+                from reportlab.lib.pagesizes import letter
+                from io import BytesIO
+                
+                # Create watermark page
+                watermark_buffer = BytesIO()
+                c = canvas.Canvas(watermark_buffer, pagesize=letter)
+                c.setFont("Helvetica", 10)
+                c.setFillColorRGB(0.5, 0.5, 0.5, 0.3)
+                c.drawRightString(500, 30, "Made with ❤️ by Krynova")
+                c.save()
+                watermark_buffer.seek(0)
+                
+                # Merge with PDF
+                reader = PdfReader(BytesIO(pdf_bytes))
+                writer = PdfWriter()
+                watermark_reader = PdfReader(watermark_buffer)
+                watermark_page = watermark_reader.pages[0]
+                
+                for page in reader.pages:
+                    page.merge_page(watermark_page)
+                    writer.add_page(page)
+                
+                final_buffer = BytesIO()
+                writer.write(final_buffer)
+                pdf_bytes = final_buffer.getvalue()
+            except Exception as e:
+                print(f"Watermark error: {str(e)}")
+        
         pdf_base64 = base64.b64encode(pdf_bytes).decode()
         
         # Clean up
-        for path in images_paths:
-            os.remove(path)
+        cleanup_temp_files(temp_paths)
         
-        # Increment usage (for display only)
+        # For single images, only track total usage for display purposes
         if not is_premium:
             increment_usage('image_to_pdf', ip_address)
             current_usage = get_usage_count('image_to_pdf', ip_address)
-            remaining = max(0, 999 - current_usage)  # Virtual unlimited for single
+            remaining = max(0, 999 - current_usage)
         else:
             current_usage = 0
             remaining = "Unlimited"
-        
-        # Get bulk remaining for response
-        bulk_remaining = 2
-        if not is_premium and is_bulk:
-            bulk_data = usage_tracking.get(bulk_key, {'date': today, 'count': 0})
-            bulk_remaining = max(0, 2 - bulk_data['count'])
         
         return jsonify({
             'success': True,
             'file': pdf_base64,
             'filename': f'converted_{datetime.now().strftime("%Y%m%d")}.pdf',
-            'pages': len(images_paths),
+            'pages': len(image_list),
             'usage_count': current_usage,
             'remaining_free': remaining,
             'is_premium': is_premium,
             'is_bulk': is_bulk,
-            'bulk_remaining': bulk_remaining,
-            'bulk_used': bulk_data['count'] if not is_premium and is_bulk else 0
+            'has_watermark': should_add_watermark(is_premium)
         })
         
     except Exception as e:
         print(f"Image to PDF Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': 'Internal server error'}), 500
+
 # ============================================
-# 8. PDF COMPRESSOR - WITH PROPER COMPRESSION
+# 8. PDF COMPRESSOR
 # ============================================
 
 @tools_bp.route('/pdf-compressor', methods=['POST', 'OPTIONS'])
 def compress_pdf():
-    """Compress PDF (Free: Single files unlimited, Batch: 3 per day, Premium: Unlimited)"""
+    """Compress PDF (Free: Unlimited single, 3 batch/day, Premium: Unlimited)"""
     if request.method == 'OPTIONS':
         response = jsonify({'success': True})
         response.headers.add('Access-Control-Allow-Origin', '*')
@@ -629,7 +1155,27 @@ def compress_pdf():
     
     try:
         file = request.files['file']
-        ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+        ip_address = get_client_ip(request)
+        
+        # Rate limiting
+        if is_rate_limited(ip_address, 'pdf_compressor', limit=15, window=60):
+            return jsonify({
+                'success': False,
+                'error': 'Too many requests. Please try again later.'
+            }), 429
+        
+        track_request(ip_address, 'pdf_compressor')
+        
+        # ✅ Security: Validate file type
+        is_valid, error = validate_file_type(file, 'pdf')
+        if not is_valid:
+            return jsonify({'success': False, 'error': error}), 400
+        
+        # ✅ Security: Validate file size
+        is_valid, error = validate_file_size(file, MAX_FILE_SIZE['pdf'])
+        if not is_valid:
+            return jsonify({'success': False, 'error': error}), 400
+        
         is_premium = request.form.get('is_premium', 'false').lower() == 'true'
         
         # Check if this is a batch request
@@ -657,95 +1203,69 @@ def compress_pdf():
             batch_data['count'] += 1
             usage_tracking[batch_key] = batch_data
         
-        # Get compression options
-        options = {}
-        try:
-            options = json.loads(request.form.get('options', '{}'))
-        except:
-            pass
-        
         # Save uploaded file
-        filename = secure_filename(file.filename)
-        temp_path = os.path.join(tempfile.gettempdir(), filename)
+        filename = sanitize_filename(file.filename)
+        temp_path = os.path.join(tempfile.gettempdir(), f"{uuid.uuid4().hex}_{filename}")
         file.save(temp_path)
+        
+        # ✅ Security: Check for malicious content
+        with open(temp_path, 'rb') as f:
+            file_bytes = f.read()
+            is_malicious, error = detect_malicious_content(file_bytes)
+            if is_malicious:
+                cleanup_temp_files([temp_path])
+                return jsonify({'success': False, 'error': error}), 400
         
         # Read original size
         original_size = os.path.getsize(temp_path)
         
         # ============================================
-        # PROPER PDF COMPRESSION USING PyMuPDF
+        # PDF COMPRESSION USING PyPDF2 (NO PyMuPDF)
         # ============================================
         
-        try:
-            import fitz  # PyMuPDF
+        with open(temp_path, 'rb') as f:
+            pdf_reader = PyPDF2.PdfReader(f)
+            pdf_writer = PyPDF2.PdfWriter()
             
-            # Open the PDF
-            doc = fitz.open(temp_path)
+            for page in pdf_reader.pages:
+                try:
+                    page.compress_content_streams()
+                except:
+                    pass
+                pdf_writer.add_page(page)
             
-            # Create a new PDF for compression
-            compressed_doc = fitz.open()
+            # Remove metadata to reduce size
+            pdf_writer.add_metadata({
+                '/Creator': 'Krynova PDF Compressor',
+                '/Producer': 'Krynova'
+            })
             
-            # Compression level (1-9, default 5)
-            compression_level = options.get('compressionLevel', 5)
-            
-            # Copy all pages with compression
-            for page_num in range(len(doc)):
-                page = doc[page_num]
-                compressed_doc.insert_pdf(doc, from_page=page_num, to_page=page_num)
-            
-            # Save with compression options
             compressed_buffer = BytesIO()
-            compressed_doc.save(
-                compressed_buffer,
-                garbage=compression_level,  # Garbage collection level
-                deflate=True,               # Use deflate compression
-                clean=True,                 # Clean up unused objects
-                pretty=False                # Don't pretty print (smaller file)
-            )
-            
-            compressed_doc.close()
-            doc.close()
-            
+            pdf_writer.write(compressed_buffer)
             compressed_data = compressed_buffer.getvalue()
             compressed_size = len(compressed_data)
-            
-        except Exception as e:
-            # Fallback to PyPDF2 if PyMuPDF fails
-            print(f"PyMuPDF compression failed, using PyPDF2: {str(e)}")
-            
-            with open(temp_path, 'rb') as f:
-                pdf_reader = PyPDF2.PdfReader(f)
-                pdf_writer = PyPDF2.PdfWriter()
-                
-                for page in pdf_reader.pages:
-                    page.compress_content_streams()
-                    pdf_writer.add_page(page)
-                
-                # Remove metadata to reduce size
-                pdf_writer.add_metadata({
-                    '/Creator': 'Krynova PDF Compressor',
-                    '/Producer': 'Krynova'
-                })
-                
-                compressed_buffer = BytesIO()
-                pdf_writer.write(compressed_buffer)
-                compressed_data = compressed_buffer.getvalue()
-                compressed_size = len(compressed_data)
         
         # Calculate saved percentage
         if original_size > 0 and compressed_size > 0:
             saved_percentage = int((1 - compressed_size / original_size) * 100)
-            # If saved_percentage is negative (compressed file is larger), set to 0
             if saved_percentage < 0:
                 saved_percentage = 0
         else:
             saved_percentage = 0
         
+        # If compression didn't reduce size, use original file
+        if compressed_size < original_size:
+            final_data = compressed_data
+            final_size = compressed_size
+            final_saved = saved_percentage
+        else:
+            with open(temp_path, 'rb') as f:
+                final_data = f.read()
+            final_size = original_size
+            final_saved = 0
+        
         # Clean up temp file
-        try:
-            os.remove(temp_path)
-        except:
-            pass
+        cleanup_temp_files([temp_path])
         
         # For single files, we don't enforce any limit
         usage_count = get_usage_count('pdf_compressor', ip_address)
@@ -761,19 +1281,6 @@ def compress_pdf():
             current_usage = 0
             remaining = "Unlimited"
         
-        # If compression didn't reduce size, use original file (but with our compression)
-        # Only use compressed if it's smaller
-        if compressed_size < original_size:
-            final_data = compressed_data
-            final_size = compressed_size
-            final_saved = saved_percentage
-        else:
-            # If compression made it larger, return original
-            with open(temp_path, 'rb') as f:
-                final_data = f.read()
-            final_size = original_size
-            final_saved = 0
-        
         # Return compressed file
         pdf_base64 = base64.b64encode(final_data).decode()
         
@@ -788,16 +1295,18 @@ def compress_pdf():
             'remaining_free': remaining,
             'is_premium': is_premium,
             'is_batch': is_batch,
-            'batch_remaining': max(0, 3 - batch_data['count']) if not is_premium and is_batch else "Unlimited"
+            'batch_remaining': max(0, 3 - batch_data['count']) if not is_premium and is_batch else "Unlimited",
+            'has_watermark': False  # No watermark for compression
         })
         
     except Exception as e:
         print(f"PDF Compressor Error: {str(e)}")
         import traceback
         traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'Internal server error'}), 500
+
 # ============================================
-# 9. MERGE PDF - UPDATED (Free: Up to 35 files, Premium: Unlimited)
+# 9. MERGE PDF
 # ============================================
 
 @tools_bp.route('/merge-pdf', methods=['POST', 'OPTIONS'])
@@ -815,10 +1324,28 @@ def merge_pdf():
     
     try:
         files = request.files.getlist('files')
-        print(f"📄 Received {len(files)} files for merging")
+        ip_address = get_client_ip(request)
         
-        ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+        # Rate limiting
+        if is_rate_limited(ip_address, 'merge_pdf', limit=10, window=60):
+            return jsonify({
+                'success': False,
+                'error': 'Too many requests. Please try again later.'
+            }), 429
+        
+        track_request(ip_address, 'merge_pdf')
+        
         is_premium = request.form.get('is_premium', 'false').lower() == 'true'
+        
+        # ✅ Security: Validate each file
+        for file in files:
+            is_valid, error = validate_file_type(file, 'pdf')
+            if not is_valid:
+                return jsonify({'success': False, 'error': f'Invalid file: {file.filename} - {error}'}), 400
+            
+            is_valid, error = validate_file_size(file, MAX_FILE_SIZE['pdf'])
+            if not is_valid:
+                return jsonify({'success': False, 'error': f'File too large: {file.filename} - {error}'}), 400
         
         # ✅ Check file count limit: Free = 35 max, Premium = Unlimited
         MAX_FILES_FREE = 35
@@ -831,15 +1358,6 @@ def merge_pdf():
                 'max_free': MAX_FILES_FREE,
                 'file_count': len(files)
             }), 403
-        
-        # Check each file size (same for both free and premium)
-        MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB per file
-        for file in files:
-            if file.content_length and file.content_length > MAX_FILE_SIZE:
-                return jsonify({
-                    'success': False,
-                    'error': f'File "{file.filename}" exceeds 10MB limit. Please compress it first.'
-                }), 400
         
         # Check daily usage limit (3 per day for free)
         usage_count = get_usage_count('merge_pdf', ip_address)
@@ -861,8 +1379,6 @@ def merge_pdf():
         except:
             pass
         
-        print(f"📄 Options: {options}")
-        
         # Create merger
         merger = PyPDF2.PdfMerger()
         temp_paths = []
@@ -870,41 +1386,40 @@ def merge_pdf():
         
         # Process files one by one
         for idx, file in enumerate(files):
-            filename = secure_filename(file.filename)
+            filename = sanitize_filename(file.filename)
             file_names.append(filename)
             temp_path = os.path.join(tempfile.gettempdir(), f"merge_{uuid.uuid4().hex}_{filename}")
             file.save(temp_path)
             temp_paths.append(temp_path)
-            print(f"📄 Processing file {idx + 1}/{len(files)}: {filename}")
+            
+            # ✅ Security: Check for malicious content
+            with open(temp_path, 'rb') as f:
+                file_bytes = f.read()
+                is_malicious, error = detect_malicious_content(file_bytes)
+                if is_malicious:
+                    cleanup_temp_files(temp_paths)
+                    return jsonify({'success': False, 'error': error}), 400
             
             try:
                 with open(temp_path, 'rb') as f:
                     reader = PyPDF2.PdfReader(f)
                     page_count = len(reader.pages)
-                    print(f"   📄 Pages in {filename}: {page_count}")
                 merger.append(temp_path)
             except Exception as e:
-                print(f"❌ Error processing file {filename}: {str(e)}")
-                for path in temp_paths:
-                    try:
-                        os.remove(path)
-                    except:
-                        pass
+                cleanup_temp_files(temp_paths)
                 return jsonify({
                     'success': False,
                     'error': f'Error processing file "{filename}". Please check if it\'s a valid PDF.'
                 }), 400
         
         # Write merged PDF
-        print("📄 Writing merged PDF...")
         output_bytes = BytesIO()
         merger.write(output_bytes)
         merger.close()
         
         merged_data = output_bytes.getvalue()
-        print(f"📄 Merged PDF size: {len(merged_data)} bytes")
         
-        # Count total pages in merged PDF
+        # Count total pages
         try:
             with BytesIO(merged_data) as f:
                 reader = PyPDF2.PdfReader(f)
@@ -912,51 +1427,8 @@ def merge_pdf():
         except:
             total_pages = len(files)
         
-        print(f"📄 Total pages in merged PDF: {total_pages}")
-        
-        # Compress output if requested (Premium feature)
-        if options.get('compressOutput', False) and is_premium:
-            try:
-                print("📄 Compressing merged PDF...")
-                import fitz
-                
-                temp_merged_path = os.path.join(tempfile.gettempdir(), f"merged_{uuid.uuid4().hex}.pdf")
-                with open(temp_merged_path, 'wb') as f:
-                    f.write(merged_data)
-                
-                doc = fitz.open(temp_merged_path)
-                compressed_doc = fitz.open()
-                
-                for page_num in range(len(doc)):
-                    page = doc[page_num]
-                    compressed_doc.insert_pdf(doc, from_page=page_num, to_page=page_num)
-                
-                compressed_buffer = BytesIO()
-                compressed_doc.save(
-                    compressed_buffer,
-                    garbage=4,
-                    deflate=True,
-                    clean=True,
-                    pretty=False
-                )
-                
-                compressed_doc.close()
-                doc.close()
-                os.remove(temp_merged_path)
-                
-                merged_data = compressed_buffer.getvalue()
-                print(f"📄 Compressed PDF size: {len(merged_data)} bytes")
-            except Exception as e:
-                print(f"❌ Compression failed: {str(e)}")
-        
-        pdf_base64 = base64.b64encode(merged_data).decode()
-        
         # Clean up temp files
-        for path in temp_paths:
-            try:
-                os.remove(path)
-            except:
-                pass
+        cleanup_temp_files(temp_paths)
         
         # Only increment usage for free users
         if not is_premium:
@@ -965,7 +1437,7 @@ def merge_pdf():
         else:
             remaining_free = "Unlimited"
         
-        print("✅ Merge completed successfully!")
+        pdf_base64 = base64.b64encode(merged_data).decode()
         
         return jsonify({
             'success': True,
@@ -978,15 +1450,18 @@ def merge_pdf():
             'usage_count': get_usage_count('merge_pdf', ip_address) if not is_premium else 0,
             'remaining_free': remaining_free,
             'max_files_free': MAX_FILES_FREE,
-            'is_premium': is_premium
+            'is_premium': is_premium,
+            'has_watermark': False  # No watermark for merge
         })
         
     except Exception as e:
-        print(f"❌ Merge PDF Error: {str(e)}")
+        print(f"Merge PDF Error: {str(e)}")
         import traceback
         traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
-# 10. SPLIT PDF - FIXED (no trailing slash)
+        return jsonify({'success': False, 'error': 'Internal server error'}), 500
+
+# ============================================
+# 10. SPLIT PDF
 # ============================================
 
 @tools_bp.route('/split-pdf', methods=['POST', 'OPTIONS'])
@@ -1004,7 +1479,27 @@ def split_pdf():
     
     try:
         file = request.files['file']
-        ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+        ip_address = get_client_ip(request)
+        
+        # Rate limiting
+        if is_rate_limited(ip_address, 'split_pdf', limit=15, window=60):
+            return jsonify({
+                'success': False,
+                'error': 'Too many requests. Please try again later.'
+            }), 429
+        
+        track_request(ip_address, 'split_pdf')
+        
+        # ✅ Security: Validate file type
+        is_valid, error = validate_file_type(file, 'pdf')
+        if not is_valid:
+            return jsonify({'success': False, 'error': error}), 400
+        
+        # ✅ Security: Validate file size
+        is_valid, error = validate_file_size(file, MAX_FILE_SIZE['pdf'])
+        if not is_valid:
+            return jsonify({'success': False, 'error': error}), 400
+        
         is_premium = request.form.get('is_premium', 'false').lower() == 'true'
         
         usage_count = get_usage_count('split_pdf', ip_address)
@@ -1018,15 +1513,26 @@ def split_pdf():
                 'max_free': 3
             }), 403
         
-        filename = secure_filename(file.filename)
-        temp_path = os.path.join(tempfile.gettempdir(), filename)
+        filename = sanitize_filename(file.filename)
+        temp_path = os.path.join(tempfile.gettempdir(), f"{uuid.uuid4().hex}_{filename}")
         file.save(temp_path)
+        
+        # ✅ Security: Check for malicious content
+        with open(temp_path, 'rb') as f:
+            file_bytes = f.read()
+            is_malicious, error = detect_malicious_content(file_bytes)
+            if is_malicious:
+                cleanup_temp_files([temp_path])
+                return jsonify({'success': False, 'error': error}), 400
         
         with open(temp_path, 'rb') as f:
             reader = PyPDF2.PdfReader(f)
             pages = []
             
-            for i in range(len(reader.pages)):
+            # Limit to 100 pages to prevent abuse
+            max_pages = min(len(reader.pages), 100)
+            
+            for i in range(max_pages):
                 writer = PyPDF2.PdfWriter()
                 writer.add_page(reader.pages[i])
                 
@@ -1034,7 +1540,7 @@ def split_pdf():
                 writer.write(page_bytes)
                 pages.append(base64.b64encode(page_bytes.getvalue()).decode())
         
-        os.remove(temp_path)
+        cleanup_temp_files([temp_path])
         
         increment_usage('split_pdf', ip_address)
         
@@ -1045,15 +1551,16 @@ def split_pdf():
             'filename': filename.replace('.pdf', ''),
             'usage_count': get_usage_count('split_pdf', ip_address),
             'remaining_free': max(0, 3 - get_usage_count('split_pdf', ip_address)),
-            'is_premium': is_premium
+            'is_premium': is_premium,
+            'has_watermark': False  # No watermark for split
         })
         
     except Exception as e:
         print(f"Split PDF Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'Internal server error'}), 500
 
 # ============================================
-# 11. IMAGE RESIZER - UPDATED (Free: Unlimited but limited size, Premium: Unlimited + Advanced)
+# 11. IMAGE RESIZER
 # ============================================
 
 @tools_bp.route('/image-resizer', methods=['POST', 'OPTIONS'])
@@ -1071,7 +1578,27 @@ def resize_image():
     
     try:
         file = request.files['file']
-        ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+        ip_address = get_client_ip(request)
+        
+        # Rate limiting
+        if is_rate_limited(ip_address, 'image_resizer', limit=30, window=60):
+            return jsonify({
+                'success': False,
+                'error': 'Too many requests. Please try again later.'
+            }), 429
+        
+        track_request(ip_address, 'image_resizer')
+        
+        # ✅ Security: Validate file type
+        is_valid, error = validate_file_type(file, 'image')
+        if not is_valid:
+            return jsonify({'success': False, 'error': error}), 400
+        
+        # ✅ Security: Validate file size
+        is_valid, error = validate_file_size(file, MAX_FILE_SIZE['image'])
+        if not is_valid:
+            return jsonify({'success': False, 'error': error}), 400
+        
         is_premium = request.form.get('is_premium', 'false').lower() == 'true'
         
         width = int(request.form.get('width', 800))
@@ -1092,22 +1619,22 @@ def resize_image():
                 'is_premium': is_premium
             }), 400
         
-        # Get options (for premium features)
+        # Get options
         options = {}
         try:
             options = json.loads(request.form.get('options', '{}'))
         except:
             pass
         
-        filename = secure_filename(file.filename)
-        temp_path = os.path.join(tempfile.gettempdir(), filename)
+        filename = sanitize_filename(file.filename)
+        temp_path = os.path.join(tempfile.gettempdir(), f"{uuid.uuid4().hex}_{filename}")
         file.save(temp_path)
         
         # Open image
         img = Image.open(temp_path)
         original_size = img.size
         
-        # ✅ Quality settings: Premium gets better quality
+        # ✅ Quality settings
         quality = options.get('quality', 'medium')
         quality_map = {
             'high': 95,
@@ -1118,14 +1645,10 @@ def resize_image():
         
         # ✅ Premium gets advanced resizing options
         if is_premium:
-            # Premium: Better resampling algorithm
             resample = Image.Resampling.LANCZOS
-            # Premium: Format options
             output_format = options.get('format', 'PNG')
-            # Premium: Background color for transparent images
             background = options.get('background', None)
         else:
-            # Free: Standard resampling
             resample = Image.Resampling.BICUBIC
             output_format = 'PNG'
             background = None
@@ -1137,14 +1660,11 @@ def resize_image():
         buffered = BytesIO()
         save_kwargs = {'format': output_format, 'quality': quality_value, 'optimize': True}
         
-        # Handle transparency
         if output_format == 'PNG' and img_resized.mode == 'RGBA':
             save_kwargs['format'] = 'PNG'
         elif output_format in ['JPEG', 'JPG']:
             if img_resized.mode == 'RGBA':
-                # Convert to RGB for JPEG
                 if background:
-                    # Use specified background color
                     bg = Image.new('RGB', img_resized.size, background)
                     bg.paste(img_resized, mask=img_resized.split()[3] if len(img_resized.split()) > 3 else None)
                     img_resized = bg
@@ -1155,14 +1675,18 @@ def resize_image():
         img_resized.save(buffered, **save_kwargs)
         img_base64 = base64.b64encode(buffered.getvalue()).decode()
         
-        os.remove(temp_path)
+        # ✅ Add watermark for free users
+        if should_add_watermark(is_premium):
+            watermarked_img = Image.open(BytesIO(buffered.getvalue()))
+            watermarked_img = add_watermark_to_image(watermarked_img, is_premium)
+            watermarked_buffer = BytesIO()
+            watermarked_img.save(watermarked_buffer, format=output_format)
+            img_base64 = base64.b64encode(watermarked_buffer.getvalue()).decode()
         
-        # ✅ Free: Unlimited but tracked for display
+        cleanup_temp_files([temp_path])
+        
         increment_usage('image_resizer', ip_address)
         current_usage = get_usage_count('image_resizer', ip_address)
-        
-        # ✅ Free: Unlimited (no limit), Premium: Unlimited
-        remaining = "Unlimited" if is_premium else "Unlimited"
         
         return jsonify({
             'success': True,
@@ -1170,21 +1694,22 @@ def resize_image():
             'original_size': original_size,
             'new_size': (width, height),
             'usage_count': current_usage,
-            'remaining_free': remaining,
+            'remaining_free': "Unlimited",
             'is_premium': is_premium,
             'max_dimension': max_dimension,
             'format': output_format,
-            'quality': quality_value
+            'quality': quality_value,
+            'has_watermark': should_add_watermark(is_premium)
         })
         
     except Exception as e:
         print(f"Image Resizer Error: {str(e)}")
         import traceback
         traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'Internal server error'}), 500
 
 # ============================================
-# 12. TEXT TO PDF - FIXED (no trailing slash)
+# 12. TEXT TO PDF
 # ============================================
 
 @tools_bp.route('/text-to-pdf', methods=['POST', 'OPTIONS'])
@@ -1202,7 +1727,17 @@ def text_to_pdf():
         if not data:
             return jsonify({'success': False, 'error': 'No data provided'}), 400
         
-        ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+        ip_address = get_client_ip(request)
+        
+        # Rate limiting
+        if is_rate_limited(ip_address, 'text_to_pdf', limit=20, window=60):
+            return jsonify({
+                'success': False,
+                'error': 'Too many requests. Please try again later.'
+            }), 429
+        
+        track_request(ip_address, 'text_to_pdf')
+        
         is_premium = data.get('is_premium', False)
         
         usage_count = get_usage_count('text_to_pdf', ip_address)
@@ -1222,6 +1757,10 @@ def text_to_pdf():
         if not text:
             return jsonify({'success': False, 'error': 'Text is required'}), 400
         
+        # Sanitize and limit text
+        text = text[:10000]  # Max 10000 chars
+        title = sanitize_input(title)[:100]
+        
         # Create PDF
         buffer = BytesIO()
         c = canvas.Canvas(buffer, pagesize=A4)
@@ -1235,16 +1774,32 @@ def text_to_pdf():
         c.setFont("Helvetica", 12)
         y = height - 80
         lines = text.split('\n')
+        page_count = 1
+        
         for line in lines:
             if y < 50:
                 c.showPage()
+                page_count += 1
                 y = height - 50
                 c.setFont("Helvetica", 12)
+                # Page header on new page
+                c.setFont("Helvetica-Bold", 10)
+                c.drawString(50, height - 30, f"{title} - Page {page_count}")
+                c.setFont("Helvetica", 12)
+            
             # Truncate long lines
             if len(line) > 80:
                 line = line[:77] + '...'
             c.drawString(50, y, line)
             y -= 20
+        
+        # ✅ Add watermark for free users (on last page)
+        if should_add_watermark(is_premium):
+            c.showPage()
+            c.setFont("Helvetica", 10)
+            c.setFillColorRGB(0.5, 0.5, 0.5)
+            c.drawCentredString(width/2, 50, "Made with ❤️ by Krynova Technologies")
+            c.drawCentredString(width/2, 35, "Visit: https://krynovatechnology.pythonanywhere.com")
         
         c.save()
         
@@ -1258,26 +1813,25 @@ def text_to_pdf():
             'filename': f'{title}.pdf',
             'usage_count': get_usage_count('text_to_pdf', ip_address),
             'remaining_free': max(0, 5 - get_usage_count('text_to_pdf', ip_address)),
-            'is_premium': is_premium
+            'is_premium': is_premium,
+            'has_watermark': should_add_watermark(is_premium)
         })
         
     except Exception as e:
         print(f"Text to PDF Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'Internal server error'}), 500
 
 # ============================================
-# PREMIUM SUBSCRIPTION - FIXED
+# PREMIUM SUBSCRIPTION
 # ============================================
 
 @tools_bp.route('/premium/check', methods=['GET'])
 def check_premium_status():
     """Check if user has premium access"""
-    # Get user_id from query params or headers
     user_id = request.args.get('user_id')
+    is_premium = False
     
     # In production, check from database
-    # For now, return false (free user)
-    is_premium = False
     
     return jsonify({
         'success': True,
@@ -1426,3 +1980,5 @@ def extract_text_from_pdf(pdf_path):
     except Exception as e:
         print(f"Error extracting text from PDF: {e}")
         return "Unable to extract text from PDF."
+
+print("✅ tools_routes.py loaded successfully!", flush=True)

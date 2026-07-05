@@ -16,6 +16,20 @@ import { api } from '../../utils/api';
 import PaymentModal from '../../components/PaymentModal';
 
 // ============================================
+// ✅ SAFE ARRAY HELPERS - Fix for .map() errors
+// ============================================
+
+const safeMap = (data, callback) => {
+  if (!data) return null;
+  const arr = Array.isArray(data) ? data : [];
+  return arr.map(callback);
+};
+
+const safeArray = (data) => {
+  return Array.isArray(data) ? data : [];
+};
+
+// ============================================
 // SEO DATA
 // ============================================
 
@@ -302,7 +316,7 @@ const ImageToPDF = () => {
   const saveToHistory = (filename, status, resultData) => {
     const newEntry = {
       filename,
-      imageCount: files.length,
+      imageCount: safeArray(files).length,
       timestamp: new Date().toISOString(),
       status,
       result: resultData,
@@ -334,7 +348,7 @@ const ImageToPDF = () => {
     
     setFiles(prev => [...prev, ...validFiles]);
     setResult(null);
-    toast.success(`Added ${validFiles.length} image(s)`);
+    toast.success(`Added ${safeArray(validFiles).length} image(s)`);
   };
 
   const handleDrag = (e) => {
@@ -368,7 +382,7 @@ const ImageToPDF = () => {
   };
 
   const moveDown = (index) => {
-    if (index === files.length - 1) return;
+    if (index === safeArray(files).length - 1) return;
     const newFiles = [...files];
     [newFiles[index], newFiles[index + 1]] = [newFiles[index + 1], newFiles[index]];
     setFiles(newFiles);
@@ -382,12 +396,12 @@ const ImageToPDF = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (files.length === 0) {
+    if (safeArray(files).length === 0) {
       toast.error('Please select at least one image');
       return;
     }
 
-    const isBulk = files.length > 1;
+    const isBulk = safeArray(files).length > 1;
     
     if (!isPremium && isBulk) {
       const today = new Date().toDateString();
@@ -406,7 +420,7 @@ const ImageToPDF = () => {
     setConversionResults([]);
     
     const formData = new FormData();
-    files.forEach(file => formData.append('files', file));
+    safeArray(files).forEach(file => formData.append('files', file));
     formData.append('is_premium', isPremium);
     formData.append('options', JSON.stringify(conversionOptions));
     
@@ -519,7 +533,7 @@ const ImageToPDF = () => {
     setShowPaymentModal(true);
   };
 
-  const isBulk = files.length > 1;
+  const isBulk = safeArray(files).length > 1;
 
   return (
     <>
@@ -774,11 +788,11 @@ const ImageToPDF = () => {
                 onDragOver={handleDrag}
                 onDrop={handleDrop}
               >
-                {files.length > 0 ? (
+                {safeArray(files).length > 0 ? (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <p className="font-medium text-gray-900">
-                        {files.length} image{files.length > 1 ? 's' : ''} selected
+                        {safeArray(files).length} image{safeArray(files).length > 1 ? 's' : ''} selected
                         {isBulk && !isPremium && (
                           <span className="ml-2 text-xs text-orange-500 bg-orange-50 px-2 py-0.5 rounded">
                             Bulk ({2 - (JSON.parse(localStorage.getItem('bulkImageToPdf') || '{"date":"","count":0}')).count || 2} left today)
@@ -804,7 +818,7 @@ const ImageToPDF = () => {
                     </div>
                     
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-96 overflow-y-auto p-2">
-                      {files.map((file, index) => (
+                      {safeArray(files).map((file, index) => (
                         <ImagePreview
                           key={index}
                           file={file}
@@ -818,11 +832,11 @@ const ImageToPDF = () => {
 
                     <div className="grid grid-cols-3 gap-3 text-center text-sm">
                       <div className="bg-gray-50 p-2 rounded-lg">
-                        <p className="font-bold text-gray-900">{files.length}</p>
+                        <p className="font-bold text-gray-900">{safeArray(files).length}</p>
                         <p className="text-xs text-gray-500">Images</p>
                       </div>
                       <div className="bg-gray-50 p-2 rounded-lg">
-                        <p className="font-bold text-gray-900">{formatFileSize(files.reduce((acc, f) => acc + f.size, 0))}</p>
+                        <p className="font-bold text-gray-900">{formatFileSize(safeArray(files).reduce((acc, f) => acc + f.size, 0))}</p>
                         <p className="text-xs text-gray-500">Total Size</p>
                       </div>
                       <div className="bg-gray-50 p-2 rounded-lg">
@@ -891,11 +905,11 @@ const ImageToPDF = () => {
 
               <button
                 type="submit"
-                disabled={loading || files.length === 0}
+                disabled={loading || safeArray(files).length === 0}
                 className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3.5 rounded-xl font-semibold hover:shadow-lg hover:shadow-purple-500/30 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-lg"
               >
                 {loading ? <FaSpinner className="animate-spin" /> : <FaFilePdf />}
-                {loading ? 'Converting...' : `Convert ${files.length} Image${files.length > 1 ? 's' : ''} to PDF`}
+                {loading ? 'Converting...' : `Convert ${safeArray(files).length} Image${safeArray(files).length > 1 ? 's' : ''} to PDF`}
               </button>
             </form>
 
@@ -919,10 +933,10 @@ const ImageToPDF = () => {
                     >
                       <FaDownload /> Download PDF
                     </button>
-                    {files.length > 1 && (
+                    {safeArray(files).length > 1 && (
                       <button
                         onClick={() => {
-                          files.forEach((file, index) => {
+                          safeArray(files).forEach((file, index) => {
                             setTimeout(() => downloadIndividualPDF(file), index * 500);
                           });
                         }}
@@ -946,17 +960,17 @@ const ImageToPDF = () => {
           </div>
 
           {/* Conversion History */}
-          {conversionHistory.length > 0 && (
+          {safeArray(conversionHistory).length > 0 && (
             <div className="mt-6 bg-white rounded-xl border border-gray-200 overflow-hidden">
               <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
                 <div className="flex items-center gap-2">
                   <FaHistory className="text-purple-500" />
                   <span className="font-semibold text-gray-700">Conversion History</span>
-                  <span className="text-xs text-gray-400">({conversionHistory.length})</span>
+                  <span className="text-xs text-gray-400">({safeArray(conversionHistory).length})</span>
                 </div>
               </div>
               <div className="p-3 space-y-2 max-h-40 overflow-y-auto">
-                {conversionHistory.slice(0, 5).map((item, idx) => (
+                {safeArray(conversionHistory).slice(0, 5).map((item, idx) => (
                   <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
                     <div className="flex items-center gap-3 min-w-0">
                       <FaFilePdf className="text-red-400 flex-shrink-0" />
@@ -1022,7 +1036,7 @@ const ImageToPDF = () => {
                   onClick={handleUpgrade}
                   className="bg-white text-purple-600 px-8 py-3 rounded-xl font-semibold hover:shadow-lg transition hover:-translate-y-0.5"
                 >
-                  Upgrade Now — ₹499/month
+                  Upgrade Now — ₹99/month
                 </button>
               </div>
             </div>

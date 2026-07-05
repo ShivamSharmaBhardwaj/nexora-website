@@ -16,6 +16,20 @@ import { api } from '../../utils/api';
 import PaymentModal from '../../components/PaymentModal';
 
 // ============================================
+// ✅ SAFE ARRAY HELPERS - Fix for .map() errors
+// ============================================
+
+const safeMap = (data, callback) => {
+  if (!data) return null;
+  const arr = Array.isArray(data) ? data : [];
+  return arr.map(callback);
+};
+
+const safeArray = (data) => {
+  return Array.isArray(data) ? data : [];
+};
+
+// ============================================
 // SEO + GEO DATA
 // ============================================
 
@@ -61,7 +75,7 @@ const SUPPORTED_FORMATS = [
 const ConversionHistory = ({ history, onReuse }) => {
   const [expanded, setExpanded] = useState(false);
 
-  if (history.length === 0) return null;
+  if (safeArray(history).length === 0) return null;
 
   const displayedHistory = expanded ? history : history.slice(0, 3);
 
@@ -74,7 +88,7 @@ const ConversionHistory = ({ history, onReuse }) => {
         <div className="flex items-center gap-2">
           <FaHistory className="text-blue-500" />
           <span className="font-semibold text-gray-700">Conversion History</span>
-          <span className="text-xs text-gray-400">({history.length})</span>
+          <span className="text-xs text-gray-400">({safeArray(history).length})</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-400">
@@ -86,7 +100,7 @@ const ConversionHistory = ({ history, onReuse }) => {
       
       {expanded && (
         <div className="border-t border-gray-200 p-3 space-y-2 max-h-60 overflow-y-auto">
-          {history.map((item, idx) => (
+          {safeArray(history).map((item, idx) => (
             <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
               <div className="flex items-center gap-3 min-w-0">
                 <FaFilePdf className="text-red-400 flex-shrink-0" />
@@ -231,13 +245,13 @@ const ConversionOptions = ({ options, onChange }) => {
 // ============================================
 
 const BatchConversion = ({ files, onAddFiles, onRemoveFile, onClearAll }) => {
-  if (files.length === 0) return null;
+  if (safeArray(files).length === 0) return null;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4">
       <div className="flex items-center justify-between mb-3">
         <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-          <FaUpload className="text-blue-500" /> Batch Queue ({files.length} files)
+          <FaUpload className="text-blue-500" /> Batch Queue ({safeArray(files).length} files)
         </h4>
         <button
           type="button"
@@ -249,7 +263,7 @@ const BatchConversion = ({ files, onAddFiles, onRemoveFile, onClearAll }) => {
       </div>
 
       <div className="space-y-2 max-h-40 overflow-y-auto">
-        {files.map((file, index) => (
+        {safeArray(files).map((file, index) => (
           <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
             <div className="flex items-center gap-2 min-w-0">
               <FaFile className="text-gray-400 flex-shrink-0" />
@@ -433,7 +447,7 @@ const PDFToWord = () => {
     e.preventDefault();
     
     if (batchMode) {
-      if (files.length === 0) {
+      if (safeArray(files).length === 0) {
         toast.error('Please add at least one PDF file');
         return;
       }
@@ -511,10 +525,10 @@ const PDFToWord = () => {
     setConversionResults([]);
 
     const results = [];
-    const total = files.length;
+    const total = safeArray(files).length;
 
-    for (let i = 0; i < files.length; i++) {
-      const currentFile = files[i];
+    for (let i = 0; i < total; i++) {
+      const currentFile = safeArray(files)[i];
       setProgressStatus(`Converting ${i + 1} of ${total}: ${currentFile.name}`);
       
       const formData = new FormData();
@@ -587,7 +601,7 @@ const PDFToWord = () => {
   };
 
   const downloadAllBatch = () => {
-    const successful = conversionResults.filter(r => r.success);
+    const successful = safeArray(conversionResults).filter(r => r.success);
     if (successful.length === 0) {
       toast.error('No successful conversions to download');
       return;
@@ -931,14 +945,14 @@ const PDFToWord = () => {
                       <FaTrash />
                     </button>
                   </div>
-                ) : batchMode && files.length > 0 ? (
+                ) : batchMode && safeArray(files).length > 0 ? (
                   <div className="space-y-3">
                     <div className="flex items-center justify-center gap-2 text-green-600">
                       <FaCheckCircle className="text-2xl" />
-                      <span className="font-medium">{files.length} PDF(s) added to queue</span>
+                      <span className="font-medium">{safeArray(files).length} PDF(s) added to queue</span>
                     </div>
                     <div className="max-h-32 overflow-y-auto space-y-1">
-                      {files.map((f, idx) => (
+                      {safeArray(files).map((f, idx) => (
                         <div key={idx} className="flex items-center justify-between text-sm bg-gray-50 p-2 rounded">
                           <span className="truncate">{f.name}</span>
                           <span className="text-gray-400 text-xs ml-2">{formatFileSize(f.size)}</span>
@@ -1020,25 +1034,25 @@ const PDFToWord = () => {
 
               <button
                 type="submit"
-                disabled={loading || (batchMode ? files.length === 0 : !file)}
+                disabled={loading || (batchMode ? safeArray(files).length === 0 : !file)}
                 className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3.5 rounded-xl font-semibold hover:shadow-lg hover:shadow-blue-500/30 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-lg"
               >
                 {loading ? <FaSpinner className="animate-spin" /> : <FaFileWord />}
                 {loading 
                   ? batchMode ? `Converting... ${Math.round(progress)}%` : 'Converting...'
-                  : batchMode ? `Convert ${files.length} Files to Word` : 'Convert to Word'
+                  : batchMode ? `Convert ${safeArray(files).length} Files to Word` : 'Convert to Word'
                 }
               </button>
             </form>
 
             {/* Batch Results */}
-            {conversionResults.length > 0 && !loading && (
+            {safeArray(conversionResults).length > 0 && !loading && (
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="font-semibold text-gray-700 flex items-center gap-2">
                     <FaCheckCircle className="text-green-500" /> Conversion Results
                   </h4>
-                  {conversionResults.filter(r => r.success).length > 0 && (
+                  {safeArray(conversionResults).filter(r => r.success).length > 0 && (
                     <button
                       onClick={downloadAllBatch}
                       className="text-sm bg-green-500 text-white px-4 py-1.5 rounded-lg hover:bg-green-600 transition flex items-center gap-2"
@@ -1048,7 +1062,7 @@ const PDFToWord = () => {
                   )}
                 </div>
                 <div className="space-y-2">
-                  {conversionResults.map((item, idx) => (
+                  {safeArray(conversionResults).map((item, idx) => (
                     <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center gap-3 min-w-0">
                         {item.success ? (
@@ -1161,7 +1175,7 @@ const PDFToWord = () => {
                   onClick={handleUpgrade}
                   className="bg-white text-blue-600 px-8 py-3 rounded-xl font-semibold hover:shadow-lg transition hover:-translate-y-0.5"
                 >
-                  Upgrade Now — ₹499/month
+                  Upgrade Now — ₹99/month
                 </button>
               </div>
             </div>

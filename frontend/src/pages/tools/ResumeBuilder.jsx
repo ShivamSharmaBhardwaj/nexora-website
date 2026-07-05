@@ -25,6 +25,20 @@ import * as XLSX from 'xlsx';
 import { Document, Packer, Paragraph, TextRun, AlignmentType } from 'docx';
 
 // ============================================
+// ✅ SAFE ARRAY HELPERS - Fix for .map() errors
+// ============================================
+
+const safeMap = (data, callback) => {
+  if (!data) return null;
+  const arr = Array.isArray(data) ? data : [];
+  return arr.map(callback);
+};
+
+const safeArray = (data) => {
+  return Array.isArray(data) ? data : [];
+};
+
+// ============================================
 // ✅ INDIAN CITIES FOR GEO TARGETING
 // ============================================
 const indianCities = [
@@ -344,9 +358,9 @@ const ATSScore = ({ data }) => {
       details.length.suggestions.push('Resume is too short. Add more details.');
     }
 
-    const skillsArray = typeof data.skills === 'string' ? data.skills.split(',').filter(s => s.trim()) : data.skills || [];
-    details.skills.score = Math.min(10, skillsArray.length * 1.5);
-    if (skillsArray.length < 5) {
+    const skillsArray = typeof data.skills === 'string' ? data.skills.split(',').filter(s => s.trim()) : safeArray(data.skills);
+    details.skills.score = Math.min(10, safeArray(skillsArray).length * 1.5);
+    if (safeArray(skillsArray).length < 5) {
       details.skills.suggestions.push('Add more skills (minimum 5-8 recommended)');
     }
 
@@ -477,13 +491,13 @@ const KeywordSuggestions = ({ onAdd }) => {
   };
 
   const addSelected = () => {
-    if (selectedKeywords.length === 0) {
+    if (safeArray(selectedKeywords).length === 0) {
       toast.error('Please select at least one keyword');
       return;
     }
-    onAdd(selectedKeywords.join(', '));
+    onAdd(safeArray(selectedKeywords).join(', '));
     setSelectedKeywords([]);
-    toast.success(`Added ${selectedKeywords.length} keywords`);
+    toast.success(`Added ${safeArray(selectedKeywords).length} keywords`);
   };
 
   const getUniqueKeywords = (category) => {
@@ -498,7 +512,7 @@ const KeywordSuggestions = ({ onAdd }) => {
       </h4>
       
       <div className="flex flex-wrap gap-2 mb-3">
-        {categories.map(cat => {
+        {safeArray(categories).map(cat => {
           const Icon = cat.icon;
           return (
             <button
@@ -533,7 +547,7 @@ const KeywordSuggestions = ({ onAdd }) => {
       </div>
 
       <button onClick={addSelected} className="mt-3 w-full px-3 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 transition">
-        Add Selected Keywords ({selectedKeywords.length})
+        Add Selected Keywords ({safeArray(selectedKeywords).length})
       </button>
     </div>
   );
@@ -638,11 +652,11 @@ const ResumePreview = ({ data, template }) => {
           </div>
         )}
 
-        {skillsArray.length > 0 && (
+        {safeArray(skillsArray).length > 0 && (
           <div className="mb-3">
             <h3 className={`${styles.title} ${isDark ? 'text-white' : ''}`}>Skills</h3>
             <div className="flex flex-wrap gap-2">
-              {skillsArray.map((skill, idx) => (
+              {safeArray(skillsArray).map((skill, idx) => (
                 <span key={idx} className={`${isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-700'} px-3 py-1 rounded-full text-xs font-medium`}>
                   {skill.trim()}
                 </span>
@@ -1326,7 +1340,7 @@ const ResumeBuilder = () => {
               </p>
               {!usageInfo.isPremium && (
                 <button onClick={handleUpgrade} className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition flex items-center gap-2">
-                  <FaCrown /> Upgrade Now
+                  <FaCrown /> Upgrade Now — ₹99/month
                 </button>
               )}
             </div>
@@ -1473,14 +1487,14 @@ const ResumeBuilder = () => {
                         <KeywordSuggestions onAdd={handleKeywordAdd} />
                       </div>
                     )}
-                    {skillsArray.length > 0 && (
+                    {safeArray(skillsArray).length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mt-2">
-                        {skillsArray.map((skill, idx) => (
+                        {safeArray(skillsArray).map((skill, idx) => (
                           <span key={idx} className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-xs">{skill}</span>
                         ))}
                       </div>
                     )}
-                    <p className="text-xs text-gray-400 mt-1">{skillsArray.length} skills (Recommended: 8-12)</p>
+                    <p className="text-xs text-gray-400 mt-1">{safeArray(skillsArray).length} skills (Recommended: 8-12)</p>
                   </div>
 
                   {/* Experience */}
@@ -1578,7 +1592,7 @@ const ResumeBuilder = () => {
               <h3 className="text-xl font-bold mb-2">🚀 Unlock Premium Features</h3>
               <p className="text-blue-100 mb-4">Get unlimited resume generation, access to all 9 templates, and priority support.</p>
               <button onClick={handleUpgrade} className="bg-white text-blue-600 px-8 py-3 rounded-xl font-semibold hover:shadow-lg transition hover:-translate-y-0.5">
-                Upgrade Now — ₹499/month
+                Upgrade Now — ₹99/month
               </button>
               <p className="text-blue-200 text-xs mt-3">Available in {indianCities.length}+ Indian cities and {globalCountries.length}+ countries worldwide</p>
             </div>

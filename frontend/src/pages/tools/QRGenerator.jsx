@@ -19,6 +19,20 @@ import PaymentModal from '../../components/PaymentModal';
 import * as XLSX from 'xlsx';
 
 // ============================================
+// ✅ SAFE ARRAY HELPERS - Fix for .map() errors
+// ============================================
+
+const safeMap = (data, callback) => {
+  if (!data) return null;
+  const arr = Array.isArray(data) ? data : [];
+  return arr.map(callback);
+};
+
+const safeArray = (data) => {
+  return Array.isArray(data) ? data : [];
+};
+
+// ============================================
 // SEO DATA
 // ============================================
 
@@ -177,7 +191,7 @@ const QRGenerator = () => {
     }
 
     const lines = bulkContent.split('\n').filter(line => line.trim());
-    if (lines.length === 0) {
+    if (safeArray(lines).length === 0) {
       toast.error('Please enter at least one QR code content');
       return;
     }
@@ -194,10 +208,10 @@ const QRGenerator = () => {
     setBulkStatus('Starting bulk generation...');
 
     const results = [];
-    const total = lines.length;
+    const total = safeArray(lines).length;
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
+    for (let i = 0; i < total; i++) {
+      const line = safeArray(lines)[i].trim();
       setBulkStatus(`Generating QR ${i + 1} of ${total}: ${line.substring(0, 30)}...`);
       
       try {
@@ -300,13 +314,13 @@ const QRGenerator = () => {
   };
 
   const handleDownloadExcel = () => {
-    if (bulkResults.length === 0) {
+    if (safeArray(bulkResults).length === 0) {
       toast.error('No QR codes to export');
       return;
     }
 
     try {
-      const data = bulkResults.map((item, index) => ({
+      const data = safeArray(bulkResults).map((item, index) => ({
         'S.No': index + 1,
         'Content': item.content,
         'Status': item.success ? 'Generated' : 'Failed',
@@ -342,14 +356,14 @@ const QRGenerator = () => {
   };
 
   const handleDownloadExcelWithImages = async () => {
-    if (bulkResults.length === 0) {
+    if (safeArray(bulkResults).length === 0) {
       toast.error('No QR codes to export');
       return;
     }
 
     try {
-      const successResults = bulkResults.filter(r => r.success);
-      if (successResults.length === 0) {
+      const successResults = safeArray(bulkResults).filter(r => r.success);
+      if (safeArray(successResults).length === 0) {
         toast.error('No successful QR codes to export');
         return;
       }
@@ -378,7 +392,7 @@ const QRGenerator = () => {
                 </tr>
               </thead>
               <tbody>
-                ${successResults.map((item, index) => `
+                ${safeArray(successResults).map((item, index) => `
                   <tr>
                     <td>${index + 1}</td>
                     <td>${item.content.substring(0, 100)}</td>
@@ -387,7 +401,7 @@ const QRGenerator = () => {
                 `).join('')}
               </tbody>
             </table>
-            <p>Total: ${successResults.length} QR codes generated</p>
+            <p>Total: ${safeArray(successResults).length} QR codes generated</p>
           </body>
         </html>
       `;
@@ -694,7 +708,7 @@ const QRGenerator = () => {
                   onClick={handleUpgrade}
                   className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition flex items-center gap-2"
                 >
-                  <FaCrown /> Upgrade Now
+                  <FaCrown /> Upgrade Now — ₹99/month
                 </button>
               )}
             </div>
@@ -801,7 +815,7 @@ const QRGenerator = () => {
 
                       {isPremium && (
                         <div className="flex flex-wrap gap-2">
-                          {bulkExamples.map((example, idx) => (
+                          {safeArray(bulkExamples).map((example, idx) => (
                             <button
                               key={idx}
                               type="button"
@@ -820,7 +834,7 @@ const QRGenerator = () => {
                   <div>
                     <p className="text-sm text-gray-500 mb-1">Quick Examples:</p>
                     <div className="flex flex-wrap gap-2">
-                      {examples.map((example, idx) => (
+                      {safeArray(examples).map((example, idx) => (
                         <button
                           key={idx}
                           type="button"
@@ -837,7 +851,7 @@ const QRGenerator = () => {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Style</label>
                     <div className="flex flex-wrap gap-2">
-                      {QR_STYLES.map((style) => (
+                      {safeArray(QR_STYLES).map((style) => (
                         <button
                           key={style.id}
                           type="button"
@@ -873,7 +887,7 @@ const QRGenerator = () => {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Size</label>
                     <div className="flex flex-wrap gap-2">
-                      {QR_SIZES.map((size) => (
+                      {safeArray(QR_SIZES).map((size) => (
                         <button
                           key={size.id}
                           type="button"
@@ -910,7 +924,7 @@ const QRGenerator = () => {
                           onClick={handleUpgrade}
                           className="ml-2 text-green-600 font-semibold hover:underline"
                         >
-                          Upgrade Now
+                          Upgrade Now — ₹99/month
                         </button>
                       </p>
                     </div>
@@ -982,10 +996,10 @@ const QRGenerator = () => {
                         </button>
                       </div>
                     </>
-                  ) : mode === 'bulk' && bulkResults.length > 0 ? (
+                  ) : mode === 'bulk' && safeArray(bulkResults).length > 0 ? (
                     <>
                       <div className="flex-1 overflow-y-auto max-h-[300px] space-y-2">
-                        {bulkResults.slice(0, 10).map((item, idx) => (
+                        {safeArray(bulkResults).slice(0, 10).map((item, idx) => (
                           <div key={idx} className="bg-white p-3 rounded-lg border border-gray-200 flex items-center gap-3 hover:shadow-md transition">
                             <span className="text-xs font-medium text-gray-400 w-8">{item.index}</span>
                             {item.success ? (
@@ -1004,9 +1018,9 @@ const QRGenerator = () => {
                             )}
                           </div>
                         ))}
-                        {bulkResults.length > 10 && (
+                        {safeArray(bulkResults).length > 10 && (
                           <p className="text-xs text-gray-400 text-center py-2">
-                            + {bulkResults.length - 10} more QR codes
+                            + {safeArray(bulkResults).length - 10} more QR codes
                           </p>
                         )}
                       </div>
@@ -1026,7 +1040,7 @@ const QRGenerator = () => {
                         </button>
                       </div>
                       <p className="text-xs text-gray-400 text-center mt-2">
-                        {bulkResults.filter(r => r.success).length} of {bulkResults.length} QR codes generated successfully
+                        {safeArray(bulkResults).filter(r => r.success).length} of {safeArray(bulkResults).length} QR codes generated successfully
                       </p>
                     </>
                   ) : (
@@ -1044,13 +1058,13 @@ const QRGenerator = () => {
           </div>
 
           {/* History */}
-          {qrHistory.length > 0 && (
+          {safeArray(qrHistory).length > 0 && (
             <div className="mt-8 bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
               <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                 <FaClock className="text-green-600" /> Recent QR Codes
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                {qrHistory.map((item, idx) => (
+                {safeArray(qrHistory).map((item, idx) => (
                   <div key={idx} className="bg-gray-50 p-3 rounded-lg border border-gray-200 text-center hover:shadow-md transition">
                     <img src={item.qr} alt={`QR Code ${item.name}`} className="w-16 h-16 mx-auto mb-2" loading="lazy" />
                     <p className="text-xs text-gray-600 truncate font-medium">{item.name || item.content.substring(0, 20)}</p>

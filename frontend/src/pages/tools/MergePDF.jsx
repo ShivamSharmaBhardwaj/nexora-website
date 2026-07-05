@@ -17,6 +17,20 @@ import { api } from '../../utils/api';
 import PaymentModal from '../../components/PaymentModal';
 
 // ============================================
+// ✅ SAFE ARRAY HELPERS - Fix for .map() errors
+// ============================================
+
+const safeMap = (data, callback) => {
+  if (!data) return null;
+  const arr = Array.isArray(data) ? data : [];
+  return arr.map(callback);
+};
+
+const safeArray = (data) => {
+  return Array.isArray(data) ? data : [];
+};
+
+// ============================================
 // SEO DATA
 // ============================================
 
@@ -177,7 +191,7 @@ const MergeOptions = ({ options, onChange }) => {
 const MergeHistory = ({ history, onReuse }) => {
   const [expanded, setExpanded] = useState(false);
 
-  if (history.length === 0) return null;
+  if (safeArray(history).length === 0) return null;
 
   const displayedHistory = expanded ? history : history.slice(0, 3);
 
@@ -190,7 +204,7 @@ const MergeHistory = ({ history, onReuse }) => {
         <div className="flex items-center gap-2">
           <FaHistory className="text-indigo-500" />
           <span className="font-semibold text-gray-700">Merge History</span>
-          <span className="text-xs text-gray-400">({history.length})</span>
+          <span className="text-xs text-gray-400">({safeArray(history).length})</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-400">
@@ -202,7 +216,7 @@ const MergeHistory = ({ history, onReuse }) => {
       
       {expanded && (
         <div className="border-t border-gray-200 p-3 space-y-2 max-h-60 overflow-y-auto">
-          {history.map((item, idx) => (
+          {safeArray(history).map((item, idx) => (
             <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
               <div className="flex items-center gap-3 min-w-0">
                 <FaFilePdf className="text-red-400 flex-shrink-0" />
@@ -435,13 +449,13 @@ const MergePDF = () => {
   const saveToHistory = (filename, status, resultData) => {
     const newEntry = {
       filename,
-      fileCount: files.length,
+      fileCount: safeArray(files).length,
       timestamp: new Date().toISOString(),
       status,
       result: {
         filename: resultData.filename || 'merged.pdf',
-        pages: resultData.pages || files.length,
-        file_count: resultData.file_count || files.length,
+        pages: resultData.pages || safeArray(files).length,
+        file_count: resultData.file_count || safeArray(files).length,
       }
     };
     
@@ -483,7 +497,7 @@ const MergePDF = () => {
   };
 
   const toggleSelectAll = () => {
-    if (selectedFiles.length === files.length) {
+    if (safeArray(selectedFiles).length === safeArray(files).length) {
       setSelectedFiles([]);
     } else {
       setSelectedFiles(files.map((_, index) => index));
@@ -491,14 +505,14 @@ const MergePDF = () => {
   };
 
   const removeSelected = () => {
-    if (selectedFiles.length === 0) {
+    if (safeArray(selectedFiles).length === 0) {
       toast.error('No files selected');
       return;
     }
     const newFiles = files.filter((_, index) => !selectedFiles.includes(index));
     setFiles(newFiles);
     setSelectedFiles([]);
-    toast.success(`Removed ${selectedFiles.length} files`);
+    toast.success(`Removed ${safeArray(selectedFiles).length} files`);
   };
 
   const validateAndAddFiles = (newFiles) => {
@@ -509,7 +523,7 @@ const MergePDF = () => {
       return;
     }
     
-    const totalFiles = files.length + validFiles.length;
+    const totalFiles = safeArray(files).length + validFiles.length;
     
     if (!isPremium && totalFiles > 35) {
       toast.error(`Free users can merge up to 35 files. You have ${totalFiles} files. Please remove some files or upgrade to premium for unlimited files.`);
@@ -577,7 +591,7 @@ const MergePDF = () => {
   };
 
   const moveFileDown = (index) => {
-    if (index === files.length - 1) return;
+    if (index === safeArray(files).length - 1) return;
     const newFiles = [...files];
     [newFiles[index], newFiles[index + 1]] = [newFiles[index + 1], newFiles[index]];
     setFiles(newFiles);
@@ -594,17 +608,17 @@ const MergePDF = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (files.length < 2) {
+    if (safeArray(files).length < 2) {
       toast.error('Please select at least 2 PDF files to merge');
       return;
     }
     
-    if (!isPremium && files.length > 35) {
-      toast.error(`Free users can merge up to 35 files. You have ${files.length} files. Please upgrade to premium for unlimited files.`);
+    if (!isPremium && safeArray(files).length > 35) {
+      toast.error(`Free users can merge up to 35 files. You have ${safeArray(files).length} files. Please upgrade to premium for unlimited files.`);
       return;
     }
     
-    if (isPremium && files.length > 200) {
+    if (isPremium && safeArray(files).length > 200) {
       toast.error('Maximum 200 files allowed. Please reduce the number of files.');
       return;
     }
@@ -621,16 +635,16 @@ const MergePDF = () => {
     setProgressStatus('Starting merge...');
     
     const formData = new FormData();
-    files.forEach(file => formData.append('files', file));
+    safeArray(files).forEach(file => formData.append('files', file));
     formData.append('is_premium', isPremium);
     formData.append('options', JSON.stringify(mergeOptions));
     formData.append('batch_mode', 'false');
     
     try {
       setProgress(30);
-      setProgressStatus(`Processing ${files.length} files...`);
+      setProgressStatus(`Processing ${safeArray(files).length} files...`);
       
-      const loadingToast = toast.loading(`Merging ${files.length} files...`);
+      const loadingToast = toast.loading(`Merging ${safeArray(files).length} files...`);
       
       const response = await api.mergePdf(formData);
       
@@ -983,10 +997,10 @@ const MergePDF = () => {
                 onDragOver={handleDrag}
                 onDrop={handleDrop}
               >
-                {files.length > 0 ? (
+                {safeArray(files).length > 0 ? (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <p className="font-medium text-gray-900">{files.length} PDFs selected</p>
+                      <p className="font-medium text-gray-900">{safeArray(files).length} PDFs selected</p>
                       <div className="flex gap-2">
                         <button
                           type="button"
@@ -1014,16 +1028,16 @@ const MergePDF = () => {
                           className="text-xs text-indigo-600 hover:text-indigo-800 transition flex items-center gap-1"
                         >
                           <FaCheckDouble className="text-xs" />
-                          {selectedFiles.length === files.length ? 'Deselect All' : 'Select All'}
+                          {safeArray(selectedFiles).length === safeArray(files).length ? 'Deselect All' : 'Select All'}
                         </button>
-                        {selectedFiles.length > 0 && (
+                        {safeArray(selectedFiles).length > 0 && (
                           <button
                             type="button"
                             onClick={removeSelected}
                             className="text-xs text-red-500 hover:text-red-700 transition flex items-center gap-1"
                           >
                             <FaTrash className="text-xs" />
-                            Remove ({selectedFiles.length})
+                            Remove ({safeArray(selectedFiles).length})
                           </button>
                         )}
                       </div>
@@ -1064,17 +1078,17 @@ const MergePDF = () => {
                     <div className={`max-h-96 overflow-y-auto custom-scrollbar space-y-2 border border-gray-100 rounded-lg p-2 ${
                       viewMode === 'card' ? 'grid grid-cols-1 md:grid-cols-2 gap-3' : 'space-y-2'
                     }`}>
-                      {files.map((file, index) => (
+                      {safeArray(files).map((file, index) => (
                         viewMode === 'card' ? (
                           <FileCard
                             key={index}
                             file={file}
                             index={index}
-                            total={files.length}
+                            total={safeArray(files).length}
                             onRemove={removeFile}
                             onMoveUp={moveFileUp}
                             onMoveDown={moveFileDown}
-                            isSelected={selectedFiles.includes(index)}
+                            isSelected={safeArray(selectedFiles).includes(index)}
                             onSelect={toggleFileSelection}
                           />
                         ) : (
@@ -1082,11 +1096,11 @@ const MergePDF = () => {
                             key={index}
                             file={file}
                             index={index}
-                            total={files.length}
+                            total={safeArray(files).length}
                             onRemove={removeFile}
                             onMoveUp={moveFileUp}
                             onMoveDown={moveFileDown}
-                            isSelected={selectedFiles.includes(index)}
+                            isSelected={safeArray(selectedFiles).includes(index)}
                             onSelect={toggleFileSelection}
                           />
                         )
@@ -1131,10 +1145,10 @@ const MergePDF = () => {
               </div>
 
               {/* Stats */}
-              {files.length > 0 && (
+              {safeArray(files).length > 0 && (
                 <div className="grid grid-cols-4 gap-3 text-center text-sm">
                   <div className="bg-gray-50 p-3 rounded-lg">
-                    <p className="font-bold text-gray-900">{files.length}</p>
+                    <p className="font-bold text-gray-900">{safeArray(files).length}</p>
                     <p className="text-gray-500">Files</p>
                   </div>
                   <div className="bg-gray-50 p-3 rounded-lg">
@@ -1142,7 +1156,7 @@ const MergePDF = () => {
                     <p className="text-gray-500">Total Size</p>
                   </div>
                   <div className="bg-gray-50 p-3 rounded-lg">
-                    <p className="font-bold text-gray-900">{files.length}</p>
+                    <p className="font-bold text-gray-900">{safeArray(files).length}</p>
                     <p className="text-gray-500">Pages to Merge</p>
                   </div>
                   <div className="bg-gray-50 p-3 rounded-lg">
@@ -1178,11 +1192,11 @@ const MergePDF = () => {
 
               <button
                 type="submit"
-                disabled={loading || files.length < 2}
+                disabled={loading || safeArray(files).length < 2}
                 className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3.5 rounded-xl font-semibold hover:shadow-lg hover:shadow-indigo-500/30 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-lg"
               >
                 {loading ? <FaSpinner className="animate-spin" /> : <FaFilePdf />}
-                {loading ? 'Merging...' : `Merge ${files.length} PDF Files`}
+                {loading ? 'Merging...' : `Merge ${safeArray(files).length} PDF Files`}
               </button>
             </form>
 
@@ -1272,7 +1286,7 @@ const MergePDF = () => {
                   onClick={handleUpgrade}
                   className="bg-white text-indigo-600 px-8 py-3 rounded-xl font-semibold hover:shadow-lg transition hover:-translate-y-0.5"
                 >
-                  Upgrade Now — ₹499/month
+                  Upgrade Now — ₹99/month
                 </button>
               </div>
             </div>

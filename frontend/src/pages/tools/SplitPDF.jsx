@@ -19,6 +19,20 @@ import { api } from '../../utils/api';
 import PaymentModal from '../../components/PaymentModal';
 
 // ============================================
+// ✅ SAFE ARRAY HELPERS - Fix for .map() errors
+// ============================================
+
+const safeMap = (data, callback) => {
+  if (!data) return null;
+  const arr = Array.isArray(data) ? data : [];
+  return arr.map(callback);
+};
+
+const safeArray = (data) => {
+  return Array.isArray(data) ? data : [];
+};
+
+// ============================================
 // SEO + GEO DATA
 // ============================================
 
@@ -196,7 +210,7 @@ const SplitOptions = ({ options, onChange }) => {
 const SplitHistory = ({ history, onReuse }) => {
   const [expanded, setExpanded] = useState(false);
 
-  if (history.length === 0) return null;
+  if (safeArray(history).length === 0) return null;
 
   const displayedHistory = expanded ? history : history.slice(0, 3);
 
@@ -209,7 +223,7 @@ const SplitHistory = ({ history, onReuse }) => {
         <div className="flex items-center gap-2">
           <FaHistory className="text-red-500" />
           <span className="font-semibold text-gray-700">Split History</span>
-          <span className="text-xs text-gray-400">({history.length})</span>
+          <span className="text-xs text-gray-400">({safeArray(history).length})</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-400">
@@ -221,7 +235,7 @@ const SplitHistory = ({ history, onReuse }) => {
       
       {expanded && (
         <div className="border-t border-gray-200 p-3 space-y-2 max-h-60 overflow-y-auto">
-          {history.map((item, idx) => (
+          {safeArray(history).map((item, idx) => (
             <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
               <div className="flex items-center gap-3 min-w-0">
                 <FaFilePdf className="text-red-400 flex-shrink-0" />
@@ -482,13 +496,13 @@ const SplitPDF = () => {
         setProgressStatus('✅ Split complete!');
         
         // Select all pages by default
-        setSelectedPages(response.data.pages.map((_, i) => i));
+        setSelectedPages(safeArray(response.data.pages).map((_, i) => i));
         
         toast.success(`✅ ${response.data.total_pages} pages split successfully!`);
         
         if (isPremium) {
           setTimeout(() => {
-            if (response.data.pages.length > 0) {
+            if (safeArray(response.data.pages).length > 0) {
               downloadPage(response.data.pages[0], 0);
             }
           }, 1000);
@@ -525,8 +539,8 @@ const SplitPDF = () => {
 
   const downloadSelected = () => {
     if (!result) return;
-    const selected = selectedPages.map(i => result.pages[i]).filter(Boolean);
-    if (selected.length === 0) {
+    const selected = safeArray(selectedPages).map(i => safeArray(result.pages)[i]).filter(Boolean);
+    if (safeArray(selected).length === 0) {
       toast.error('Please select at least one page');
       return;
     }
@@ -542,22 +556,22 @@ const SplitPDF = () => {
     
     selected.forEach((page, idx) => {
       setTimeout(() => {
-        const originalIndex = result.pages.indexOf(page);
+        const originalIndex = safeArray(result.pages).indexOf(page);
         downloadPage(page, originalIndex);
       }, idx * 400);
     });
-    toast.success(`Downloading ${selected.length} pages...`);
+    toast.success(`Downloading ${safeArray(selected).length} pages...`);
   };
 
   const downloadAll = () => {
     if (!result) return;
-    if (result.pages.length > 20 && !isPremium) {
+    if (safeArray(result.pages).length > 20 && !isPremium) {
       toast.warning('Large file detected. Premium users get faster bulk downloads.');
     }
-    result.pages.forEach((page, index) => {
+    safeArray(result.pages).forEach((page, index) => {
       setTimeout(() => downloadPage(page, index), index * 300);
     });
-    toast.success(`Downloading ${result.pages.length} pages...`);
+    toast.success(`Downloading ${safeArray(result.pages).length} pages...`);
   };
 
   const togglePageSelection = (index) => {
@@ -568,17 +582,17 @@ const SplitPDF = () => {
 
   const selectAll = () => {
     if (!result) return;
-    if (selectedPages.length === result.pages.length) {
+    if (safeArray(selectedPages).length === safeArray(result.pages).length) {
       setSelectedPages([]);
     } else {
-      setSelectedPages(result.pages.map((_, i) => i));
+      setSelectedPages(safeArray(result.pages).map((_, i) => i));
     }
   };
 
   const selectRange = (start, end) => {
     if (!result) return;
     const newSelected = [];
-    for (let i = start; i <= end && i < result.pages.length; i++) {
+    for (let i = start; i <= end && i < safeArray(result.pages).length; i++) {
       newSelected.push(i);
     }
     setSelectedPages(newSelected);
@@ -603,8 +617,8 @@ const SplitPDF = () => {
 
   // Get filtered pages based on search
   const getFilteredPages = () => {
-    if (!result || !result.pages) return [];
-    if (!searchTerm || searchTerm.trim() === '') return result.pages;
+    if (!result || !safeArray(result.pages)) return [];
+    if (!searchTerm || searchTerm.trim() === '') return safeArray(result.pages);
     
     const term = searchTerm.trim().toLowerCase();
     const uniquePages = [];
@@ -617,11 +631,11 @@ const SplitPDF = () => {
       const end = parseInt(parts[1]);
       if (!isNaN(start) && !isNaN(end)) {
         const startIdx = Math.max(0, start - 1);
-        const endIdx = Math.min(result.pages.length, end);
+        const endIdx = Math.min(safeArray(result.pages).length, end);
         for (let i = startIdx; i < endIdx; i++) {
           if (!seen.has(i)) {
             seen.add(i);
-            uniquePages.push(result.pages[i]);
+            uniquePages.push(safeArray(result.pages)[i]);
           }
         }
         return uniquePages;
@@ -630,8 +644,8 @@ const SplitPDF = () => {
     
     // Handle single page
     const pageNum = parseInt(term);
-    if (!isNaN(pageNum) && pageNum > 0 && pageNum <= result.pages.length) {
-      return [result.pages[pageNum - 1]];
+    if (!isNaN(pageNum) && pageNum > 0 && pageNum <= safeArray(result.pages).length) {
+      return [safeArray(result.pages)[pageNum - 1]];
     }
     
     // Handle multiple comma-separated pages like "1,3,5"
@@ -643,19 +657,19 @@ const SplitPDF = () => {
           const start = parseInt(rangeParts[0]);
           const end = parseInt(rangeParts[1]);
           if (!isNaN(start) && !isNaN(end)) {
-            for (let i = start - 1; i < end && i < result.pages.length; i++) {
+            for (let i = start - 1; i < end && i < safeArray(result.pages).length; i++) {
               if (!seen.has(i)) {
                 seen.add(i);
-                uniquePages.push(result.pages[i]);
+                uniquePages.push(safeArray(result.pages)[i]);
               }
             }
           }
         } else {
           const num = parseInt(part);
-          if (!isNaN(num) && num > 0 && num <= result.pages.length) {
+          if (!isNaN(num) && num > 0 && num <= safeArray(result.pages).length) {
             if (!seen.has(num - 1)) {
               seen.add(num - 1);
-              uniquePages.push(result.pages[num - 1]);
+              uniquePages.push(safeArray(result.pages)[num - 1]);
             }
           }
         }
@@ -663,7 +677,7 @@ const SplitPDF = () => {
       return uniquePages;
     }
     
-    return result.pages;
+    return safeArray(result.pages);
   };
 
   const filteredPages = getFilteredPages();
@@ -888,7 +902,7 @@ const SplitPDF = () => {
                   onClick={handleUpgrade}
                   className="px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition flex items-center gap-2"
                 >
-                  <FaCrown /> Upgrade Now
+                  <FaCrown /> Upgrade Now — ₹99/month
                 </button>
               )}
             </div>
@@ -1013,7 +1027,7 @@ const SplitPDF = () => {
             </form>
 
             {/* Results */}
-            {result && result.pages && (
+            {result && safeArray(result.pages).length > 0 && (
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <div className="bg-gradient-to-r from-red-50 to-rose-50 p-4 rounded-xl border border-red-200">
                   <div className="flex items-center justify-between flex-wrap gap-2">
@@ -1031,7 +1045,7 @@ const SplitPDF = () => {
                         onClick={selectAll}
                         className="text-sm bg-white px-3 py-1 rounded-lg border border-gray-200 hover:bg-gray-50 transition"
                       >
-                        {selectedPages.length === result.pages.length ? 'Deselect All' : 'Select All'}
+                        {safeArray(selectedPages).length === safeArray(result.pages).length ? 'Deselect All' : 'Select All'}
                       </button>
                       {isPremium && (
                         <button
@@ -1050,7 +1064,7 @@ const SplitPDF = () => {
                       onClick={downloadSelected}
                       className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition text-sm flex items-center gap-2"
                     >
-                      <FaDownload /> Download Selected ({selectedPages.length})
+                      <FaDownload /> Download Selected ({safeArray(selectedPages).length})
                     </button>
                     <button
                       onClick={downloadAll}
@@ -1058,7 +1072,7 @@ const SplitPDF = () => {
                     >
                       <FaDownload /> Download All
                     </button>
-                    {isPremium && splitOptions.mergeSelected && selectedPages.length > 1 && (
+                    {isPremium && splitOptions.mergeSelected && safeArray(selectedPages).length > 1 && (
                       <button
                         onClick={() => toast.info('Merging selected pages... (Premium)')}
                         className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition text-sm flex items-center gap-2"
@@ -1090,7 +1104,7 @@ const SplitPDF = () => {
                         <FaList className="text-sm" />
                       </button>
                       <span className="text-xs text-gray-400 ml-2">
-                        {selectedPages.length} of {result.pages.length} selected
+                        {safeArray(selectedPages).length} of {safeArray(result.pages).length} selected
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1116,8 +1130,8 @@ const SplitPDF = () => {
                       ? 'grid grid-cols-2 md:grid-cols-4 gap-3' 
                       : 'space-y-2'
                   }`}>
-                    {filteredPages.map((page, idx) => {
-                      const index = result.pages.findIndex(p => p === page);
+                    {safeArray(filteredPages).map((page, idx) => {
+                      const index = safeArray(result.pages).findIndex(p => p === page);
                       const uniqueKey = `${index}-${String(page).slice(0, 50)}-${idx}`;
                       
                       if (viewMode === 'grid') {
@@ -1126,10 +1140,10 @@ const SplitPDF = () => {
                             key={uniqueKey}
                             page={page}
                             index={index}
-                            isSelected={selectedPages.includes(index)}
+                            isSelected={safeArray(selectedPages).includes(index)}
                             onToggle={togglePageSelection}
                             onDownload={downloadPage}
-                            totalPages={result.pages.length}
+                            totalPages={safeArray(result.pages).length}
                           />
                         );
                       } else {
@@ -1137,7 +1151,7 @@ const SplitPDF = () => {
                           <div 
                             key={uniqueKey}
                             className={`flex items-center justify-between p-3 rounded-lg border-2 cursor-pointer transition ${
-                              selectedPages.includes(index) 
+                              safeArray(selectedPages).includes(index) 
                                 ? 'border-red-500 bg-red-50' 
                                 : 'border-gray-200 hover:border-red-300 bg-white'
                             }`}
@@ -1150,7 +1164,7 @@ const SplitPDF = () => {
                               <span className="text-xs text-gray-400">{formatSize(new Blob([page]).size)}</span>
                             </div>
                             <div className="flex items-center gap-2">
-                              {selectedPages.includes(index) && (
+                              {safeArray(selectedPages).includes(index) && (
                                 <FaCheckCircle className="text-red-500 text-xs" />
                               )}
                               <button
@@ -1169,7 +1183,7 @@ const SplitPDF = () => {
                     })}
                   </div>
 
-                  {filteredPages.length === 0 && result.pages.length > 0 && (
+                  {safeArray(filteredPages).length === 0 && safeArray(result.pages).length > 0 && (
                     <div className="text-center py-4 text-gray-400 text-sm">
                       No pages found matching "{searchTerm}"
                     </div>
@@ -1228,7 +1242,7 @@ const SplitPDF = () => {
                   onClick={handleUpgrade}
                   className="bg-white text-red-600 px-8 py-3 rounded-xl font-semibold hover:shadow-lg transition hover:-translate-y-0.5"
                 >
-                  Upgrade Now — ₹499/month
+                  Upgrade Now — ₹99/month
                 </button>
               </div>
             </div>

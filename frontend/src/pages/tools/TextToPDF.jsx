@@ -21,6 +21,20 @@ import { api } from '../../utils/api';
 import PaymentModal from '../../components/PaymentModal';
 
 // ============================================
+// ✅ SAFE ARRAY HELPERS - Fix for .map() errors
+// ============================================
+
+const safeMap = (data, callback) => {
+  if (!data) return null;
+  const arr = Array.isArray(data) ? data : [];
+  return arr.map(callback);
+};
+
+const safeArray = (data) => {
+  return Array.isArray(data) ? data : [];
+};
+
+// ============================================
 // SEO + GEO DATA
 // ============================================
 
@@ -401,7 +415,7 @@ const PDF_STYLES = [
 const ConversionHistory = ({ history, onReuse }) => {
   const [expanded, setExpanded] = useState(false);
 
-  if (history.length === 0) return null;
+  if (safeArray(history).length === 0) return null;
 
   const displayedHistory = expanded ? history : history.slice(0, 3);
 
@@ -414,7 +428,7 @@ const ConversionHistory = ({ history, onReuse }) => {
         <div className="flex items-center gap-2">
           <FaHistory className="text-cyan-500" />
           <span className="font-semibold text-gray-700">Conversion History</span>
-          <span className="text-xs text-gray-400">({history.length})</span>
+          <span className="text-xs text-gray-400">({safeArray(history).length})</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-400">
@@ -426,7 +440,7 @@ const ConversionHistory = ({ history, onReuse }) => {
       
       {expanded && (
         <div className="border-t border-gray-200 p-3 space-y-2 max-h-60 overflow-y-auto">
-          {history.map((item, idx) => (
+          {safeArray(history).map((item, idx) => (
             <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
               <div className="flex items-center gap-3 min-w-0">
                 <FaFilePdf className="text-red-400 flex-shrink-0" />
@@ -895,7 +909,7 @@ const TextToPDF = () => {
                   onClick={handleUpgrade}
                   className="px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition flex items-center gap-2"
                 >
-                  <FaCrown /> Upgrade Now
+                  <FaCrown /> Upgrade Now — ₹99/month
                 </button>
               )}
             </div>
@@ -978,7 +992,7 @@ const TextToPDF = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">PDF Style</label>
                 <div className="flex flex-wrap gap-2">
-                  {PDF_STYLES.map((style) => (
+                  {safeArray(PDF_STYLES).map((style) => (
                     <button
                       key={style.id}
                       type="button"
@@ -1204,7 +1218,7 @@ const TextToPDF = () => {
                   onClick={handleUpgrade}
                   className="bg-white text-cyan-600 px-8 py-3 rounded-xl font-semibold hover:shadow-lg transition hover:-translate-y-0.5"
                 >
-                  Upgrade Now — ₹499/month
+                  Upgrade Now — ₹99/month
                 </button>
               </div>
             </div>

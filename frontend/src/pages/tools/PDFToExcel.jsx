@@ -1,4 +1,3 @@
-// src/pages/tools/PDFToExcel.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { 
@@ -15,6 +14,20 @@ import toast from 'react-hot-toast';
 import { api } from '../../utils/api';
 import PaymentModal from '../../components/PaymentModal';
 import * as XLSX from 'xlsx';
+
+// ============================================
+// 🔧 SAFE ARRAY HELPERS - Fix for .map() errors
+// ============================================
+
+const safeMap = (data, callback) => {
+  if (!data) return null;
+  const arr = Array.isArray(data) ? data : [];
+  return arr.map(callback);
+};
+
+const safeArray = (data) => {
+  return Array.isArray(data) ? data : [];
+};
 
 // ============================================
 // SEO DATA
@@ -49,10 +62,11 @@ const globalCountries = [
 // ============================================
 
 const TablePreview = ({ data, title }) => {
-  if (!data || data.length === 0) return null;
+  const safeData = safeArray(data);
+  if (safeData.length === 0) return null;
 
-  const headers = Object.keys(data[0]);
-  const previewData = data.slice(0, 5);
+  const headers = Object.keys(safeData[0] || {});
+  const previewData = safeData.slice(0, 5);
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -84,9 +98,9 @@ const TablePreview = ({ data, title }) => {
             ))}
           </tbody>
         </table>
-        {data.length > 5 && (
+        {safeData.length > 5 && (
           <div className="px-3 py-2 text-xs text-gray-400 border-t border-gray-200">
-            + {data.length - 5} more rows
+            + {safeData.length - 5} more rows
           </div>
         )}
       </div>
@@ -291,7 +305,7 @@ const PDFToExcel = () => {
         });
         
         if (response.data.tables) {
-          setExtractedTables(response.data.tables);
+          setExtractedTables(safeArray(response.data.tables));
         } else if (response.data.data) {
           setExtractedTables([response.data.data]);
         }
@@ -356,7 +370,7 @@ const PDFToExcel = () => {
           results.push({
             filename: currentFile.name,
             result: response.data,
-            tables: response.data.tables || [response.data.data],
+            tables: safeArray(response.data.tables || [response.data.data]),
             success: true
           });
           saveToHistory(currentFile.name, 'completed', response.data);
@@ -399,24 +413,27 @@ const PDFToExcel = () => {
     
     try {
       let excelData = [];
+      const safeExtractedTables = safeArray(extractedTables);
       
-      if (extractedTables && extractedTables.length > 0) {
+      if (safeExtractedTables.length > 0) {
         if (conversionOptions.combineTables) {
-          extractedTables.forEach((table, index) => {
+          safeExtractedTables.forEach((table, index) => {
+            const safeTable = safeArray(table);
             if (index === 0) {
-              excelData = table;
+              excelData = safeTable;
             } else {
               excelData.push({});
               excelData.push({ '---': `Table ${index + 1} ---` });
               excelData.push({});
-              excelData = [...excelData, ...table];
+              excelData = [...excelData, ...safeTable];
             }
           });
         } else {
           const wb = XLSX.utils.book_new();
           
-          extractedTables.forEach((table, index) => {
-            const ws = XLSX.utils.json_to_sheet(table);
+          safeExtractedTables.forEach((table, index) => {
+            const safeTable = safeArray(table);
+            const ws = XLSX.utils.json_to_sheet(safeTable);
             const sheetName = `Table ${index + 1}`;
             XLSX.utils.book_append_sheet(wb, ws, sheetName.slice(0, 31));
           });
@@ -436,7 +453,7 @@ const PDFToExcel = () => {
           return;
         }
       } else if (result.data) {
-        excelData = result.data;
+        excelData = safeArray(result.data);
       } else if (result.file) {
         const link = document.createElement('a');
         link.href = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${result.file}`;
@@ -474,9 +491,9 @@ const PDFToExcel = () => {
     try {
       let data = [];
       if (resultData.tables) {
-        data = resultData.tables.flat();
+        data = safeArray(resultData.tables).flat();
       } else if (resultData.data) {
-        data = resultData.data;
+        data = safeArray(resultData.data);
       }
       
       if (data && data.length > 0) {
@@ -500,7 +517,7 @@ const PDFToExcel = () => {
   };
 
   const downloadAllBatch = () => {
-    const successful = conversionResults.filter(r => r.success);
+    const successful = safeArray(conversionResults).filter(r => r.success);
     if (successful.length === 0) {
       toast.error('No successful conversions to download');
       return;
@@ -854,7 +871,7 @@ const PDFToExcel = () => {
                       <span className="font-medium">{files.length} PDF(s) added to queue</span>
                     </div>
                     <div className="max-h-32 overflow-y-auto space-y-1">
-                      {files.map((f, idx) => (
+                      {safeArray(files).map((f, idx) => (
                         <div key={idx} className="flex items-center justify-between text-sm bg-gray-50 p-2 rounded">
                           <span className="truncate">{f.name}</span>
                           <span className="text-gray-400 text-xs ml-2">{formatFileSize(f.size)}</span>
@@ -1028,7 +1045,7 @@ const PDFToExcel = () => {
             </form>
 
             {/* Extracted Tables Preview */}
-            {extractedTables.length > 0 && !loading && showTablePreview && (
+            {safeArray(extractedTables).length > 0 && !loading && showTablePreview && (
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="font-semibold text-gray-700 flex items-center gap-2">
@@ -1044,24 +1061,24 @@ const PDFToExcel = () => {
                   </div>
                 </div>
                 
-                {extractedTables.map((table, index) => (
+                {safeArray(extractedTables).map((table, index) => (
                   <TablePreview 
                     key={index} 
                     data={table} 
-                    title={`Table ${index + 1} (${table.length} rows)`} 
+                    title={`Table ${index + 1} (${safeArray(table).length} rows)`} 
                   />
                 ))}
               </div>
             )}
 
             {/* Batch Results */}
-            {conversionResults.length > 0 && !loading && (
+            {safeArray(conversionResults).length > 0 && !loading && (
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="font-semibold text-gray-700 flex items-center gap-2">
                     <FaCheckCircle className="text-green-500" /> Extraction Results
                   </h4>
-                  {conversionResults.filter(r => r.success).length > 0 && (
+                  {safeArray(conversionResults).filter(r => r.success).length > 0 && (
                     <button
                       onClick={downloadAllBatch}
                       className="text-sm bg-green-500 text-white px-4 py-1.5 rounded-lg hover:bg-green-600 transition flex items-center gap-2"
@@ -1071,7 +1088,7 @@ const PDFToExcel = () => {
                   )}
                 </div>
                 <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {conversionResults.map((item, idx) => (
+                  {safeArray(conversionResults).map((item, idx) => (
                     <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center gap-3 min-w-0">
                         {item.success ? (
@@ -1081,7 +1098,7 @@ const PDFToExcel = () => {
                         )}
                         <span className="text-sm truncate">{item.filename}</span>
                         <span className={`text-xs ${item.success ? 'text-green-500' : 'text-red-500'}`}>
-                          {item.success ? `${item.tables?.length || 1} table(s)` : item.error}
+                          {item.success ? `${safeArray(item.tables).length || 1} table(s)` : item.error}
                         </span>
                       </div>
                       {item.success && (
@@ -1109,7 +1126,7 @@ const PDFToExcel = () => {
                     <div className="flex-1">
                       <p className="font-semibold text-green-800">✅ Extraction Complete!</p>
                       <p className="text-sm text-green-600">
-                        {extractedTables.length} table(s) extracted from PDF
+                        {safeArray(extractedTables).length} table(s) extracted from PDF
                       </p>
                     </div>
                   </div>
@@ -1144,12 +1161,12 @@ const PDFToExcel = () => {
                 <div className="flex items-center gap-2">
                   <FaHistory className="text-green-500" />
                   <span className="font-semibold text-gray-700">Extraction History</span>
-                  <span className="text-xs text-gray-400">({conversionHistory.length})</span>
+                  <span className="text-xs text-gray-400">({safeArray(conversionHistory).length})</span>
                 </div>
               </div>
-              {conversionHistory.length > 0 ? (
+              {safeArray(conversionHistory).length > 0 ? (
                 <div className="p-3 space-y-2 max-h-40 overflow-y-auto">
-                  {conversionHistory.slice(0, 5).map((item, idx) => (
+                  {safeArray(conversionHistory).slice(0, 5).map((item, idx) => (
                     <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
                       <div className="flex items-center gap-3 min-w-0">
                         <FaFilePdf className="text-red-400 flex-shrink-0" />
@@ -1217,7 +1234,7 @@ const PDFToExcel = () => {
                   onClick={handleUpgrade}
                   className="bg-white text-green-600 px-8 py-3 rounded-xl font-semibold hover:shadow-lg transition hover:-translate-y-0.5"
                 >
-                  Upgrade Now — ₹499/month
+                  Upgrade Now — ₹99/month
                 </button>
               </div>
             </div>
