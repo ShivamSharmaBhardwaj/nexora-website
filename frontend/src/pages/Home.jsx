@@ -304,26 +304,59 @@ const Home = () => {
   const [activeFaq, setActiveFaq] = useState(null);
 
   const siteUrl = window.location.origin;
+const fetchData = useCallback(async () => {
+  try {
+    setError(null);
+    const [projectsRes, testimonialsRes] = await Promise.all([
+      axios.get(`${API_BASE_URL}/api/projects`),
+      axios.get(`${API_BASE_URL}/api/testimonials`)
+    ]);
 
-  const fetchData = useCallback(async () => {
-    try {
-      setError(null);
-      const [projectsRes, testimonialsRes] = await Promise.all([
-        axios.get(`${API_BASE_URL}/api/projects`),
-        axios.get(`${API_BASE_URL}/api/testimonials`)
-      ]);
-
-      const approvedTestimonials = testimonialsRes.data.filter(t => t.is_approved);
-      
-      setProjects(projectsRes.data.slice(0, PROJECTS_LIMIT));
-      setTestimonials(approvedTestimonials.slice(0, TESTIMONIALS_LIMIT));
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      setError('Failed to load data. Please try again later.');
-    } finally {
-      setLoading(false);
+    // ✅ SAFE: Handle both array and object responses
+    let testimonialsData = [];
+    
+    // Check if it's an array directly
+    if (Array.isArray(testimonialsRes.data)) {
+      testimonialsData = testimonialsRes.data;
+    } 
+    // Check if it's an object with a data property that's an array
+    else if (testimonialsRes.data && typeof testimonialsRes.data === 'object') {
+      if (Array.isArray(testimonialsRes.data.data)) {
+        testimonialsData = testimonialsRes.data.data;
+      } else if (Array.isArray(testimonialsRes.data.testimonials)) {
+        testimonialsData = testimonialsRes.data.testimonials;
+      } else {
+        // Try to find any array property
+        const arrayProp = Object.values(testimonialsRes.data).find(val => Array.isArray(val));
+        if (arrayProp) {
+          testimonialsData = arrayProp;
+        }
+      }
     }
-  }, []);
+    
+    // Filter approved testimonials
+    const approvedTestimonials = testimonialsData.filter(t => t.is_approved);
+    
+    // Handle projects data safely
+    let projectsData = [];
+    if (Array.isArray(projectsRes.data)) {
+      projectsData = projectsRes.data;
+    } else if (projectsRes.data && Array.isArray(projectsRes.data.data)) {
+      projectsData = projectsRes.data.data;
+    }
+    
+    setProjects(projectsData.slice(0, PROJECTS_LIMIT));
+    setTestimonials(approvedTestimonials.slice(0, TESTIMONIALS_LIMIT));
+  } catch (error) {
+    console.error('Error fetching data:', error);
+    setError('Failed to load data. Please try again later.');
+    // Set empty arrays to prevent further errors
+    setProjects([]);
+    setTestimonials([]);
+  } finally {
+    setLoading(false);
+  }
+}, []);
 
   useEffect(() => {
     fetchData();

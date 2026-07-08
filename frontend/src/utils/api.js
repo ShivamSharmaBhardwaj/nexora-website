@@ -152,82 +152,83 @@ export const api = {
   },
 
   // ============================================
-  // TOOLS
+  // ✅ TOOLS - FIXED: Using publicApiClient (no auth required)
   // ============================================
+  
   // Resume Builder
   buildResume: (data) => {
-    return apiClient.post('/api/tools/resume-builder', data);
+    return publicApiClient.post('/api/tools/resume-builder', data);
   },
   
   // Cover Letter
   generateCoverLetter: (data) => {
-    return apiClient.post('/api/tools/cover-letter', data);
+    return publicApiClient.post('/api/tools/cover-letter', data);
   },
   
   // QR Generator
   generateQR: (data) => {
-    return apiClient.post('/api/tools/qr-generator', data);
+    return publicApiClient.post('/api/tools/qr-generator', data);
   },
   
   // PDF to Image
   pdfToImage: (formData) => {
-    return apiClient.post('/api/tools/pdf-to-image', formData, {
+    return publicApiClient.post('/api/tools/pdf-to-image', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
   
   // PDF to Word
   pdfToWord: (formData) => {
-    return apiClient.post('/api/tools/pdf-to-word', formData, {
+    return publicApiClient.post('/api/tools/pdf-to-word', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
   
   // PDF to Excel
   pdfToExcel: (formData) => {
-    return apiClient.post('/api/tools/pdf-to-excel', formData, {
+    return publicApiClient.post('/api/tools/pdf-to-excel', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
   
   // Image to PDF
   imageToPdf: (formData) => {
-    return apiClient.post('/api/tools/image-to-pdf', formData, {
+    return publicApiClient.post('/api/tools/image-to-pdf', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
   
   // PDF Compressor
   compressPdf: (formData) => {
-    return apiClient.post('/api/tools/pdf-compressor', formData, {
+    return publicApiClient.post('/api/tools/pdf-compressor', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
   
   // Merge PDF
   mergePdf: (formData) => {
-    return apiClient.post('/api/tools/merge-pdf', formData, {
+    return publicApiClient.post('/api/tools/merge-pdf', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
   
   // Split PDF
   splitPdf: (formData) => {
-    return apiClient.post('/api/tools/split-pdf', formData, {
+    return publicApiClient.post('/api/tools/split-pdf', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
   
   // Image Resizer
   imageResizer: (formData) => {
-    return apiClient.post('/api/tools/image-resizer', formData, {
+    return publicApiClient.post('/api/tools/image-resizer', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
   
   // Text to PDF
   textToPdf: (data) => {
-    return apiClient.post('/api/tools/text-to-pdf', data);
+    return publicApiClient.post('/api/tools/text-to-pdf', data);
   },
   
   // ============================================
@@ -262,7 +263,7 @@ export const api = {
   // HEALTH
   // ============================================
   healthCheck: () => {
-    return apiClient.get('/api/health');
+    return publicApiClient.get('/api/health');
   }
 };
 

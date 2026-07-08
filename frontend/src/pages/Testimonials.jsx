@@ -316,7 +316,7 @@ const Testimonials = () => {
         setLoading(true);
         setError(null);
         const response = await api.getTestimonials();
-        setTestimonials(response.data);
+        setTestimonials(Array.isArray(response.data) ? response.data : []);
       } catch (err) {
         console.error('Error fetching testimonials:', err);
         setError('Failed to load testimonials. Please try again later.');
