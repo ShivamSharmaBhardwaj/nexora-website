@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { api } from '../utils/api';
 import axios from 'axios';
 import { 
   FaPlay, 
@@ -42,14 +43,16 @@ import {
   FaMapPin,
   FaGlobe,
   FaMicrophone,
-  FaComments
+  FaComments,
+  FaPalette,
+  FaBorderAll,
+  FaLayerGroup
 } from 'react-icons/fa';
 
 // ============================================
 // CONSTANTS
 // ============================================
 
-// ✅ Indian Cities for GEO Targeting
 const indianCities = [
   "Agra", "Delhi", "Mumbai", "Bangalore", "Chennai", "Hyderabad", 
   "Pune", "Kolkata", "Ahmedabad", "Surat", "Jaipur", "Lucknow", 
@@ -63,7 +66,6 @@ const indianCities = [
   "Dehradun", "Noida", "Gurugram", "Ghaziabad", "Faridabad"
 ];
 
-// ✅ Global Countries
 const globalCountries = [
   "USA", "UK", "Canada", "Australia", "UAE", "Singapore", 
   "Germany", "France", "Japan", "South Korea", "Netherlands", 
@@ -74,69 +76,79 @@ const globalCountries = [
 ];
 
 // ============================================
-// UI COMPONENTS
+// UI COMPONENTS - NEUMORPHIC + LIQUID GLASS
 // ============================================
 
-// Loading Skeleton
+// Neumorphic Loading Skeleton
 const LoadingSkeleton = () => (
-  <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex items-center justify-center">
-    <div className="text-center">
-      <div className="relative">
-        <div className="w-20 h-20 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <FaSpinner className="text-blue-600 text-3xl animate-pulse" />
+  <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+    <div className="neumorphic-card p-12 text-center relative overflow-hidden">
+      <div className="absolute inset-0 liquid-glass-overlay"></div>
+      <div className="relative z-10">
+        <div className="relative w-24 h-24 mx-auto">
+          <div className="absolute inset-0 neumorphic-spinner"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <FaSpinner className="text-blue-600 text-4xl animate-spin" />
+          </div>
+        </div>
+        <p className="text-gray-600 mt-6 animate-pulse font-medium">Loading product details...</p>
+        <div className="flex justify-center gap-2 mt-4">
+          <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+          <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+          <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
         </div>
       </div>
-      <p className="text-gray-600 mt-4 animate-pulse">Loading product details...</p>
     </div>
   </div>
 );
 
-// Error State Component
+// Error State with Neumorphism
 const ErrorState = ({ error, onRetry }) => (
-  <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12">
+  <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 py-12">
     <div className="container mx-auto px-4 max-w-4xl">
-      <div className="bg-white rounded-2xl shadow-xl p-12 text-center border border-gray-100">
-        <div className="text-6xl mb-4 animate-bounce">🔍</div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          {error || 'Product not found'}
-        </h2>
-        <p className="text-gray-600 mb-6 max-w-md mx-auto">
-          The product you're looking for might have been moved, is currently unavailable, or doesn't exist in our catalog.
-        </p>
-        <div className="flex flex-wrap justify-center gap-4">
-          <Link 
-            to="/products" 
-            className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl"
-          >
-            <FaArrowLeft /> Browse All Products
-          </Link>
-          <Link 
-            to="/contact" 
-            className="inline-flex items-center gap-2 border-2 border-blue-600 text-blue-600 px-6 py-3 rounded-lg hover:bg-blue-50 transition-all duration-300"
-          >
-            Contact Support
-          </Link>
-          {onRetry && (
-            <button
-              onClick={onRetry}
-              className="inline-flex items-center gap-2 bg-gray-200 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-300 transition-all duration-300"
+      <div className="neumorphic-card rounded-2xl p-12 text-center">
+        <div className="liquid-glass-container p-8 rounded-2xl">
+          <div className="text-7xl mb-4 animate-bounce">🔍</div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            {error || 'Product not found'}
+          </h2>
+          <p className="text-gray-600 mb-6 max-w-md mx-auto">
+            The product you're looking for might have been moved, is currently unavailable, or doesn't exist in our catalog.
+          </p>
+          <div className="flex flex-wrap justify-center gap-4">
+            <Link 
+              to="/products" 
+              className="neumorphic-btn-primary px-6 py-3 rounded-xl font-medium inline-flex items-center gap-2"
             >
-              <FaSpinner className="animate-spin" /> Retry
-            </button>
-          )}
+              <FaArrowLeft /> Browse All Products
+            </Link>
+            <Link 
+              to="/contact" 
+              className="neumorphic-btn-secondary px-6 py-3 rounded-xl font-medium inline-flex items-center gap-2 border-2 border-blue-600"
+            >
+              Contact Support
+            </Link>
+            {onRetry && (
+              <button
+                onClick={onRetry}
+                className="neumorphic-btn px-6 py-3 rounded-xl font-medium inline-flex items-center gap-2"
+              >
+                <FaSpinner className="animate-spin" /> Retry
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
   </div>
 );
 
-// Feature Card Component
+// Neumorphic Feature Card
 const FeatureCard = ({ icon: Icon, title, description }) => (
-  <div className="bg-white rounded-xl p-4 border border-gray-100 hover:border-blue-200 hover:shadow-lg transition-all duration-300 group">
+  <div className="neumorphic-card-feature p-4 group">
     <div className="flex items-start gap-3">
-      <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300 flex-shrink-0">
-        <Icon className="text-lg" />
+      <div className="neumorphic-icon-box w-12 h-12 rounded-xl flex items-center justify-center text-blue-600 flex-shrink-0">
+        <Icon className="text-xl" />
       </div>
       <div>
         <h4 className="font-semibold text-gray-900 text-sm">{title}</h4>
@@ -146,13 +158,28 @@ const FeatureCard = ({ icon: Icon, title, description }) => (
   </div>
 );
 
-// Stat Badge Component
+// Liquid Glass Stat Badge
 const StatBadge = ({ icon: Icon, label, value }) => (
-  <div className="flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-full border border-white/10 backdrop-blur-sm">
+  <div className="liquid-glass-stat flex items-center gap-2 px-4 py-2 rounded-full">
     <Icon className="text-white text-sm" />
     <span className="text-sm font-medium text-white">{value}</span>
     <span className="text-xs text-white/70">{label}</span>
   </div>
+);
+
+// Neumorphic Tab Button
+const TabButton = ({ id, label, icon: Icon, active, onClick }) => (
+  <button
+    onClick={() => onClick(id)}
+    className={`flex-1 min-w-[100px] px-4 py-2.5 rounded-xl font-medium transition-all duration-500 flex items-center justify-center gap-2 ${
+      active === id
+        ? 'neumorphic-tab-active text-white'
+        : 'neumorphic-tab-inactive text-gray-600'
+    }`}
+  >
+    <Icon className="text-sm" />
+    {label}
+  </button>
 );
 
 // ============================================
@@ -169,8 +196,21 @@ const ProductDetail = () => {
   const [isLiked, setIsLiked] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
   const siteUrl = window.location.origin;
+
+  // Mouse tracking for parallax
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      setMousePosition({
+        x: (e.clientX / window.innerWidth - 0.5) * 10,
+        y: (e.clientY / window.innerHeight - 0.5) * 10,
+      });
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
 
   const fetchProject = useCallback(async () => {
     try {
@@ -178,21 +218,30 @@ const ProductDetail = () => {
       setError(null);
       
       const isNumeric = /^\d+$/.test(id);
-      const url = isNumeric 
-        ? `${import.meta.env.VITE_API_URL}/api/projects/${id}`
-        : `${import.meta.env.VITE_API_URL}/api/projects/category/${id}`;
-      const response = await axios.get(url);
-      setProject(response.data);
       
-      if (response.data.category) {
+      if (isNumeric) {
+        const response = await api.getProject(id);
+        setProject(response.data);
+        
+        if (response.data.category) {
+          try {
+            const relatedRes = await api.getProjectsByCategory(response.data.category);
+            const related = relatedRes.data.filter(p => p.id !== response.data.id).slice(0, 4);
+            setRelatedProjects(related);
+          } catch (err) {
+            console.log('No related projects found');
+          }
+        }
+      } else {
         try {
-          const relatedRes = await axios.get(
-            `${import.meta.env.VITE_API_URL}/api/projects/category/${response.data.category}`
-          );
-          const related = relatedRes.data.filter(p => p.id !== response.data.id).slice(0, 4);
-          setRelatedProjects(related);
+          const response = await api.getProjectsByCategory(id);
+          if (response.data && response.data.length > 0) {
+            setProject(response.data[0]);
+          } else {
+            setError('Product not found');
+          }
         } catch (err) {
-          console.log('No related projects found');
+          setError('Product not found');
         }
       }
     } catch (err) {
@@ -213,7 +262,6 @@ const ProductDetail = () => {
     }
   }, [id, fetchProject]);
 
-  // Get category icon and color
   const getCategoryIcon = (category) => {
     const icons = {
       'HRMS': <FaUsers />,
@@ -244,34 +292,27 @@ const ProductDetail = () => {
     return colors[category] || 'bg-gray-100 text-gray-700';
   };
 
-  // Features array
   const features = project?.features || [];
   const techStack = project?.tech_stack || [];
 
   if (loading) return <LoadingSkeleton />;
   if (error || !project) return <ErrorState error={error} onRetry={fetchProject} />;
 
-  // ✅ Build product title for SEO
   const productTitle = `${project.title} - Enterprise Software Solution | Krynova Technologies`;
   const productDescription = project.description || `Explore ${project.title} - an enterprise software solution for businesses. Trusted by 50+ businesses in India and globally.`;
 
   return (
     <>
       {/* ========================================== */}
-      {/* ✅ HELMET - SEO + AEO + GEO COMBINED */}
+      {/* HELMET - SEO + AEO + GEO COMBINED */}
       {/* ========================================== */}
       <Helmet>
-        {/* ===== SEO TAGS ===== */}
         <title>{productTitle}</title>
         <meta name="description" content={productDescription} />
         <meta name="keywords" content={`${project.title}, ${project.category} software, enterprise software, business solution, software for businesses, ${project.category} system India, Krynova Technologies product`} />
         <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
         <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large" />
-        
-        {/* ✅ Canonical Tag */}
         <link rel="canonical" href={`${siteUrl}/products/${project.id}`} />
-        
-        {/* ===== GEO TAGS - Local Targeting ===== */}
         <meta name="geo.region" content="IN-UP" />
         <meta name="geo.placename" content="Agra" />
         <meta name="geo.position" content="27.1767;78.0081" />
@@ -282,17 +323,11 @@ const ProductDetail = () => {
         <meta name="areaServed" content={indianCities.join(", ")} />
         <meta name="serviceArea" content={`India, ${globalCountries.join(", ")}, Worldwide`} />
         <meta name="coverage" content="Global, National, Local" />
-        
-        {/* ===== GEO TAGS - All Indian Cities ===== */}
         <meta name="targetedCities" content={indianCities.join(", ")} />
         <meta name="targetedStates" content="Uttar Pradesh, Delhi, Maharashtra, Karnataka, Tamil Nadu, Telangana, West Bengal, Gujarat, Rajasthan, Punjab, Haryana, Madhya Pradesh, Bihar, Odisha, Kerala, Andhra Pradesh, Jharkhand, Chhattisgarh, Uttarakhand, Himachal Pradesh, Goa, Assam, Jammu & Kashmir" />
         <meta name="targetedCountries" content={globalCountries.join(", ")} />
-        
-        {/* ===== GEO TAGS - Multi-language ===== */}
         <meta name="language" content="en, hi, bn, te, ta, ur, gu, mr, kn, ml, pa" />
         <meta name="locales" content="en_IN, hi_IN, bn_IN, te_IN, ta_IN, ur_IN, gu_IN, mr_IN, kn_IN, ml_IN, pa_IN" />
-        
-        {/* ===== AEO TAGS - Answer Engine Optimization ===== */}
         <meta name="question" content={`What is ${project.title} software?`} />
         <meta name="answer" content={`${project.title} is an enterprise software solution by Krynova Technologies for ${project.category} management. It helps businesses streamline their operations and improve efficiency.`} />
         <meta name="faq" content="true" />
@@ -301,14 +336,10 @@ const ProductDetail = () => {
         <meta name="speakable-css" content=".speakable" />
         <meta name="voice-search" content="true" />
         <meta name="voice-search-keywords" content={`${project.title}, ${project.category} software, enterprise solution, business software, Krynova product`} />
-        
-        {/* ===== AEO - Rich Snippets ===== */}
         <meta name="rich-snippet" content="product" />
         <meta name="structured-data" content="true" />
         <meta name="product-category" content={project.category} />
         <meta name="product-status" content={project.is_upcoming ? 'Upcoming' : 'Active'} />
-        
-        {/* ===== Open Graph ===== */}
         <meta property="og:title" content={productTitle} />
         <meta property="og:description" content={productDescription} />
         <meta property="og:url" content={`${siteUrl}/products/${project.id}`} />
@@ -318,8 +349,6 @@ const ProductDetail = () => {
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         <meta property="og:locale" content="en_IN" />
-        
-        {/* ===== Twitter Card ===== */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={productTitle} />
         <meta name="twitter:description" content={productDescription} />
@@ -327,7 +356,7 @@ const ProductDetail = () => {
       </Helmet>
 
       {/* ========================================== */}
-      {/* ✅ AEO SPEAKABLE CONTENT */}
+      {/* AEO SPEAKABLE CONTENT */}
       {/* ========================================== */}
       <div className="speakable sr-only" aria-hidden="true">
         <h2>{project.title}</h2>
@@ -343,7 +372,7 @@ const ProductDetail = () => {
       </div>
 
       {/* ========================================== */}
-      {/* ✅ SCHEMA.ORG - Product Schema */}
+      {/* SCHEMA.ORG - Product Schema */}
       {/* ========================================== */}
       <script type="application/ld+json">
         {JSON.stringify({
@@ -391,50 +420,63 @@ const ProductDetail = () => {
       </script>
 
       {/* ========================================== */}
-      {/* MAIN CONTENT */}
+      {/* MAIN CONTENT - NEUMORPHISM + LIQUID GLASS */}
       {/* ========================================== */}
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-        {/* HERO BANNER */}
-        <div className={`bg-gradient-to-r ${getCategoryColor(project.category)} text-white relative overflow-hidden`}>
+      <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden">
+        {/* Liquid Glass Background Elements */}
+        <div className="fixed inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute top-0 -left-40 w-96 h-96 bg-blue-400/20 rounded-full filter blur-3xl animate-float"></div>
+          <div className="absolute bottom-0 -right-40 w-96 h-96 bg-purple-400/20 rounded-full filter blur-3xl animate-float-delayed"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full h-full bg-grid-pattern opacity-5"></div>
+        </div>
+
+        {/* HERO BANNER - Liquid Glass */}
+        <div 
+          className={`bg-gradient-to-r ${getCategoryColor(project.category)} text-white relative overflow-hidden`}
+          style={{
+            transform: `translate(${mousePosition.x * 0.02}px, ${mousePosition.y * 0.02}px)`,
+          }}
+        >
+          <div className="absolute inset-0 liquid-glass-hero"></div>
           <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl"></div>
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-white rounded-full blur-3xl"></div>
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-grid-pattern opacity-5"></div>
+            <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl animate-pulse"></div>
+            <div className="absolute bottom-0 left-0 w-64 h-64 bg-white rounded-full blur-3xl animate-pulse delay-1000"></div>
           </div>
           
           <div className="container mx-auto px-4 py-12 relative z-10">
             <div className="max-w-6xl mx-auto">
-              {/* Breadcrumb */}
+              {/* Breadcrumb - Neumorphic */}
               <nav className="flex items-center gap-2 text-blue-200 text-sm mb-6 flex-wrap">
-                <Link to="/" className="hover:text-white transition-colors">Home</Link>
-                <span>/</span>
-                <Link to="/products" className="hover:text-white transition-colors">Products</Link>
-                <span>/</span>
-                <span className="text-white font-medium">{project.title}</span>
+                <Link to="/" className="neumorphic-breadcrumb px-3 py-1.5 rounded-lg hover:text-white transition-colors">Home</Link>
+                <span className="text-blue-300">/</span>
+                <Link to="/products" className="neumorphic-breadcrumb px-3 py-1.5 rounded-lg hover:text-white transition-colors">Products</Link>
+                <span className="text-blue-300">/</span>
+                <span className="text-white font-medium neumorphic-breadcrumb-active px-3 py-1.5 rounded-lg">{project.title}</span>
               </nav>
 
               <div className="flex flex-wrap items-start gap-6">
-                {/* Icon */}
-                <div className="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center text-4xl backdrop-blur-sm border border-white/10 shadow-xl flex-shrink-0">
-                  <i className={`fas fa-${project.icon || 'cube'}`}></i>
+                {/* Icon - Neumorphic */}
+                <div className="neumorphic-icon-hero w-24 h-24 rounded-2xl flex items-center justify-center text-5xl flex-shrink-0 relative">
+                  <div className="absolute inset-0 liquid-glass-overlay rounded-2xl"></div>
+                  <i className={`fas fa-${project.icon || 'cube'} relative z-10`}></i>
                 </div>
                 
                 <div className="flex-1 min-w-[200px]">
                   <div className="flex flex-wrap items-center gap-3 mb-3">
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getCategoryBadgeColor(project.category)}`}>
+                    <span className={`neumorphic-badge px-4 py-1.5 rounded-full text-sm font-medium ${getCategoryBadgeColor(project.category)}`}>
                       {getCategoryIcon(project.category)} {project.category}
                     </span>
                     {project.is_upcoming && (
-                      <span className="bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full text-sm font-semibold flex items-center gap-1 animate-pulse">
+                      <span className="liquid-glass-badge bg-gradient-to-r from-yellow-400 to-orange-400 text-yellow-900 px-4 py-1.5 rounded-full text-sm font-semibold flex items-center gap-1 animate-pulse">
                         <FaRocket /> Upcoming
                       </span>
                     )}
                     {project.is_featured && (
-                      <span className="bg-gradient-to-r from-amber-400 to-orange-400 text-white px-3 py-1 rounded-full text-sm font-semibold flex items-center gap-1">
+                      <span className="liquid-glass-badge-featured px-4 py-1.5 rounded-full text-sm font-semibold flex items-center gap-1">
                         <FaStar /> Featured
                       </span>
                     )}
-                    <span className="bg-green-400/30 text-green-100 px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1">
+                    <span className="liquid-glass-badge-active px-4 py-1.5 rounded-full text-sm font-medium flex items-center gap-1">
                       <FaCheckCircle /> Active
                     </span>
                   </div>
@@ -443,40 +485,40 @@ const ProductDetail = () => {
                     {project.short_desc || project.description?.substring(0, 150) + '...'}
                   </p>
                   <div className="flex flex-wrap gap-2 mt-3">
-                    <span className="inline-flex items-center gap-1 bg-white/10 px-2 py-0.5 rounded-full text-xs">
+                    <span className="liquid-glass-tag-small inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs">
                       <FaMapPin className="text-yellow-400" /> {indianCities.length}+ Indian Cities
                     </span>
-                    <span className="inline-flex items-center gap-1 bg-white/10 px-2 py-0.5 rounded-full text-xs">
+                    <span className="liquid-glass-tag-small inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs">
                       <FaGlobe className="text-yellow-400" /> {globalCountries.length}+ Countries
                     </span>
                   </div>
                 </div>
 
-                {/* Action Buttons */}
+                {/* Action Buttons - Neumorphic */}
                 <div className="flex flex-wrap gap-2">
                   <button 
                     onClick={() => setIsLiked(!isLiked)}
-                    className={`p-3 rounded-xl transition-all duration-300 ${
-                      isLiked ? 'bg-red-500 text-white' : 'bg-white/20 hover:bg-white/30 text-white'
+                    className={`neumorphic-action-btn p-3 rounded-xl transition-all duration-300 ${
+                      isLiked ? 'text-red-500' : 'text-white'
                     }`}
                   >
                     <FaHeart className={isLiked ? 'animate-pulse' : ''} />
                   </button>
                   <button 
                     onClick={() => setIsBookmarked(!isBookmarked)}
-                    className={`p-3 rounded-xl transition-all duration-300 ${
-                      isBookmarked ? 'bg-blue-500 text-white' : 'bg-white/20 hover:bg-white/30 text-white'
+                    className={`neumorphic-action-btn p-3 rounded-xl transition-all duration-300 ${
+                      isBookmarked ? 'text-blue-400' : 'text-white'
                     }`}
                   >
                     <FaBookmark />
                   </button>
-                  <button className="p-3 bg-white/20 hover:bg-white/30 rounded-xl transition-all duration-300 text-white">
+                  <button className="neumorphic-action-btn p-3 rounded-xl transition-all duration-300 text-white">
                     <FaShare />
                   </button>
                 </div>
               </div>
 
-              {/* Stats */}
+              {/* Stats - Liquid Glass */}
               <div className="flex flex-wrap gap-4 mt-6">
                 <StatBadge icon={FaEye} label="Views" value="1.2K" />
                 <StatBadge icon={FaThumbsUp} label="Likes" value="89" />
@@ -488,35 +530,31 @@ const ProductDetail = () => {
         </div>
 
         {/* MAIN CONTENT */}
-        <div className="container mx-auto px-4 py-8 max-w-6xl">
+        <div className="container mx-auto px-4 py-8 max-w-6xl relative z-10">
           <div className="grid lg:grid-cols-3 gap-8">
             {/* Left Column - Main Content */}
             <div className="lg:col-span-2">
-              {/* Tabs */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-1 mb-6 flex flex-wrap gap-1">
+              {/* Tabs - Neumorphic */}
+              <div className="neumorphic-tabs p-1.5 rounded-xl mb-6 flex flex-wrap gap-1">
                 {[
                   { id: 'overview', label: 'Overview', icon: FaInfoCircle },
                   { id: 'features', label: 'Features', icon: FaList },
                   { id: 'tech', label: 'Tech Stack', icon: FaCode },
                   { id: 'reviews', label: 'Reviews', icon: FaComment }
                 ].map((tab) => (
-                  <button
+                  <TabButton
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex-1 min-w-[100px] px-4 py-2.5 rounded-lg font-medium transition-all duration-300 flex items-center justify-center gap-2 ${
-                      activeTab === tab.id
-                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/25'
-                        : 'text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    <tab.icon className="text-sm" />
-                    {tab.label}
-                  </button>
+                    id={tab.id}
+                    label={tab.label}
+                    icon={tab.icon}
+                    active={activeTab}
+                    onClick={setActiveTab}
+                  />
                 ))}
               </div>
 
-              {/* Tab Content */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              {/* Tab Content - Liquid Glass */}
+              <div className="liquid-glass-content rounded-xl p-6">
                 {/* Overview Tab */}
                 {activeTab === 'overview' && (
                   <div className="space-y-6">
@@ -525,13 +563,13 @@ const ProductDetail = () => {
                       <p className="text-gray-600 leading-relaxed">{project.description}</p>
                     </div>
 
-                    {/* Video Section */}
+                    {/* Video Section - Neumorphic */}
                     {project.video_url && (
                       <div>
                         <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
                           <FaVideo className="text-blue-600" /> Product Demo
                         </h4>
-                        <div className="relative aspect-video bg-gray-900 rounded-xl overflow-hidden shadow-lg">
+                        <div className="neumorphic-video-container relative aspect-video rounded-xl overflow-hidden shadow-xl">
                           {showVideo ? (
                             <iframe 
                               src={project.video_url} 
@@ -545,8 +583,8 @@ const ProductDetail = () => {
                               className="w-full h-full flex flex-col items-center justify-center text-white cursor-pointer group bg-gradient-to-br from-gray-800 to-gray-900"
                               onClick={() => setShowVideo(true)}
                             >
-                              <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center group-hover:bg-white/30 transition-all duration-300 backdrop-blur-sm">
-                                <FaPlay className="text-4xl group-hover:scale-110 transition-transform" />
+                              <div className="neumorphic-play-btn w-20 h-20 rounded-full flex items-center justify-center group-hover:scale-110 transition-all duration-500">
+                                <FaPlay className="text-3xl group-hover:scale-110 transition-transform" />
                               </div>
                               <p className="text-sm opacity-70 mt-4">Click to play demo video</p>
                             </div>
@@ -555,14 +593,14 @@ const ProductDetail = () => {
                       </div>
                     )}
 
-                    {/* Quick Actions */}
-                    <div className="flex flex-wrap gap-4 pt-4 border-t border-gray-100">
+                    {/* Quick Actions - Neumorphic */}
+                    <div className="flex flex-wrap gap-4 pt-4 border-t border-gray-200">
                       {project.demo_url && (
                         <a 
                           href={project.demo_url} 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/40"
+                          className="neumorphic-btn-primary px-6 py-3 rounded-xl font-medium inline-flex items-center gap-2"
                         >
                           <FaExternalLinkAlt /> Launch Demo
                         </a>
@@ -572,14 +610,14 @@ const ProductDetail = () => {
                           href={project.github_url} 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 bg-gray-800 text-white px-6 py-3 rounded-lg hover:bg-gray-900 transition-all duration-300 shadow-lg shadow-gray-500/25"
+                          className="neumorphic-btn-github px-6 py-3 rounded-xl font-medium inline-flex items-center gap-2"
                         >
                           <FaGithub /> View on GitHub
                         </a>
                       )}
                       <Link 
                         to="/contact"
-                        className="inline-flex items-center gap-2 border-2 border-blue-600 text-blue-600 px-6 py-3 rounded-lg hover:bg-blue-50 transition-all duration-300"
+                        className="neumorphic-btn-secondary px-6 py-3 rounded-xl font-medium inline-flex items-center gap-2 border-2 border-blue-600"
                       >
                         Request Demo
                       </Link>
@@ -594,14 +632,16 @@ const ProductDetail = () => {
                     {features.length > 0 ? (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {features.map((feature, i) => (
-                          <div key={i} className="flex items-start gap-3 bg-gray-50 p-3 rounded-lg hover:bg-blue-50 transition-colors group">
-                            <FaCheckCircle className="text-green-500 mt-0.5 flex-shrink-0 group-hover:scale-110 transition-transform" />
-                            <span className="text-gray-700">{feature}</span>
+                          <div key={i} className="neumorphic-feature-item p-3 rounded-lg group">
+                            <div className="flex items-start gap-3">
+                              <FaCheckCircle className="text-green-500 mt-0.5 flex-shrink-0 group-hover:scale-110 transition-transform" />
+                              <span className="text-gray-700">{feature}</span>
+                            </div>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <p className="text-gray-500 bg-gray-50 p-6 rounded-lg text-center">
+                      <p className="text-gray-500 neumorphic-empty-state p-6 rounded-lg text-center">
                         No features listed for this product.
                       </p>
                     )}
@@ -615,13 +655,13 @@ const ProductDetail = () => {
                     {techStack.length > 0 ? (
                       <div className="flex flex-wrap gap-3">
                         {techStack.map((tech, i) => (
-                          <span key={i} className="px-4 py-2 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:border-blue-300 hover:shadow-md transition-all">
+                          <span key={i} className="neumorphic-tech-tag px-4 py-2 rounded-xl text-sm font-medium text-gray-700">
                             {tech}
                           </span>
                         ))}
                       </div>
                     ) : (
-                      <p className="text-gray-500 bg-gray-50 p-6 rounded-lg text-center">
+                      <p className="text-gray-500 neumorphic-empty-state p-6 rounded-lg text-center">
                         No tech stack information available.
                       </p>
                     )}
@@ -632,8 +672,8 @@ const ProductDetail = () => {
                 {activeTab === 'reviews' && (
                   <div>
                     <h3 className="text-xl font-bold text-gray-900 mb-4">User Reviews</h3>
-                    <div className="text-center py-8">
-                      <div className="text-6xl mb-4">⭐</div>
+                    <div className="neumorphic-empty-state p-8 rounded-xl text-center">
+                      <div className="text-6xl mb-4 animate-bounce">⭐</div>
                       <p className="text-gray-500">No reviews yet. Be the first to review this product!</p>
                       <Link 
                         to="/contact"
@@ -646,21 +686,21 @@ const ProductDetail = () => {
                 )}
               </div>
 
-              {/* Related Projects */}
+              {/* Related Projects - Neumorphic */}
               {relatedProjects.length > 0 && (
                 <div className="mt-8">
                   <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                     <FaArrowRight className="text-blue-600" /> Related Products
                   </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {relatedProjects.map((related) => (
                       <Link 
                         key={related.id}
                         to={`/products/${related.id}`}
-                        className="bg-white rounded-xl p-4 hover:shadow-xl transition-all duration-300 group border border-gray-100 hover:border-blue-200"
+                        className="neumorphic-related-card p-4 rounded-xl group transition-all duration-500"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg flex items-center justify-center text-blue-600 text-xl group-hover:scale-110 transition-transform">
+                          <div className="neumorphic-related-icon w-12 h-12 rounded-xl flex items-center justify-center text-blue-600 text-xl group-hover:scale-110 transition-transform">
                             <i className={`fas fa-${related.icon || 'cube'}`}></i>
                           </div>
                           <div className="flex-1 min-w-0">
@@ -670,7 +710,7 @@ const ProductDetail = () => {
                             <div className="flex items-center gap-2">
                               <span className="text-xs text-gray-500">{related.category}</span>
                               {related.is_upcoming && (
-                                <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">Upcoming</span>
+                                <span className="text-xs liquid-glass-tag-small px-2 py-0.5 rounded-full">Upcoming</span>
                               )}
                             </div>
                           </div>
@@ -685,41 +725,29 @@ const ProductDetail = () => {
 
             {/* Right Column - Sidebar */}
             <div className="space-y-6">
-              {/* Quick Info Card */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              {/* Quick Info - Neumorphic */}
+              <div className="neumorphic-sidebar-card p-6">
                 <h4 className="font-semibold text-gray-900 mb-4">Quick Info</h4>
                 <div className="space-y-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Category</span>
-                    <span className="font-medium text-gray-900">{project.category}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Status</span>
-                    <span className={`font-medium ${project.is_upcoming ? 'text-yellow-600' : 'text-green-600'}`}>
-                      {project.is_upcoming ? 'Upcoming' : 'Active'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Priority</span>
-                    <span className="font-medium text-gray-900">{project.priority || 'Standard'}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Created</span>
-                    <span className="font-medium text-gray-900">
-                      {project.created_at ? new Date(project.created_at).toLocaleDateString() : 'N/A'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Service Area</span>
-                    <span className="font-medium text-gray-900 text-right">{indianCities.length}+ Cities</span>
-                  </div>
+                  {[
+                    { label: 'Category', value: project.category },
+                    { label: 'Status', value: project.is_upcoming ? 'Upcoming' : 'Active', color: project.is_upcoming ? 'text-yellow-600' : 'text-green-600' },
+                    { label: 'Priority', value: project.priority || 'Standard' },
+                    { label: 'Created', value: project.created_at ? new Date(project.created_at).toLocaleDateString() : 'N/A' },
+                    { label: 'Service Area', value: `${indianCities.length}+ Cities` }
+                  ].map((item, i) => (
+                    <div key={i} className="flex justify-between text-sm py-1 border-b border-gray-100 last:border-0">
+                      <span className="text-gray-500">{item.label}</span>
+                      <span className={`font-medium ${item.color || 'text-gray-900'}`}>{item.value}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              {/* Rating Card */}
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
+              {/* Rating - Liquid Glass */}
+              <div className="liquid-glass-rating rounded-xl p-6">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="text-3xl">⭐</div>
+                  <div className="text-4xl animate-pulse">⭐</div>
                   <div>
                     <div className="text-2xl font-bold text-gray-900">4.8/5</div>
                     <div className="flex text-yellow-400 text-sm">
@@ -738,51 +766,360 @@ const ProductDetail = () => {
                 </Link>
               </div>
 
-              {/* CTA Card */}
-              <div className="bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl p-6 text-white">
-                <div className="text-3xl mb-3">🚀</div>
-                <h4 className="text-lg font-bold mb-2">Ready to Get Started?</h4>
-                <p className="text-blue-100 text-sm mb-4">
-                  Schedule a personalized demo and see how this solution can transform your business.
-                </p>
-                <Link 
-                  to="/contact"
-                  className="block text-center bg-white text-blue-600 px-4 py-2.5 rounded-lg font-semibold hover:shadow-lg transition-all duration-300"
-                >
-                  Request Demo
-                </Link>
+              {/* CTA - Liquid Glass Gradient */}
+              <div className="liquid-glass-cta-card rounded-xl p-6 text-white relative overflow-hidden">
+                <div className="absolute inset-0 liquid-glass-overlay"></div>
+                <div className="relative z-10">
+                  <div className="text-4xl mb-3 animate-bounce">🚀</div>
+                  <h4 className="text-lg font-bold mb-2">Ready to Get Started?</h4>
+                  <p className="text-blue-100 text-sm mb-4">
+                    Schedule a personalized demo and see how this solution can transform your business.
+                  </p>
+                  <Link 
+                    to="/contact"
+                    className="block text-center neumorphic-cta-btn px-4 py-2.5 rounded-xl font-semibold transition-all duration-300"
+                  >
+                    Request Demo
+                  </Link>
+                </div>
               </div>
 
-              {/* Share Card */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              {/* Share - Neumorphic */}
+              <div className="neumorphic-sidebar-card p-6">
                 <h4 className="font-semibold text-gray-900 mb-3">Share This Product</h4>
                 <div className="flex gap-2">
-                  <button className="flex-1 p-2 bg-blue-50 rounded-lg text-blue-600 hover:bg-blue-600 hover:text-white transition-all duration-300">
-                    <FaLink />
-                  </button>
-                  <button className="flex-1 p-2 bg-blue-50 rounded-lg text-blue-600 hover:bg-blue-600 hover:text-white transition-all duration-300">
-                    <FaTwitter />
-                  </button>
-                  <button className="flex-1 p-2 bg-blue-50 rounded-lg text-blue-600 hover:bg-blue-600 hover:text-white transition-all duration-300">
-                    <FaLinkedin />
-                  </button>
-                  <button className="flex-1 p-2 bg-blue-50 rounded-lg text-blue-600 hover:bg-blue-600 hover:text-white transition-all duration-300">
-                    <FaWhatsapp />
-                  </button>
+                  {[FaLink, FaTwitter, FaLinkedin, FaWhatsapp].map((Icon, i) => (
+                    <button key={i} className="neumorphic-share-btn flex-1 p-2.5 rounded-xl transition-all duration-300">
+                      <Icon />
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* CSS Animations */}
+        {/* CSS Animations & Styles */}
         <style dangerouslySetInnerHTML={{ __html: `
+          /* ========================================== */
+          /* NEUMORPHISM STYLES */
+          /* ========================================== */
+          .neumorphic-card {
+            background: #e8edf2;
+            box-shadow: 20px 20px 60px #c5cace, -20px -20px 60px #ffffff;
+            border-radius: 2rem;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+          .neumorphic-card:hover {
+            box-shadow: 25px 25px 70px #c5cace, -25px -25px 70px #ffffff;
+          }
+
+          .neumorphic-spinner {
+            background: #e8edf2;
+            box-shadow: 10px 10px 30px #c5cace, -10px -10px 30px #ffffff;
+            border-radius: 50%;
+            animation: spin 1.5s linear infinite;
+          }
+
+          .neumorphic-card-feature {
+            background: #e8edf2;
+            box-shadow: 8px 8px 16px #c5cace, -8px -8px 16px #ffffff;
+            border-radius: 0.75rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+          .neumorphic-card-feature:hover {
+            box-shadow: 4px 4px 8px #c5cace, -4px -4px 8px #ffffff;
+            transform: scale(0.98);
+          }
+
+          .neumorphic-icon-box {
+            background: #e8edf2;
+            box-shadow: 6px 6px 12px #c5cace, -6px -6px 12px #ffffff;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+          .neumorphic-icon-box:hover {
+            box-shadow: 3px 3px 6px #c5cace, -3px -3px 6px #ffffff;
+          }
+
+          .neumorphic-tabs {
+            background: #e8edf2;
+            box-shadow: inset 4px 4px 8px #c5cace, inset -4px -4px 8px #ffffff;
+          }
+
+          .neumorphic-tab-active {
+            background: linear-gradient(145deg, #2563eb, #1d4ed8);
+            box-shadow: 8px 8px 16px #c5cace, -8px -8px 16px #ffffff,
+                        inset 0 2px 4px rgba(255,255,255,0.2);
+            color: white;
+          }
+
+          .neumorphic-tab-inactive {
+            background: transparent;
+            box-shadow: none;
+          }
+
+          .neumorphic-btn-primary {
+            background: linear-gradient(145deg, #2563eb, #1d4ed8);
+            box-shadow: 8px 8px 16px #c5cace, -8px -8px 16px #ffffff,
+                        inset 0 2px 4px rgba(255,255,255,0.2);
+            color: white;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+          .neumorphic-btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 12px 12px 24px #c5cace, -12px -12px 24px #ffffff;
+          }
+
+          .neumorphic-btn-secondary {
+            background: #e8edf2;
+            box-shadow: 8px 8px 16px #c5cace, -8px -8px 16px #ffffff;
+            color: #2563eb;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+          .neumorphic-btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 12px 12px 24px #c5cace, -12px -12px 24px #ffffff;
+          }
+
+          .neumorphic-btn-github {
+            background: #24292e;
+            box-shadow: 8px 8px 16px #c5cace, -8px -8px 16px #ffffff;
+            color: white;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+          .neumorphic-btn-github:hover {
+            transform: translateY(-2px);
+            box-shadow: 12px 12px 24px #c5cace, -12px -12px 24px #ffffff;
+          }
+
+          .neumorphic-action-btn {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            box-shadow: 4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px rgba(255,255,255,0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+          .neumorphic-action-btn:hover {
+            background: rgba(255,255,255,0.2);
+            transform: scale(1.05);
+          }
+
+          .neumorphic-badge {
+            background: #e8edf2;
+            box-shadow: 4px 4px 8px #c5cace, -4px -4px 8px #ffffff;
+          }
+
+          .neumorphic-breadcrumb {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+          .neumorphic-breadcrumb:hover {
+            background: rgba(255,255,255,0.2);
+          }
+
+          .neumorphic-breadcrumb-active {
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+          }
+
+          .neumorphic-icon-hero {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(20px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.3);
+          }
+
+          .neumorphic-feature-item {
+            background: #e8edf2;
+            box-shadow: 4px 4px 8px #c5cace, -4px -4px 8px #ffffff;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+          .neumorphic-feature-item:hover {
+            box-shadow: 2px 2px 4px #c5cace, -2px -2px 4px #ffffff;
+            transform: scale(0.98);
+          }
+
+          .neumorphic-tech-tag {
+            background: #e8edf2;
+            box-shadow: 4px 4px 8px #c5cace, -4px -4px 8px #ffffff;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+          .neumorphic-tech-tag:hover {
+            box-shadow: 2px 2px 4px #c5cace, -2px -2px 4px #ffffff;
+            transform: translateY(-2px);
+          }
+
+          .neumorphic-empty-state {
+            background: #e8edf2;
+            box-shadow: inset 4px 4px 8px #c5cace, inset -4px -4px 8px #ffffff;
+          }
+
+          .neumorphic-related-card {
+            background: #e8edf2;
+            box-shadow: 6px 6px 12px #c5cace, -6px -6px 12px #ffffff;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+          .neumorphic-related-card:hover {
+            box-shadow: 10px 10px 20px #c5cace, -10px -10px 20px #ffffff;
+            transform: translateY(-2px);
+          }
+
+          .neumorphic-related-icon {
+            background: #e8edf2;
+            box-shadow: 4px 4px 8px #c5cace, -4px -4px 8px #ffffff;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+
+          .neumorphic-sidebar-card {
+            background: #e8edf2;
+            box-shadow: 10px 10px 20px #c5cace, -10px -10px 20px #ffffff;
+            border-radius: 1rem;
+          }
+
+          .neumorphic-share-btn {
+            background: #e8edf2;
+            box-shadow: 4px 4px 8px #c5cace, -4px -4px 8px #ffffff;
+            color: #2563eb;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+          .neumorphic-share-btn:hover {
+            box-shadow: 2px 2px 4px #c5cace, -2px -2px 4px #ffffff;
+            transform: scale(0.95);
+          }
+
+          .neumorphic-play-btn {
+            background: #e8edf2;
+            box-shadow: 10px 10px 20px rgba(0,0,0,0.3), -10px -10px 20px rgba(255,255,255,0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+          .neumorphic-play-btn:hover {
+            box-shadow: 15px 15px 30px rgba(0,0,0,0.4), -15px -15px 30px rgba(255,255,255,0.1);
+          }
+
+          .neumorphic-video-container {
+            background: #1a1a2e;
+            box-shadow: 10px 10px 20px #c5cace, -10px -10px 20px #ffffff;
+          }
+
+          .neumorphic-cta-btn {
+            background: white;
+            color: #2563eb;
+            box-shadow: 6px 6px 12px rgba(0,0,0,0.1), -6px -6px 12px rgba(255,255,255,0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+          .neumorphic-cta-btn:hover {
+            box-shadow: 10px 10px 20px rgba(0,0,0,0.15), -10px -10px 20px rgba(255,255,255,0.15);
+            transform: translateY(-2px);
+          }
+
+          /* ========================================== */
+          /* LIQUID GLASS STYLES */
+          /* ========================================== */
+          .liquid-glass-hero {
+            background: linear-gradient(135deg, 
+              rgba(255,255,255,0.15) 0%,
+              rgba(255,255,255,0.05) 50%,
+              rgba(255,255,255,0.15) 100%
+            );
+            pointer-events: none;
+          }
+
+          .liquid-glass-stat {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.3);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+          }
+
+          .liquid-glass-content {
+            background: rgba(255,255,255,0.4);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.3);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.05);
+          }
+
+          .liquid-glass-badge {
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.3);
+          }
+
+          .liquid-glass-badge-featured {
+            background: linear-gradient(135deg, rgba(251,191,36,0.3), rgba(251,146,60,0.3));
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+          }
+
+          .liquid-glass-badge-active {
+            background: rgba(52,211,153,0.2);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+          }
+
+          .liquid-glass-tag-small {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+          }
+
+          .liquid-glass-rating {
+            background: rgba(255,255,255,0.4);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.3);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.05);
+          }
+
+          .liquid-glass-cta-card {
+            background: linear-gradient(135deg, rgba(37,99,235,0.4), rgba(99,102,241,0.4));
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.3);
+            box-shadow: 0 8px 32px rgba(37,99,235,0.2);
+          }
+
+          .liquid-glass-overlay {
+            background: linear-gradient(135deg, 
+              rgba(255,255,255,0.2) 0%,
+              rgba(255,255,255,0) 50%,
+              rgba(255,255,255,0.2) 100%
+            );
+            pointer-events: none;
+          }
+
+          /* ========================================== */
+          /* ANIMATIONS */
+          /* ========================================== */
+          @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-30px); }
+          }
+          @keyframes floatDelayed {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-25px); }
+          }
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+
+          .animate-float { animation: float 6s ease-in-out infinite; }
+          .animate-float-delayed { animation: floatDelayed 7s ease-in-out infinite 1s; }
+
           .bg-grid-pattern {
             background-image: 
-              linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+              linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
             background-size: 50px 50px;
           }
+
           .sr-only {
             position: absolute;
             width: 1px;

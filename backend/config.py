@@ -3,10 +3,14 @@ import sqlite3
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+import time
+from contextlib import contextmanager
 
-load_dotenv()
+# Load .env from correct path
+env_path = Path(__file__).parent / '.env'
+load_dotenv(dotenv_path=env_path)
 
-# Database path - works both locally and on PythonAnywhere
+# Database path
 DB_PATH = os.path.join(os.path.dirname(__file__), 'nexora.db')
 
 # ============================================
@@ -14,8 +18,8 @@ DB_PATH = os.path.join(os.path.dirname(__file__), 'nexora.db')
 # ============================================
 
 # Razorpay Configuration
-RAZORPAY_KEY_ID = os.environ.get('RAZORPAY_KEY_ID', 'rzp_test_xxxxxxxxxxxx')
-RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET', 'xxxxxxxxxxxxxxxxxxxx')
+RAZORPAY_KEY_ID = os.environ.get('RAZORPAY_KEY_ID', '')
+RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET', '')
 
 # Stripe Configuration (optional)
 STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY', '')
@@ -24,7 +28,7 @@ STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
 # Plan prices (in paise for Razorpay)
 PLANS = {
     'monthly': {
-        'amount': 9900,  # ₹99 in paise
+        'amount': 9900,
         'name': 'Monthly',
         'price': '₹99',
         'features': [
@@ -38,7 +42,7 @@ PLANS = {
         ]
     },
     'yearly': {
-        'amount': 99900,  # ₹999 in paise
+        'amount': 99900,
         'name': 'Yearly',
         'price': '₹999',
         'features': [
@@ -53,29 +57,52 @@ PLANS = {
 }
 
 # ============================================
-# DATABASE FUNCTIONS
+# DATABASE FUNCTIONS - FIXED
 # ============================================
 
+@contextmanager
 def get_db():
-    """Get SQLite database connection"""
-    conn = sqlite3.connect(DB_PATH)
+    """Get database connection with proper error handling"""
+    conn = None
+    try:
+        # ✅ Use timeout to avoid locking
+        conn = sqlite3.connect(DB_PATH, timeout=30)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")  # ✅ Better concurrency
+        conn.execute("PRAGMA foreign_keys=ON")
+        conn.execute("PRAGMA busy_timeout = 30000")  # ✅ 30 second timeout
+        yield conn
+        conn.commit()
+    except sqlite3.Error as e:
+        if conn:
+            conn.rollback()
+        print(f"❌ Database error: {e}")
+        raise
+    finally:
+        if conn:
+            conn.close()
+
+def get_db_connection():
+    """Legacy function for backward compatibility"""
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
+    conn.execute("PRAGMA busy_timeout = 30000")
     return conn
 
 def init_db():
     """Initialize database tables"""
-    conn = get_db()
+    conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Users table - ADDED premium fields
+    # Users table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             email TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
+            password TEXT,
             role TEXT DEFAULT 'user',
             is_premium INTEGER DEFAULT 0,
             premium_since TIMESTAMP,
@@ -101,7 +128,7 @@ def init_db():
                 cursor.execute(f"ALTER TABLE users ADD COLUMN {col} TIMESTAMP")
             print(f"✅ Added '{col}' column to users")
     
-    # Payments table - NEW
+    # Payments table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS payments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -119,7 +146,7 @@ def init_db():
         )
     ''')
     
-    # Projects table (existing)
+    # Projects table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS projects (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -144,7 +171,7 @@ def init_db():
         )
     ''')
     
-    # Testimonials table (existing)
+    # Testimonials table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS testimonials (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -159,7 +186,7 @@ def init_db():
         )
     ''')
     
-    # Contacts table (existing)
+    # Contacts table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS contacts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -200,13 +227,11 @@ def init_db():
     print("✅ Database ready!")
 
 def insert_sample_data(conn):
-    """Insert sample data"""
     import bcrypt
     import json
     
     cursor = conn.cursor()
     
-    # Sample projects
     projects = [
         ('HRMS System', 'HRMS', 'Complete human resource management system with payroll, attendance tracking, employee self-service, leave management, and performance reviews.',
          'Manage your workforce efficiently', '/demos/hrms', 
@@ -246,7 +271,6 @@ def insert_sample_data(conn):
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', project)
     
-    # Sample testimonials
     testimonials = [
         ('Rahul Sharma', 'TechSolutions Pvt Ltd', '',
          'Krynova delivered an incredible HRMS system that transformed our workforce management. Highly recommended!', 
@@ -268,8 +292,6 @@ def insert_sample_data(conn):
             VALUES (?, ?, ?, ?, ?, ?)
         ''', testimonial)
     
-    # Default admin user
-    import bcrypt
     hashed = bcrypt.hashpw('admin123'.encode('utf-8'), bcrypt.gensalt())
     cursor.execute('''
         INSERT INTO users (name, email, password, role, is_premium)

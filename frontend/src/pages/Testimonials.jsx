@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { api } from '../utils/api';
 import axios from 'axios';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FaStar, 
   FaUser, 
@@ -45,29 +46,114 @@ import {
   FaSearchLocation,
   FaMapPin,
   FaCity,
-  FaFlag
+  FaFlag,
+  FaMoon,
+  FaSun,
+  FaBars,
+  FaTextHeight,
+  FaPalette,
+  FaBorderAll,
+  FaLayerGroup,
+  FaCubes,
+  FaCube,
+  FaGem,
+  FaTools,
+  FaRocket
 } from 'react-icons/fa';
 
 // ============================================
-// LOADING SKELETON
+// CONTROLS PANEL - Glassmorphism
+// ============================================
+
+const ControlsPanel = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem('darkMode');
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('darkMode', JSON.stringify(darkMode));
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [darkMode]);
+
+  return (
+    <div className="fixed bottom-6 right-6 z-50">
+      <motion.button
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-14 h-14 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-2xl shadow-blue-500/30 hover:shadow-blue-500/50 transition-all duration-300 flex items-center justify-center backdrop-blur-xl border border-white/20"
+      >
+        {isOpen ? (
+          <FaTimes className="text-2xl" />
+        ) : (
+          <FaBars className="text-2xl" />
+        )}
+      </motion.button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 20 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="absolute bottom-20 right-0 p-4 rounded-2xl min-w-[200px] bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border border-white/20 dark:border-white/5 shadow-2xl"
+          >
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Theme</span>
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setDarkMode(!darkMode)}
+                  className="p-2 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                >
+                  {darkMode ? <FaSun className="text-yellow-400 text-lg" /> : <FaMoon className="text-white text-lg" />}
+                </motion.button>
+              </div>
+
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setIsOpen(false)}
+                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                Close
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+// ============================================
+// LOADING SKELETON - Glassmorphism
 // ============================================
 const TestimonialSkeleton = () => (
-  <div className="bg-white rounded-2xl shadow-lg p-6 animate-pulse">
+  <div className="glass-card p-6 animate-pulse">
     <div className="flex items-center gap-4 mb-4">
-      <div className="w-14 h-14 bg-gray-200 rounded-full"></div>
+      <div className="w-14 h-14 rounded-full bg-gray-200 dark:bg-gray-700"></div>
       <div className="flex-1">
-        <div className="h-5 bg-gray-200 rounded w-3/4 mb-2"></div>
-        <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+        <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
       </div>
     </div>
-    <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
-    <div className="h-4 bg-gray-200 rounded w-5/6 mb-2"></div>
-    <div className="h-4 bg-gray-200 rounded w-4/6"></div>
+    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full mb-2"></div>
+    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6 mb-2"></div>
+    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-4/6"></div>
   </div>
 );
 
 // ============================================
-// TESTIMONIAL CARD COMPONENT
+// TESTIMONIAL CARD - Glassmorphism + Neumorphism
 // ============================================
 const TestimonialCard = ({ testimonial, index, onShare }) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -79,64 +165,89 @@ const TestimonialCard = ({ testimonial, index, onShare }) => {
 
   const getRandomColor = (name) => {
     const colors = [
-      'from-blue-500 to-blue-700',
-      'from-green-500 to-green-700',
-      'from-purple-500 to-purple-700',
-      'from-red-500 to-red-700',
+      'from-blue-500 to-cyan-500',
+      'from-green-500 to-emerald-500',
+      'from-purple-500 to-pink-500',
+      'from-red-500 to-orange-500',
       'from-yellow-500 to-orange-500',
-      'from-pink-500 to-pink-700',
-      'from-indigo-500 to-indigo-700',
-      'from-teal-500 to-teal-700'
+      'from-pink-500 to-rose-500',
+      'from-indigo-500 to-purple-500',
+      'from-teal-500 to-cyan-500'
     ];
     const index = name?.length % colors.length || 0;
     return colors[index];
   };
 
   return (
-    <div 
-      className={`bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 p-6 border border-gray-100 group relative animate-fade-in-up`}
-      style={{ animationDelay: `${index * 100}ms` }}
+    <motion.div 
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.1, duration: 0.5 }}
+      whileHover={{ y: -8, scale: 1.02 }}
+      className="glass-testimonial-card p-6 rounded-2xl border border-white/20 dark:border-white/5 relative group"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      {/* Liquid Glass Overlay */}
+      <div className="absolute inset-0 rounded-2xl liquid-glass-overlay pointer-events-none"></div>
+      
       {/* Quote Icon */}
-      <div className="absolute top-4 right-4 text-4xl text-blue-100 opacity-50 group-hover:opacity-100 transition-opacity duration-300">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0 }}
+        animate={{ opacity: 0.3, scale: 1 }}
+        transition={{ delay: index * 0.1 + 0.2 }}
+        className="absolute top-4 right-4 text-5xl text-blue-400/30 dark:text-blue-500/20 group-hover:scale-110 transition-transform duration-500"
+      >
         <FaQuoteRight />
-      </div>
+      </motion.div>
 
       {/* Share Button */}
       <div className="absolute top-4 right-16 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-        <button
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
           onClick={() => setShowShare(!showShare)}
-          className="p-2 bg-gray-100 hover:bg-blue-50 rounded-full transition-colors"
-          aria-label="Share testimonial"
+          className="neo-icon-btn p-2 rounded-xl"
         >
-          <FaShare className="text-gray-500 text-sm" />
-        </button>
+          <FaShare className="text-gray-500 dark:text-gray-400 text-sm" />
+        </motion.button>
       </div>
 
       {/* Share Dropdown */}
-      {showShare && (
-        <div className="absolute top-14 right-4 bg-white rounded-xl shadow-2xl p-2 z-10 animate-scale-in border border-gray-100">
-          <button className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 rounded-lg w-full transition text-sm">
-            <FaTwitter className="text-blue-400" /> Share on Twitter
-          </button>
-          <button className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 rounded-lg w-full transition text-sm">
-            <FaLinkedin className="text-blue-600" /> Share on LinkedIn
-          </button>
-          <button className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 rounded-lg w-full transition text-sm">
-            <FaWhatsapp className="text-green-500" /> Share on WhatsApp
-          </button>
-          <button className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 rounded-lg w-full transition text-sm">
-            <FaCopy className="text-gray-500" /> Copy Link
-          </button>
-        </div>
-      )}
+      <AnimatePresence>
+        {showShare && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8, y: -10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: -10 }}
+            className="absolute top-14 right-4 neo-dropdown p-2 rounded-xl z-10 min-w-[160px]"
+          >
+            {[
+              { icon: FaTwitter, color: 'text-blue-400', label: 'Twitter' },
+              { icon: FaLinkedin, color: 'text-blue-600', label: 'LinkedIn' },
+              { icon: FaWhatsapp, color: 'text-green-500', label: 'WhatsApp' },
+              { icon: FaCopy, color: 'text-gray-500', label: 'Copy Link' }
+            ].map((item, idx) => (
+              <motion.button
+                key={idx}
+                whileHover={{ x: 5 }}
+                className="flex items-center gap-2 px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg w-full transition text-sm text-gray-700 dark:text-gray-300"
+              >
+                <item.icon className={item.color} /> Share on {item.label}
+              </motion.button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Header */}
-      <div className="flex items-center gap-4 mb-4">
-        <div className="relative">
-          <div className={`w-14 h-14 bg-gradient-to-br ${getRandomColor(testimonial.client_name)} rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-500/25`}>
+      <div className="flex items-center gap-4 mb-4 relative z-10">
+        <motion.div 
+          whileHover={{ rotate: 360, scale: 1.1 }}
+          transition={{ duration: 0.6 }}
+          className="relative"
+        >
+          <div className={`w-14 h-14 bg-gradient-to-br ${getRandomColor(testimonial.client_name)} rounded-full flex items-center justify-center text-white font-bold text-xl shadow-2xl shadow-blue-500/25`}>
             {testimonial.client_image ? (
               <img 
                 src={testimonial.client_image} 
@@ -148,19 +259,23 @@ const TestimonialCard = ({ testimonial, index, onShare }) => {
             )}
           </div>
           {testimonial.is_approved && (
-            <div className="absolute -bottom-1 -right-1 bg-green-500 rounded-full p-1 border-2 border-white">
+            <motion.div 
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className="absolute -bottom-1 -right-1 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full p-1 border-2 border-white dark:border-gray-800"
+            >
               <FaCheckCircle className="text-white text-xs" />
-            </div>
+            </motion.div>
           )}
-        </div>
+        </motion.div>
         <div className="flex-1">
-          <h4 className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors duration-300">
+          <h4 className="font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300">
             {testimonial.client_name}
           </h4>
-          <div className="flex items-center gap-2 text-sm text-gray-500">
+          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
             {testimonial.client_company && (
               <>
-                <FaBuilding className="text-gray-400 text-xs" />
+                <FaBuilding className="text-gray-400 dark:text-gray-500 text-xs" />
                 <span>{testimonial.client_company}</span>
               </>
             )}
@@ -169,29 +284,35 @@ const TestimonialCard = ({ testimonial, index, onShare }) => {
       </div>
 
       {/* Rating */}
-      <div className="flex text-yellow-400 mb-3">
+      <div className="flex text-yellow-400 mb-3 relative z-10">
         {[...Array(5)].map((_, i) => (
-          <FaStar 
-            key={i} 
-            className={`transition-all duration-300 ${
-              i < testimonial.rating ? 'text-yellow-400 scale-100' : 'text-gray-200 scale-95'
-            }`}
-          />
+          <motion.div
+            key={i}
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: i * 0.05 }}
+          >
+            <FaStar 
+              className={`transition-all duration-300 ${
+                i < testimonial.rating ? 'text-yellow-400' : 'text-gray-200 dark:text-gray-600'
+              }`}
+            />
+          </motion.div>
         ))}
-        <span className="text-xs text-gray-400 ml-2">({testimonial.rating}/5)</span>
+        <span className="text-xs text-gray-400 dark:text-gray-500 ml-2">({testimonial.rating}/5)</span>
       </div>
 
       {/* Feedback */}
-      <div className="relative">
-        <FaQuoteLeft className="text-blue-200 text-sm absolute -top-1 -left-1 opacity-50" />
-        <p className="text-gray-600 text-sm leading-relaxed pl-4 line-clamp-4">
+      <div className="relative z-10">
+        <FaQuoteLeft className="text-blue-200 dark:text-blue-800 text-sm absolute -top-1 -left-1 opacity-50" />
+        <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed pl-4 line-clamp-4">
           "{testimonial.feedback}"
         </p>
       </div>
 
       {/* Footer */}
       {testimonial.created_at && (
-        <div className="mt-4 flex items-center justify-between text-xs text-gray-400 border-t border-gray-100 pt-4">
+        <div className="mt-4 flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 border-t border-gray-100 dark:border-gray-700 pt-4 relative z-10">
           <div className="flex items-center gap-2">
             <FaCalendarAlt />
             <span>{new Date(testimonial.created_at).toLocaleDateString('en-US', {
@@ -206,12 +327,12 @@ const TestimonialCard = ({ testimonial, index, onShare }) => {
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 };
 
 // ============================================
-// STAR RATING COMPONENT
+// STAR RATING - Neumorphism
 // ============================================
 const StarRating = ({ rating, onRatingChange }) => {
   const [hover, setHover] = useState(0);
@@ -219,47 +340,50 @@ const StarRating = ({ rating, onRatingChange }) => {
   return (
     <div className="flex gap-2">
       {[1, 2, 3, 4, 5].map((star) => (
-        <button
+        <motion.button
           key={star}
           type="button"
+          whileHover={{ scale: 1.2, rotate: 15 }}
+          whileTap={{ scale: 0.9 }}
           onClick={() => onRatingChange(star)}
           onMouseEnter={() => setHover(star)}
           onMouseLeave={() => setHover(0)}
-          className="transition-transform hover:scale-110 focus:outline-none"
+          className="focus:outline-none"
         >
           <FaStar 
-            className={`text-3xl transition-colors duration-200 ${
+            className={`text-3xl transition-all duration-200 ${
               star <= (hover || rating) 
-                ? 'text-yellow-400' 
-                : 'text-gray-200'
+                ? 'text-yellow-400 drop-shadow-lg' 
+                : 'text-gray-200 dark:text-gray-600'
             }`}
           />
-        </button>
+        </motion.button>
       ))}
     </div>
   );
 };
 
 // ============================================
-// STATISTICS CARD
+// STATISTICS CARD - Glassmorphism
 // ============================================
-const StatCard = ({ icon: Icon, value, label, color = 'blue' }) => {
-  const colors = {
-    blue: 'bg-blue-50 border-blue-200 text-blue-600',
-    green: 'bg-green-50 border-green-200 text-green-600',
-    yellow: 'bg-yellow-50 border-yellow-200 text-yellow-600',
-    purple: 'bg-purple-50 border-purple-200 text-purple-600'
-  };
-
-  return (
-    <div className={`${colors[color]} rounded-xl border p-4 text-center transition-all hover:shadow-md`}>
-      <div className="text-2xl font-bold">{value}</div>
-      <div className="text-sm text-gray-600 mt-1 flex items-center justify-center gap-1">
-        <Icon className="text-sm" /> {label}
-      </div>
+const StatCard = ({ icon: Icon, value, label, gradient = 'from-blue-500 to-cyan-500' }) => (
+  <motion.div 
+    whileHover={{ scale: 1.05, y: -5 }}
+    className="glass-stat-card p-4 rounded-xl text-center border border-white/20 dark:border-white/5"
+  >
+    <motion.div 
+      className={`text-3xl font-bold bg-gradient-to-r ${gradient} bg-clip-text text-transparent`}
+      initial={{ scale: 0 }}
+      animate={{ scale: 1 }}
+      transition={{ type: "spring", stiffness: 200 }}
+    >
+      {value}
+    </motion.div>
+    <div className="text-sm text-gray-600 dark:text-gray-400 mt-1 flex items-center justify-center gap-1">
+      <Icon className="text-sm" /> {label}
     </div>
-  );
-};
+  </motion.div>
+);
 
 // ============================================
 // MAIN TESTIMONIALS COMPONENT
@@ -282,10 +406,8 @@ const Testimonials = () => {
   const [sortOrder, setSortOrder] = useState('desc');
   const [showForm, setShowForm] = useState(false);
 
-  // ✅ Get current URL for canonical
   const siteUrl = window.location.origin;
 
-  // ✅ All major Indian cities for GEO targeting
   const indianCities = [
     "Agra", "Delhi", "Mumbai", "Bangalore", "Chennai", "Hyderabad", 
     "Pune", "Kolkata", "Ahmedabad", "Surat", "Jaipur", "Lucknow", 
@@ -299,7 +421,6 @@ const Testimonials = () => {
     "Dehradun", "Noida", "Gurugram", "Ghaziabad", "Faridabad"
   ];
 
-  // ✅ Global countries for international reach
   const globalCountries = [
     "USA", "UK", "Canada", "Australia", "UAE", "Singapore", 
     "Germany", "France", "Japan", "South Korea", "Netherlands", 
@@ -309,7 +430,6 @@ const Testimonials = () => {
     "Saudi Arabia", "Qatar", "Kuwait", "Bahrain", "Oman"
   ];
 
-  // Fetch testimonials
   useEffect(() => {
     const fetchTestimonials = async () => {
       try {
@@ -327,11 +447,9 @@ const Testimonials = () => {
     fetchTestimonials();
   }, []);
 
-  // Filter and sort testimonials
   const filteredTestimonials = useMemo(() => {
     let filtered = [...testimonials];
     
-    // Search
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase().trim();
       filtered = filtered.filter(t => 
@@ -341,7 +459,6 @@ const Testimonials = () => {
       );
     }
     
-    // Filter
     switch (filter) {
       case 'latest':
         filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -371,12 +488,11 @@ const Testimonials = () => {
     return filtered;
   }, [testimonials, filter, searchTerm, sortBy, sortOrder]);
 
-  // Handle form submit
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!form.client_name.trim() || !form.feedback.trim()) {
-      alert('Please fill in all required fields');
+      toast.error('Please fill in all required fields');
       return;
     }
 
@@ -393,15 +509,15 @@ const Testimonials = () => {
       
       const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/testimonials`);
       setTestimonials(response.data);
+      toast.success('🎉 Thank you for your feedback!');
     } catch (error) {
       console.error('Error submitting testimonial:', error);
-      alert(error.response?.data?.message || 'Error submitting feedback. Please try again.');
+      toast.error(error.response?.data?.message || 'Error submitting feedback. Please try again.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Statistics
   const totalTestimonials = testimonials.length;
   const averageRating = testimonials.length > 0 
     ? (testimonials.reduce((acc, t) => acc + t.rating, 0) / testimonials.length).toFixed(1)
@@ -411,72 +527,26 @@ const Testimonials = () => {
 
   return (
     <>
+      {/* Controls Panel */}
+      <ControlsPanel />
+
       {/* ========================================== */}
-      {/* ✅ HELMET - SEO + AEO + GEO COMBINED */}
+      {/* HELMET - SEO + AEO + GEO */}
       {/* ========================================== */}
       <Helmet>
-        {/* ===== SEO TAGS ===== */}
         <title>Client Testimonials - Krynova Technologies | 50+ Happy Clients in Agra, India | Global Reviews</title>
-        <meta name="description" content="Read what our clients say about Krynova Technologies - the best web development company in Agra, India. Real feedback from 50+ businesses across HRMS, Property Management, and custom solutions. Trusted by clients in all Indian cities and globally." />
-        <meta name="keywords" content="Krynova Technologies testimonials, client reviews, web development company Agra reviews, HRMS software reviews, property management system feedback, best software company India, client feedback, business solutions reviews, global client reviews, Indian business testimonials" />
-        <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
-        <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large" />
-        
-        {/* ✅ Canonical Tag */}
+        <meta name="description" content="Read what our clients say about Krynova Technologies - the best web development company in Agra, India. Real feedback from 50+ businesses across HRMS, Property Management, and custom solutions." />
+        <meta name="keywords" content="Krynova Technologies testimonials, client reviews, web development company Agra reviews, HRMS software reviews" />
         <link rel="canonical" href={`${siteUrl}/testimonials`} />
-        
-        {/* ===== GEO TAGS - Local Targeting ===== */}
         <meta name="geo.region" content="IN-UP" />
         <meta name="geo.placename" content="Agra" />
         <meta name="geo.position" content="27.1767;78.0081" />
         <meta name="ICBM" content="27.1767, 78.0081" />
-        <meta name="city" content="Agra" />
-        <meta name="state" content="Uttar Pradesh" />
-        <meta name="country" content="India" />
-        <meta name="areaServed" content={indianCities.join(", ")} />
-        <meta name="serviceArea" content={`India, ${globalCountries.join(", ")}, Worldwide`} />
-        <meta name="coverage" content="Global, National, Local" />
-        
-        {/* ===== GEO TAGS - All Indian Cities ===== */}
-        <meta name="targetedCities" content={indianCities.join(", ")} />
-        <meta name="targetedStates" content="Uttar Pradesh, Delhi, Maharashtra, Karnataka, Tamil Nadu, Telangana, West Bengal, Gujarat, Rajasthan, Punjab, Haryana, Madhya Pradesh, Bihar, Odisha, Kerala, Andhra Pradesh, Jharkhand, Chhattisgarh, Uttarakhand, Himachal Pradesh, Goa, Assam, Jammu & Kashmir" />
-        <meta name="targetedCountries" content={globalCountries.join(", ")} />
-        
-        {/* ===== GEO TAGS - Multi-language ===== */}
-        <meta name="language" content="en, hi, bn, te, ta, ur, gu, mr, kn, ml, pa" />
-        <meta name="locales" content="en_IN, hi_IN, bn_IN, te_IN, ta_IN, ur_IN, gu_IN, mr_IN, kn_IN, ml_IN, pa_IN" />
-        
-        {/* ===== AEO TAGS - Answer Engine Optimization ===== */}
-        <meta name="question" content="What do clients say about Krynova Technologies?" />
-        <meta name="answer" content="Krynova Technologies has 50+ happy clients with an average rating of 4.8/5. Clients praise our HRMS software, property management systems, and custom web solutions." />
-        <meta name="faq" content="true" />
-        <meta name="speakable" content="true" />
-        <meta name="speakable-type" content="text/html" />
-        <meta name="speakable-css" content=".speakable" />
-        <meta name="voice-search" content="true" />
-        <meta name="voice-search-keywords" content="Krynova reviews, client testimonials, HRMS feedback, web development reviews, best software company India" />
-        
-        {/* ===== AEO - Rich Snippets ===== */}
-        <meta name="rich-snippet" content="reviews" />
-        <meta name="structured-data" content="true" />
-        <meta name="reviewCount" content={totalTestimonials} />
-        <meta name="averageRating" content={averageRating} />
-        <meta name="bestRating" content="5" />
-        <meta name="worstRating" content="1" />
-        
-        {/* ===== Open Graph ===== */}
         <meta property="og:title" content="Client Testimonials - Krynova Technologies | 50+ Happy Clients" />
-        <meta property="og:description" content="Real feedback from 50+ happy clients about our web development and software solutions across India and globally." />
+        <meta property="og:description" content="Real feedback from 50+ happy clients about our web development and software solutions." />
         <meta property="og:url" content={`${siteUrl}/testimonials`} />
         <meta property="og:type" content="website" />
-        <meta property="og:site_name" content="Krynova Technologies" />
         <meta property="og:image" content={`${siteUrl}/logo.png`} />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
-        <meta property="og:locale" content="en_IN" />
-        <meta property="og:rich_attachment" content="true" />
-        
-        {/* ===== Twitter Card ===== */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Client Testimonials - Krynova Technologies | 50+ Happy Clients" />
         <meta name="twitter:description" content="Real feedback from 50+ happy clients about our web development and software solutions." />
@@ -484,26 +554,17 @@ const Testimonials = () => {
       </Helmet>
 
       {/* ========================================== */}
-      {/* ✅ AEO SPEAKABLE CONTENT */}
+      {/* AEO SPEAKABLE CONTENT */}
       {/* ========================================== */}
       <div className="speakable sr-only" aria-hidden="true">
         <h2>Krynova Technologies Client Testimonials</h2>
         <p>Krynova Technologies has 50+ happy clients with an average rating of 4.8 out of 5 stars. Clients praise our HRMS software, property management systems, and custom web solutions.</p>
         <p>Testimonials from businesses in Agra, Delhi, Mumbai, Bangalore, Hyderabad, Pune, Kolkata, and many other cities across India and globally.</p>
-        <ul>
-          <li>HRMS Software Reviews - Complete human resource management</li>
-          <li>Property Management System Reviews - Real estate management</li>
-          <li>Custom Web Solutions Reviews - Tailored business applications</li>
-          <li>WhatsApp Automation Reviews - Business communication</li>
-        </ul>
-        <p>Trusted by 50+ businesses worldwide.</p>
       </div>
 
       {/* ========================================== */}
-      {/* ✅ SCHEMA.ORG - SEO + AEO + GEO */}
+      {/* SCHEMA.ORG */}
       {/* ========================================== */}
-      
-      {/* 📝 Review Page Schema */}
       <script type="application/ld+json">
         {JSON.stringify({
           "@context": "https://schema.org",
@@ -511,16 +572,6 @@ const Testimonials = () => {
           "name": "Krynova Technologies Testimonials",
           "description": "Client reviews and feedback for Krynova Technologies - the best web development company in Agra, India.",
           "url": `${siteUrl}/testimonials`,
-          "publisher": {
-            "@type": "Organization",
-            "name": "Krynova Technologies",
-            "address": {
-              "@type": "PostalAddress",
-              "addressLocality": "Agra",
-              "addressRegion": "Uttar Pradesh",
-              "addressCountry": "India"
-            }
-          },
           "aggregateRating": {
             "@type": "AggregateRating",
             "ratingValue": averageRating || "4.8",
@@ -528,7 +579,6 @@ const Testimonials = () => {
             "bestRating": "5",
             "worstRating": "1"
           },
-          "inLanguage": ["en", "hi", "bn", "te", "ta", "ur", "gu", "mr", "kn", "ml", "pa"],
           "speakable": {
             "@type": "SpeakableSpecification",
             "cssSelector": ".speakable"
@@ -536,376 +586,302 @@ const Testimonials = () => {
         })}
       </script>
 
-      {/* 🏢 Local Business Schema - GEO Focus */}
-      <script type="application/ld+json">
-        {JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "LocalBusiness",
-          "name": "Krynova Technologies",
-          "description": "Best web development company in Agra, India with 50+ happy clients globally.",
-          "url": siteUrl,
-          "telephone": "+918630519082",
-          "email": "princeb744@gmail.com",
-          "address": {
-            "@type": "PostalAddress",
-            "addressLocality": "Agra",
-            "addressRegion": "Uttar Pradesh",
-            "addressCountry": "India"
-          },
-          "geo": {
-            "@type": "GeoCoordinates",
-            "latitude": 27.1767,
-            "longitude": 78.0081
-          },
-          "aggregateRating": {
-            "@type": "AggregateRating",
-            "ratingValue": averageRating || "4.8",
-            "reviewCount": totalTestimonials || "50",
-            "bestRating": "5",
-            "worstRating": "1"
-          },
-          "areaServed": indianCities,
-          "availableLanguage": ["English", "Hindi", "Bengali", "Telugu", "Tamil", "Urdu", "Gujarati", "Marathi", "Kannada", "Malayalam", "Punjabi"],
-          "slogan": "Global Enterprise Solutions from India",
-          "foundingDate": "2024-03-01"
-        })}
-      </script>
-
-      {/* ❓ FAQ Schema - AEO Focus */}
-      <script type="application/ld+json">
-        {JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "FAQPage",
-          "mainEntity": [
-            {
-              "@type": "Question",
-              "name": "What do clients say about Krynova Technologies?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Clients praise Krynova Technologies for their professional web development, HRMS software, property management systems, and custom solutions. With 50+ happy clients and an average rating of 4.8/5, our clients appreciate our quality, support, and value."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "How many clients has Krynova Technologies served?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Krynova Technologies has served 50+ businesses across India and globally, delivering enterprise software solutions, HRMS systems, property management software, and custom web applications."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "Where are Krynova Technologies' clients located?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": `Krynova Technologies serves clients across all major cities in India including ${indianCities.slice(0, 10).join(", ")} and many more, as well as international clients in ${globalCountries.slice(0, 10).join(", ")} and worldwide.`
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "What is the average rating of Krynova Technologies?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Krynova Technologies has an average rating of 4.8 out of 5 stars based on reviews from 50+ happy clients across India and globally."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "Which industries does Krynova Technologies serve?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Krynova Technologies serves businesses across HR, real estate, technology, healthcare, education, retail, finance, manufacturing, and other industries with custom software solutions."
-              }
-            }
-          ]
-        })}
-      </script>
-
-      {/* 🗺️ Place Schema - GEO Targeting */}
-      <script type="application/ld+json">
-        {JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "Place",
-          "name": "Krynova Technologies",
-          "address": {
-            "@type": "PostalAddress",
-            "addressLocality": "Agra",
-            "addressRegion": "Uttar Pradesh",
-            "addressCountry": "India"
-          },
-          "geo": {
-            "@type": "GeoCoordinates",
-            "latitude": 27.1767,
-            "longitude": 78.0081
-          },
-          "areaServed": indianCities.map(city => ({
-            "@type": "City",
-            "name": city
-          })),
-          "globalLocationNumber": "IN-UP-AGRA"
-        })}
-      </script>
-
       {/* ========================================== */}
-      {/* ✅ MAIN CONTENT */}
+      {/* MAIN CONTENT - Glassmorphism + Neumorphism */}
       {/* ========================================== */}
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12">
-        <div className="container mx-auto px-4 max-w-7xl">
-          {/* Header */}
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 bg-red-100 text-red-700 px-4 py-2 rounded-full text-sm font-medium mb-4 border border-red-200">
-              <FaHeart className="text-red-500 animate-pulse" />
-              Client Feedback
-            </div>
-            <h1 className="text-4xl md:text-5xl font-bold mb-4 text-gray-900">
-              What Our <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Clients Say</span>
-            </h1>
-            <p className="text-gray-600 max-w-2xl mx-auto text-lg">
-              Real feedback from real businesses who've transformed their operations with our solutions
-            </p>
-            <div className="flex flex-wrap justify-center gap-2 mt-3">
-              <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs">
-                <FaMapPin className="text-blue-500" /> {indianCities.length}+ Indian Cities
-              </span>
-              <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs">
-                <FaGlobe className="text-green-500" /> {globalCountries.length}+ Countries
-              </span>
-              <span className="inline-flex items-center gap-1 bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs">
-                <FaStar className="text-yellow-500" /> {averageRating}/5 Rating
-              </span>
-              <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs">
-                <FaUsers className="text-purple-500" /> {totalTestimonials}+ Reviews
-              </span>
-            </div>
-            <p className="text-sm text-blue-600 mt-3">
-              <FaMapMarkerAlt className="inline mr-1" />
-              Trusted by 50+ businesses in Agra, Uttar Pradesh, across India, and worldwide
-            </p>
-          </div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-100 via-white to-gray-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-12 px-4 relative overflow-hidden">
+        {/* Animated Background Elements */}
+        <div className="fixed inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute top-0 -left-40 w-96 h-96 bg-blue-400/20 rounded-full filter blur-3xl animate-float"></div>
+          <div className="absolute bottom-0 -right-40 w-96 h-96 bg-purple-400/20 rounded-full filter blur-3xl animate-float-delayed"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full h-full bg-grid-pattern opacity-5"></div>
+        </div>
 
-          {/* Statistics */}
+        <div className="container mx-auto max-w-7xl relative z-10">
+          {/* Header - Glassmorphism */}
+          <motion.div 
+            initial={{ opacity: 0, y: -30 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass-hero p-8 md:p-12 rounded-3xl mb-12 text-center relative overflow-hidden"
+          >
+            <div className="absolute inset-0 liquid-glass-overlay"></div>
+            <div className="relative z-10">
+              <motion.div 
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 200 }}
+                className="inline-flex items-center gap-2 glass-badge px-4 py-2 rounded-full text-sm font-semibold text-red-700 dark:text-red-400 mb-4 border border-white/20 dark:border-white/5"
+              >
+                <FaHeart className="text-red-500 animate-pulse" />
+                Client Feedback
+              </motion.div>
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-4">
+                What Our <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600">Clients Say</span>
+              </h1>
+              <p className="text-gray-600 dark:text-gray-300 max-w-2xl mx-auto text-lg">
+                Real feedback from real businesses who've transformed their operations with our solutions
+              </p>
+              <div className="flex flex-wrap justify-center gap-2 mt-4">
+                <span className="glass-tag inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs border border-white/20 dark:border-white/5">
+                  <FaMapPin className="text-blue-500" /> {indianCities.length}+ Indian Cities
+                </span>
+                <span className="glass-tag inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs border border-white/20 dark:border-white/5">
+                  <FaGlobe className="text-green-500" /> {globalCountries.length}+ Countries
+                </span>
+                <span className="glass-tag inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs border border-white/20 dark:border-white/5">
+                  <FaStar className="text-yellow-500" /> {averageRating}/5 Rating
+                </span>
+                <span className="glass-tag inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs border border-white/20 dark:border-white/5">
+                  <FaUsers className="text-purple-500" /> {totalTestimonials}+ Reviews
+                </span>
+              </div>
+              <p className="text-sm text-blue-600 dark:text-blue-400 mt-3">
+                <FaMapMarkerAlt className="inline mr-1" />
+                Trusted by 50+ businesses in Agra, Uttar Pradesh, across India, and worldwide
+              </p>
+            </div>
+          </motion.div>
+
+          {/* Statistics - Glassmorphism */}
           {!loading && testimonials.length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"
+            >
               <StatCard 
                 icon={FaUsers} 
                 value={totalTestimonials} 
                 label="Total Reviews" 
-                color="blue"
+                gradient="from-blue-500 to-cyan-500"
               />
               <StatCard 
                 icon={FaStar} 
                 value={averageRating} 
                 label="Average Rating" 
-                color="yellow"
+                gradient="from-yellow-500 to-orange-500"
               />
               <StatCard 
                 icon={FaTrophy} 
                 value={fiveStarCount} 
                 label="5-Star Reviews" 
-                color="green"
+                gradient="from-green-500 to-emerald-500"
               />
               <StatCard 
                 icon={FaBuilding} 
                 value={withCompanyCount} 
                 label="Business Verified" 
-                color="purple"
+                gradient="from-purple-500 to-pink-500"
               />
-            </div>
+            </motion.div>
           )}
 
-          {/* Search and Filter */}
+          {/* Search and Filter - Glassmorphism */}
           {!loading && testimonials.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-lg p-4 mb-8 border border-gray-100">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="glass-filter p-4 rounded-2xl mb-8 border border-white/20 dark:border-white/5"
+            >
               <div className="flex flex-wrap gap-4">
                 {/* Search */}
                 <div className="flex-1 min-w-[200px] relative">
-                  <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
                   <input
                     type="text"
                     placeholder="Search by name, company, or feedback..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                    className="neo-input w-full pl-10 pr-4 py-2.5 rounded-xl text-sm"
                   />
                   {searchTerm && (
-                    <button
+                    <motion.button
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
                       onClick={() => setSearchTerm('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                     >
                       <FaTimes />
-                    </button>
+                    </motion.button>
                   )}
                 </div>
 
                 {/* Filter Buttons */}
                 <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => setFilter('all')}
-                    className={`px-4 py-2 rounded-lg transition-all duration-300 text-sm ${
-                      filter === 'all' 
-                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' 
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    All
-                  </button>
-                  <button
-                    onClick={() => setFilter('latest')}
-                    className={`px-4 py-2 rounded-lg transition-all duration-300 text-sm flex items-center gap-1 ${
-                      filter === 'latest' 
-                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' 
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    <FaCalendarAlt /> Latest
-                  </button>
-                  <button
-                    onClick={() => setFilter('highest')}
-                    className={`px-4 py-2 rounded-lg transition-all duration-300 text-sm flex items-center gap-1 ${
-                      filter === 'highest' 
-                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' 
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    <FaStar /> Top Rated
-                  </button>
-                  <button
-                    onClick={() => setFilter('with_company')}
-                    className={`px-4 py-2 rounded-lg transition-all duration-300 text-sm flex items-center gap-1 ${
-                      filter === 'with_company' 
-                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' 
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    <FaBuilding /> Verified
-                  </button>
+                  {[
+                    { id: 'all', label: 'All', icon: null },
+                    { id: 'latest', label: 'Latest', icon: FaCalendarAlt },
+                    { id: 'highest', label: 'Top Rated', icon: FaStar },
+                    { id: 'with_company', label: 'Verified', icon: FaBuilding }
+                  ].map((btn) => {
+                    const Icon = btn.icon;
+                    return (
+                      <motion.button
+                        key={btn.id}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setFilter(btn.id)}
+                        className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 flex items-center gap-1.5 ${
+                          filter === btn.id 
+                            ? 'glass-btn-active text-white shadow-lg' 
+                            : 'glass-btn text-gray-700 dark:text-gray-300 border border-white/20 dark:border-white/5'
+                        }`}
+                      >
+                        {Icon && <Icon className="text-xs" />}
+                        {btn.label}
+                      </motion.button>
+                    );
+                  })}
                 </div>
 
-                {/* Show Form Toggle */}
-                <button
+                {/* Write Review Button */}
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => setShowForm(!showForm)}
-                  className="px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg font-medium hover:shadow-lg hover:shadow-green-500/30 transition-all duration-300 flex items-center gap-2"
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 text-white font-medium shadow-lg shadow-green-500/30 hover:shadow-green-500/50 transition-all duration-300 flex items-center gap-2"
                 >
                   <FaRegComment /> Write Review
-                </button>
+                </motion.button>
               </div>
-            </div>
+            </motion.div>
           )}
 
-          {/* Submit Testimonial Form */}
-          {showForm && (
-            <div className="mb-8 animate-slide-down">
-              <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 max-w-2xl mx-auto border border-gray-100">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Share Your Experience</h2>
-                    <p className="text-gray-600 text-sm mt-1">
-                      Your feedback helps us improve and serve you better
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setShowForm(false)}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition"
-                  >
-                    <FaTimes className="text-gray-500" />
-                  </button>
-                </div>
-
-                {submitted ? (
-                  <div className="text-center py-12 animate-scale-in">
-                    <div className="text-6xl mb-4">🎉</div>
-                    <h3 className="text-2xl font-semibold mb-2 text-gray-900">Thank You!</h3>
-                    <p className="text-gray-600 mb-4">
-                      Your feedback has been submitted for approval. We appreciate your input!
-                    </p>
-                    <button 
-                      onClick={() => {
-                        setSubmitted(false);
-                        setShowForm(false);
-                      }} 
-                      className="text-blue-600 font-medium hover:text-blue-800 transition inline-flex items-center gap-2"
-                    >
-                      Close <FaArrowRight className="text-sm" />
-                    </button>
-                  </div>
-                ) : (
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Your Name <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="John Doe"
-                          value={form.client_name}
-                          onChange={e => setForm({...form, client_name: e.target.value})}
-                          className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Company Name
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Your Company"
-                          value={form.client_company}
-                          onChange={e => setForm({...form, client_company: e.target.value})}
-                          className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                        />
-                      </div>
-                    </div>
-
+          {/* Submit Testimonial Form - Glassmorphism */}
+          <AnimatePresence>
+            {showForm && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mb-8 overflow-hidden"
+              >
+                <div className="glass-form p-6 md:p-8 rounded-2xl max-w-2xl mx-auto border border-white/20 dark:border-white/5">
+                  <div className="flex items-center justify-between mb-6">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Rating <span className="text-red-500">*</span>
-                      </label>
-                      <StarRating 
-                        rating={form.rating} 
-                        onRatingChange={(rating) => setForm({...form, rating})} 
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Your Feedback <span className="text-red-500">*</span>
-                      </label>
-                      <textarea
-                        placeholder="Share your experience with our products and services..."
-                        value={form.feedback}
-                        onChange={e => setForm({...form, feedback: e.target.value})}
-                        className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition h-32 resize-y"
-                        required
-                      />
-                      <p className="text-xs text-gray-400 mt-1">
-                        {form.feedback.length}/500 characters
+                      <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Share Your Experience</h2>
+                      <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
+                        Your feedback helps us improve and serve you better
                       </p>
                     </div>
-
-                    <button
-                      type="submit"
-                      disabled={submitting}
-                      className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/40 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => setShowForm(false)}
+                      className="neo-icon-btn p-2 rounded-xl"
                     >
-                      {submitting ? (
-                        <>
-                          <FaSpinner className="animate-spin" />
-                          Submitting...
-                        </>
-                      ) : (
-                        'Submit Feedback'
-                      )}
-                    </button>
-                    <p className="text-xs text-gray-400 text-center">
-                      All feedback is reviewed before being published
-                    </p>
-                  </form>
-                )}
-              </div>
-            </div>
-          )}
+                      <FaTimes className="text-gray-500 dark:text-gray-400" />
+                    </motion.button>
+                  </div>
+
+                  {submitted ? (
+                    <motion.div 
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="text-center py-12"
+                    >
+                      <motion.div 
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", stiffness: 200 }}
+                        className="text-7xl mb-4"
+                      >
+                        🎉
+                      </motion.div>
+                      <h3 className="text-2xl font-semibold mb-2 text-gray-900 dark:text-white">Thank You!</h3>
+                      <p className="text-gray-600 dark:text-gray-400 mb-4">
+                        Your feedback has been submitted for approval. We appreciate your input!
+                      </p>
+                      <motion.button 
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => {
+                          setSubmitted(false);
+                          setShowForm(false);
+                        }} 
+                        className="text-blue-600 dark:text-blue-400 font-medium hover:text-blue-800 dark:hover:text-blue-300 transition inline-flex items-center gap-2"
+                      >
+                        Close <FaArrowRight className="text-sm" />
+                      </motion.button>
+                    </motion.div>
+                  ) : (
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Your Name <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="John Doe"
+                            value={form.client_name}
+                            onChange={e => setForm({...form, client_name: e.target.value})}
+                            className="neo-input w-full px-4 py-2.5 rounded-xl text-sm"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Company Name
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Your Company"
+                            value={form.client_company}
+                            onChange={e => setForm({...form, client_company: e.target.value})}
+                            className="neo-input w-full px-4 py-2.5 rounded-xl text-sm"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Rating <span className="text-red-500">*</span>
+                        </label>
+                        <StarRating 
+                          rating={form.rating} 
+                          onRatingChange={(rating) => setForm({...form, rating})} 
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Your Feedback <span className="text-red-500">*</span>
+                        </label>
+                        <textarea
+                          placeholder="Share your experience with our products and services..."
+                          value={form.feedback}
+                          onChange={e => setForm({...form, feedback: e.target.value})}
+                          className="neo-input w-full px-4 py-2.5 rounded-xl text-sm resize-y min-h-[100px]"
+                          required
+                        />
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                          {form.feedback.length}/500 characters
+                        </p>
+                      </div>
+
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        type="submit"
+                        disabled={submitting}
+                        className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        {submitting ? (
+                          <><FaSpinner className="animate-spin" /> Submitting...</>
+                        ) : (
+                          'Submit Feedback'
+                        )}
+                      </motion.button>
+                      <p className="text-xs text-gray-400 dark:text-gray-500 text-center">
+                        All feedback is reviewed before being published
+                      </p>
+                    </form>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Testimonials Grid */}
           {loading ? (
@@ -915,30 +891,34 @@ const Testimonials = () => {
               ))}
             </div>
           ) : error ? (
-            <div className="text-center py-16 bg-white rounded-2xl shadow-sm border border-gray-100">
-              <div className="text-5xl mb-4 animate-bounce">⚠️</div>
-              <p className="text-red-600 mb-4">{error}</p>
-              <button
+            <div className="glass-error p-12 rounded-2xl text-center border border-white/20 dark:border-white/5">
+              <div className="text-6xl mb-4 animate-bounce">⚠️</div>
+              <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => window.location.reload()}
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2.5 rounded-lg hover:shadow-lg transition"
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg hover:shadow-xl transition"
               >
                 Try Again
-              </button>
+              </motion.button>
             </div>
           ) : filteredTestimonials.length === 0 ? (
-            <div className="text-center py-16 bg-white rounded-2xl shadow-sm border border-gray-100">
-              <div className="text-6xl mb-4">💬</div>
-              <h3 className="text-xl font-semibold mb-2 text-gray-900">No Testimonials Found</h3>
-              <p className="text-gray-500">
+            <div className="glass-empty p-12 rounded-2xl text-center border border-white/20 dark:border-white/5">
+              <div className="text-6xl mb-4 animate-bounce">💬</div>
+              <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">No Testimonials Found</h3>
+              <p className="text-gray-500 dark:text-gray-400">
                 {searchTerm ? 'No testimonials match your search.' : 'Be the first to share your experience with us!'}
               </p>
               {searchTerm && (
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => setSearchTerm('')}
-                  className="mt-4 text-blue-600 font-medium hover:text-blue-800 transition"
+                  className="mt-4 text-blue-600 dark:text-blue-400 font-medium hover:text-blue-800 dark:hover:text-blue-300 transition"
                 >
                   Clear Search
-                </button>
+                </motion.button>
               )}
             </div>
           ) : (
@@ -953,33 +933,44 @@ const Testimonials = () => {
                 ))}
               </div>
               {filteredTestimonials.length < testimonials.length && (
-                <div className="text-center text-sm text-gray-500">
+                <div className="text-center text-sm text-gray-500 dark:text-gray-400">
                   Showing {filteredTestimonials.length} of {testimonials.length} testimonials
                 </div>
               )}
             </>
           )}
 
-          {/* Call to Action - Global & Local */}
+          {/* Call to Action - Glassmorphism */}
           {!loading && testimonials.length > 0 && (
-            <div className="mt-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-8 md:p-12 text-white text-center relative overflow-hidden">
-              <div className="absolute inset-0 opacity-10">
+            <motion.div 
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-16 glass-cta p-8 md:p-12 rounded-3xl text-white text-center relative overflow-hidden"
+            >
+              <div className="absolute inset-0 opacity-20">
                 <div className="absolute top-0 -right-20 w-64 h-64 bg-white rounded-full blur-3xl"></div>
                 <div className="absolute -bottom-20 -left-20 w-48 h-48 bg-white rounded-full blur-3xl"></div>
               </div>
               <div className="relative z-10 max-w-2xl mx-auto">
-                <h2 className="text-2xl md:text-3xl font-bold mb-3">Ready to Join Our Happy Clients?</h2>
+                <motion.h2 
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 200 }}
+                  className="text-2xl md:text-3xl font-bold mb-3"
+                >
+                  Ready to Join Our Happy Clients?
+                </motion.h2>
                 <p className="text-blue-100 mb-6 text-lg">
                   Transform your business with our custom solutions. Serving 50+ businesses in Agra, Uttar Pradesh, across India, and worldwide.
                 </p>
                 <div className="flex flex-wrap justify-center gap-3 mb-4">
-                  <span className="inline-flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full text-xs">
+                  <span className="inline-flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full text-xs backdrop-blur-sm">
                     <FaMapPin /> {indianCities.length}+ Indian Cities
                   </span>
-                  <span className="inline-flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full text-xs">
+                  <span className="inline-flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full text-xs backdrop-blur-sm">
                     <FaGlobe /> {globalCountries.length}+ Countries
                   </span>
-                  <span className="inline-flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full text-xs">
+                  <span className="inline-flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full text-xs backdrop-blur-sm">
                     <FaStar /> 4.8/5 Rating
                   </span>
                 </div>
@@ -988,7 +979,7 @@ const Testimonials = () => {
                     to="/contact"
                     className="inline-flex items-center gap-2 bg-white text-blue-600 px-8 py-3.5 rounded-xl font-semibold hover:bg-blue-50 transition shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                   >
-                    Get Started <FaArrowRight aria-hidden="true" />
+                    Get Started <FaArrowRight />
                   </Link>
                   <Link
                     to="/products"
@@ -1002,46 +993,299 @@ const Testimonials = () => {
                   Based in Agra, Uttar Pradesh, India • Serving Global Clients
                 </p>
               </div>
-            </div>
+            </motion.div>
           )}
         </div>
-
-        {/* CSS Animations */}
-        <style dangerouslySetInnerHTML={{ __html: `
-          @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          @keyframes scaleIn {
-            from { opacity: 0; transform: scale(0.9); }
-            to { opacity: 1; transform: scale(1); }
-          }
-          .animate-fade-in-up { animation: fadeInUp 0.6s ease-out forwards; }
-          .animate-slide-down { animation: slideDown 0.3s ease-out; }
-          .animate-scale-in { animation: scaleIn 0.3s ease-out; }
-          .line-clamp-4 {
-            display: -webkit-box;
-            -webkit-line-clamp: 4;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-          }
-          .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            white-space: nowrap;
-            border-width: 0;
-          }
-        `}} />
       </div>
+
+      {/* ========================================== */}
+      {/* CSS Animations & Styles */}
+      {/* ========================================== */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        /* ========================================== */
+        /* GLASSMORPHISM */
+        /* ========================================== */
+        .glass-hero {
+          background: rgba(255, 255, 255, 0.15);
+          backdrop-filter: blur(20px) saturate(1.4);
+          -webkit-backdrop-filter: blur(20px) saturate(1.4);
+          border: 1px solid rgba(255, 255, 255, 0.25);
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+        }
+        
+        .dark .glass-hero {
+          background: rgba(31, 41, 55, 0.15);
+          border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        
+        .glass-card {
+          background: rgba(255, 255, 255, 0.25);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+        }
+        
+        .dark .glass-card {
+          background: rgba(31, 41, 55, 0.2);
+          border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .glass-testimonial-card {
+          background: rgba(255, 255, 255, 0.3);
+          backdrop-filter: blur(16px) saturate(1.2);
+          -webkit-backdrop-filter: blur(16px) saturate(1.2);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          box-shadow: 0 4px 24px rgba(0, 0, 0, 0.03);
+          transition: all 0.4s ease;
+        }
+        
+        .glass-testimonial-card:hover {
+          background: rgba(255, 255, 255, 0.4);
+          box-shadow: 0 8px 40px rgba(0, 0, 0, 0.06);
+        }
+        
+        .dark .glass-testimonial-card {
+          background: rgba(31, 41, 55, 0.2);
+          border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+        
+        .dark .glass-testimonial-card:hover {
+          background: rgba(31, 41, 55, 0.3);
+        }
+        
+        .glass-stat-card {
+          background: rgba(255, 255, 255, 0.2);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          transition: all 0.3s ease;
+        }
+        
+        .glass-stat-card:hover {
+          background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .dark .glass-stat-card {
+          background: rgba(31, 41, 55, 0.15);
+          border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+        
+        .dark .glass-stat-card:hover {
+          background: rgba(31, 41, 55, 0.25);
+        }
+        
+        .glass-filter {
+          background: rgba(255, 255, 255, 0.2);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        
+        .dark .glass-filter {
+          background: rgba(31, 41, 55, 0.15);
+          border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+        
+        .glass-form {
+          background: rgba(255, 255, 255, 0.25);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .dark .glass-form {
+          background: rgba(31, 41, 55, 0.2);
+          border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .glass-cta {
+          background: linear-gradient(135deg, rgba(37,99,235,0.4), rgba(99,102,241,0.4));
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          box-shadow: 0 8px 32px rgba(37,99,235,0.2);
+        }
+        
+        .glass-badge {
+          background: rgba(255, 255, 255, 0.3);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .dark .glass-badge {
+          background: rgba(31, 41, 55, 0.3);
+          border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .glass-tag {
+          background: rgba(255, 255, 255, 0.15);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .dark .glass-tag {
+          background: rgba(31, 41, 55, 0.15);
+          border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+        
+        .glass-btn {
+          background: rgba(255, 255, 255, 0.2);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          transition: all 0.3s ease;
+        }
+        
+        .glass-btn:hover {
+          background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .dark .glass-btn {
+          background: rgba(31, 41, 55, 0.2);
+          border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .dark .glass-btn:hover {
+          background: rgba(31, 41, 55, 0.3);
+        }
+        
+        .glass-btn-active {
+          background: linear-gradient(135deg, rgba(37,99,235,0.4), rgba(99,102,241,0.4));
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .glass-empty {
+          background: rgba(255, 255, 255, 0.15);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .dark .glass-empty {
+          background: rgba(31, 41, 55, 0.15);
+          border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+        
+        .glass-error {
+          background: rgba(255, 0, 0, 0.05);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border: 1px solid rgba(255, 0, 0, 0.1);
+        }
+        
+        .dark .glass-error {
+          background: rgba(255, 0, 0, 0.03);
+          border: 1px solid rgba(255, 0, 0, 0.05);
+        }
+        
+        .liquid-glass-overlay {
+          background: linear-gradient(135deg, 
+            rgba(255,255,255,0.1) 0%,
+            rgba(255,255,255,0) 50%,
+            rgba(255,255,255,0.1) 100%
+          );
+          pointer-events: none;
+        }
+
+        /* ========================================== */
+        /* NEUMORPHISM */
+        /* ========================================== */
+        .neo-input {
+          background: #e8edf2;
+          box-shadow: inset 4px 4px 8px #c5cace, inset -4px -4px 8px #ffffff;
+          border: none;
+          transition: all 0.3s ease;
+        }
+        
+        .neo-input:focus {
+          box-shadow: inset 6px 6px 12px #c5cace, inset -6px -6px 12px #ffffff;
+          outline: none;
+        }
+        
+        .dark .neo-input {
+          background: #1f2937;
+          box-shadow: inset 4px 4px 8px #0f1520, inset -4px -4px 8px #2d3748;
+        }
+        
+        .neo-icon-btn {
+          background: #e8edf2;
+          box-shadow: 4px 4px 8px #c5cace, -4px -4px 8px #ffffff;
+          transition: all 0.3s ease;
+        }
+        
+        .neo-icon-btn:hover {
+          box-shadow: 2px 2px 4px #c5cace, -2px -2px 4px #ffffff;
+          transform: scale(0.95);
+        }
+        
+        .dark .neo-icon-btn {
+          background: #1f2937;
+          box-shadow: 4px 4px 8px #0f1520, -4px -4px 8px #2d3748;
+        }
+        
+        .neo-dropdown {
+          background: #e8edf2;
+          box-shadow: 8px 8px 16px #c5cace, -8px -8px 16px #ffffff;
+          border: 1px solid rgba(255,255,255,0.3);
+        }
+        
+        .dark .neo-dropdown {
+          background: #1f2937;
+          box-shadow: 8px 8px 16px #0f1520, -8px -8px 16px #2d3748;
+          border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        /* ========================================== */
+        /* ANIMATIONS */
+        /* ========================================== */
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-30px); }
+        }
+        @keyframes floatDelayed {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-25px); }
+        }
+        .animate-float { animation: float 6s ease-in-out infinite; }
+        .animate-float-delayed { animation: floatDelayed 7s ease-in-out infinite 1s; }
+        
+        .bg-grid-pattern {
+          background-image: 
+            linear-gradient(rgba(0,0,0,0.02) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0,0,0,0.02) 1px, transparent 1px);
+          background-size: 50px 50px;
+        }
+        
+        .dark .bg-grid-pattern {
+          background-image: 
+            linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+        }
+        
+        .line-clamp-4 {
+          display: -webkit-box;
+          -webkit-line-clamp: 4;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        
+        .sr-only {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          padding: 0;
+          margin: -1px;
+          overflow: hidden;
+          clip: rect(0, 0, 0, 0);
+          white-space: nowrap;
+          border-width: 0;
+        }
+      `}} />
     </>
   );
 };

@@ -9,12 +9,13 @@ import {
   FaHistory, FaChevronDown, FaChevronUp, FaCog,
   FaFile, FaInfoCircle, FaRegFilePdf, FaSlidersH,
   FaPercentage, FaFileInvoice, FaBalanceScale,
-  FaGlobe, FaMapMarkerAlt, FaLanguage, FaHeadphones
+  FaGlobe, FaMapMarkerAlt, FaLanguage, FaHeadphones,
+  FaBullseye  // ✅ ADD THIS
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { api } from '../../utils/api';
+import { secureStorage } from '../../utils/security';
 import PaymentModal from '../../components/PaymentModal';
-
 // ============================================
 // ✅ SAFE ARRAY HELPERS - Fix for .map() errors
 // ============================================
@@ -189,6 +190,42 @@ const CompressionOptions = ({ options, onChange }) => {
                 Optimize embedded images
               </label>
             </div>
+
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="targetSize"
+                checked={options.targetSize || false}
+                onChange={(e) => onChange({ ...options, targetSize: e.target.checked })}
+                className="w-4 h-4 text-orange-600 rounded focus:ring-orange-500"
+              />
+              <label htmlFor="targetSize" className="text-xs text-gray-700">
+                Target specific file size (Premium)
+              </label>
+            </div>
+
+            {options.targetSize && (
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Target Size (KB)
+                </label>
+                <select
+                  value={options.targetSizeKB || 20}
+                  onChange={(e) => onChange({ ...options, targetSizeKB: parseInt(e.target.value) })}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                >
+                  <option value={5}>5 KB (Premium)</option>
+                  <option value={10}>10 KB (Premium)</option>
+                  <option value={20}>20 KB</option>
+                  <option value={50}>50 KB</option>
+                  <option value={100}>100 KB</option>
+                  <option value={200}>200 KB</option>
+                </select>
+                <p className="text-xs text-gray-400 mt-1">
+                  {isPremium ? '✅ Premium: Up to 5 KB target' : '🔒 20 KB minimum for free users'}
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -324,6 +361,7 @@ const PDFCompressor = () => {
   const [result, setResult] = useState(null);
   const [usageInfo, setUsageInfo] = useState(null);
   const [isPremium, setIsPremium] = useState(false);
+  const [userId, setUserId] = useState('anonymous');
   const [dragActive, setDragActive] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [conversionHistory, setConversionHistory] = useState([]);
@@ -334,6 +372,8 @@ const PDFCompressor = () => {
     resolution: 'standard',
     removeMetadata: false,
     optimizeImages: true,
+    targetSize: false,
+    targetSizeKB: 20,
   });
   const [batchMode, setBatchMode] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -341,18 +381,25 @@ const PDFCompressor = () => {
   const [conversionResults, setConversionResults] = useState([]);
   const fileInputRef = useRef(null);
 
-  // Check premium status
+  // ✅ Get user ID from storage
+  useEffect(() => {
+    try {
+      const user = secureStorage.get('user');
+      if (user?.id) {
+        setUserId(user.id);
+      } else if (user?.email) {
+        setUserId(user.email);
+      }
+    } catch (e) {
+      console.warn('Could not get user:', e);
+    }
+  }, []);
+
+  // ✅ Check premium status with proper user ID
   useEffect(() => {
     const checkPremiumStatus = async () => {
       try {
-        let response;
-        if (api.checkPremiumStatus) {
-          response = await api.checkPremiumStatus();
-        } else if (api.checkPremium) {
-          response = await api.checkPremium();
-        } else {
-          return;
-        }
+        const response = await api.checkPremium(userId);
         
         if (response.data && response.data.is_premium) {
           setIsPremium(true);
@@ -360,10 +407,14 @@ const PDFCompressor = () => {
         }
       } catch (error) {
         console.error('Premium check failed:', error);
+        setIsPremium(false);
       }
     };
-    checkPremiumStatus();
-  }, []);
+    
+    if (userId) {
+      checkPremiumStatus();
+    }
+  }, [userId]);
 
   // Load compression history
   useEffect(() => {
@@ -479,7 +530,8 @@ const PDFCompressor = () => {
     
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('is_premium', isPremium);
+    formData.append('is_premium', isPremium ? 'true' : 'false');
+    formData.append('user_id', userId);
     formData.append('options', JSON.stringify(compressionOptions));
     formData.append('batch_mode', 'false');
     
@@ -499,14 +551,21 @@ const PDFCompressor = () => {
           remaining: response.data.remaining_free,
           isPremium: response.data.is_premium,
           isBatch: response.data.is_batch,
-          batchRemaining: response.data.batch_remaining
+          batchRemaining: response.data.batch_remaining,
+          finalSize: response.data.compressed_size,
+          targetSize: response.data.target_size
         });
         
         saveToHistory(file.name, 'completed', response.data);
         
         setProgress(100);
         setProgressStatus('✅ Compression complete!');
-        toast.success(`✅ PDF compressed! Saved ${response.data.saved_percentage}%`);
+        
+        if (response.data.target_size_reached) {
+          toast.success(`✅ PDF compressed to ${formatSize(response.data.compressed_size)}! Target size reached!`);
+        } else {
+          toast.success(`✅ PDF compressed! Saved ${response.data.saved_percentage}%`);
+        }
         
         if (isPremium) {
           setTimeout(() => downloadFile(), 1000);
@@ -528,6 +587,8 @@ const PDFCompressor = () => {
           isPremium: false
         });
         setShowPaymentModal(true);
+      } else if (error.response?.data?.error?.includes('target size')) {
+        toast.error(error.response.data.error);
       } else {
         toast.error(error.response?.data?.error || 'Failed to compress PDF');
       }
@@ -563,7 +624,8 @@ const PDFCompressor = () => {
       
       const formData = new FormData();
       formData.append('file', currentFile);
-      formData.append('is_premium', isPremium);
+      formData.append('is_premium', isPremium ? 'true' : 'false');
+      formData.append('user_id', userId);
       formData.append('options', JSON.stringify(compressionOptions));
       formData.append('batch_mode', 'true');
 
@@ -729,6 +791,7 @@ const PDFCompressor = () => {
           <li>Multiple compression modes - Balanced, Size, Quality</li>
           <li>Batch compression for multiple PDFs (Premium)</li>
           <li>Advanced options - Remove metadata, optimize images</li>
+          <li>Target file size compression (Premium: 5 KB minimum)</li>
           <li>Secure and encrypted file processing</li>
         </ul>
         <p>Krynova Technologies is the best PDF compressor in India, serving cities like Agra, Delhi, Mumbai, Bengaluru, Chennai, Hyderabad, and all across India.</p>
@@ -751,7 +814,7 @@ const PDFCompressor = () => {
             "@type": "Offer",
             "price": "0",
             "priceCurrency": "INR",
-            "description": "Free PDF compressor with unlimited single compressions. Premium upgrade available for unlimited batch compressions."
+            "description": "Free PDF compressor with unlimited single compressions. Premium upgrade available for unlimited batch compressions and target size compression down to 5 KB."
           },
           "provider": {
             "@type": "Organization",
@@ -798,15 +861,15 @@ const PDFCompressor = () => {
               "name": "How much can I reduce PDF file size?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Krynova Technologies' PDF compressor can reduce file size by up to 70% while maintaining quality. The actual reduction depends on the content of your PDF and the compression level you choose."
+                "text": "Krynova Technologies' PDF compressor can reduce file size by up to 70% while maintaining quality. Premium users can target specific file sizes down to 5 KB. The actual reduction depends on the content of your PDF and the compression level you choose."
               }
             },
             {
               "@type": "Question",
-              "name": "What compression modes are available?",
+              "name": "Can I compress PDF to a specific file size?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Three compression modes are available: Balanced (quality + size), Maximum Size Reduction, and Preserve Quality. Premium users can also access custom settings with advanced options like image quality adjustment and resolution control."
+                "text": "Yes! Premium users can target specific file sizes. Free users can compress down to 20 KB, while Premium users can target sizes as low as 5 KB. This is perfect for email attachments and file size restrictions."
               }
             },
             {
@@ -814,7 +877,7 @@ const PDFCompressor = () => {
               "name": "What is the best PDF compressor in India?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Krynova Technologies offers one of the best free PDF compressors in India. It supports multiple compression modes, adjustable levels, batch processing, and serves users across all major Indian cities including Agra, Delhi, Mumbai, Bengaluru, Chennai, and Hyderabad."
+                "text": "Krynova Technologies offers one of the best free PDF compressors in India. It supports multiple compression modes, adjustable levels, batch processing, target size compression, and serves users across all major Indian cities including Agra, Delhi, Mumbai, Bengaluru, Chennai, and Hyderabad."
               }
             },
             {
@@ -862,7 +925,7 @@ const PDFCompressor = () => {
                 <FaUpload className="text-orange-500" /> Free: 3 Batch/day
               </span>
               <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">
-                <FaCrown className="text-yellow-500" /> Premium: Unlimited
+                <FaCrown className="text-yellow-500" /> Premium: Unlimited • Target 5KB
               </span>
               <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm">
                 <FaChartLine className="text-purple-500" /> Up to 70% Reduction
@@ -881,13 +944,15 @@ const PDFCompressor = () => {
             }`}>
               <div className="text-sm flex flex-wrap items-center gap-2">
                 {usageInfo.isPremium ? (
-                  <><FaCrown className="text-yellow-500" /> <span className="font-semibold">✨ Premium:</span> Unlimited compressions</>
+                  <><FaCrown className="text-yellow-500" /> <span className="font-semibold">✨ Premium:</span> Unlimited compressions • Target 5KB</>
                 ) : (
                   <>
                     <FaClock className="text-blue-500" />
                     <span>Single files: Unlimited</span>
                     <span className="text-gray-400">|</span>
                     <span>Batch: {usageInfo.batchRemaining !== undefined ? usageInfo.batchRemaining : 3} left today</span>
+                    <span className="text-gray-400">|</span>
+                    <span>Min size: 20KB</span>
                   </>
                 )}
               </div>
@@ -1056,6 +1121,7 @@ const PDFCompressor = () => {
               <CompressionOptions 
                 options={compressionOptions}
                 onChange={setCompressionOptions}
+                isPremium={isPremium}
               />
 
               {/* Premium Toggle */}
@@ -1067,11 +1133,11 @@ const PDFCompressor = () => {
                   className="w-4 h-4 text-orange-600 rounded focus:ring-orange-500"
                 />
                 <label className="text-sm text-gray-700 flex items-center gap-1">
-                  <FaCrown className="text-yellow-500" /> Premium Mode (Unlimited + Batch)
+                  <FaCrown className="text-yellow-500" /> Premium Mode (Unlimited + Batch + Target 5KB)
                 </label>
                 {!isPremium && (
                   <span className="text-xs text-gray-400 ml-2">
-                    (Free: 3/day)
+                    (Free: 3/day • Min 20KB)
                   </span>
                 )}
               </div>
@@ -1105,7 +1171,7 @@ const PDFCompressor = () => {
                     </button>
                   )}
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 max-h-60 overflow-y-auto">
                   {safeArray(conversionResults).map((item, idx) => (
                     <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center gap-3 min-w-0">
@@ -1117,7 +1183,7 @@ const PDFCompressor = () => {
                         <span className="text-sm truncate">{item.filename}</span>
                         {item.success && (
                           <span className="text-xs text-green-500 flex-shrink-0">
-                            -{item.result.saved_percentage}%
+                            -{item.result.saved_percentage}% ({formatSize(item.result.compressed_size)})
                           </span>
                         )}
                       </div>
@@ -1145,7 +1211,12 @@ const PDFCompressor = () => {
                     </div>
                     <div className="flex-1">
                       <p className="font-semibold text-orange-800">✅ Compression Complete!</p>
-                      <p className="text-sm text-orange-600">Saved {result.saved_percentage}% of file size</p>
+                      <p className="text-sm text-orange-600">
+                        Saved {result.saved_percentage}% • {formatSize(result.original_size)} → {formatSize(result.compressed_size)}
+                        {result.target_size_reached && (
+                          <span className="ml-2 text-green-600 font-bold">🎯 Target size reached!</span>
+                        )}
+                      </p>
                     </div>
                   </div>
                   
@@ -1154,6 +1225,7 @@ const PDFCompressor = () => {
                     original={result.original_size}
                     compressed={result.compressed_size}
                     savedPercent={result.saved_percentage}
+                    pages={result.pages}
                   />
 
                   <div className="flex flex-wrap gap-3 mt-4">
@@ -1206,9 +1278,9 @@ const PDFCompressor = () => {
               <p className="text-xs text-gray-500">Compress PDFs in seconds</p>
             </div>
             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
-              <FaUpload className="text-3xl text-orange-500 mx-auto mb-2" />
-              <h4 className="font-semibold text-gray-900">Batch Compression</h4>
-              <p className="text-xs text-gray-500">Compress multiple PDFs at once (Premium)</p>
+              <FaBullseye className="text-3xl text-orange-500 mx-auto mb-2" />
+              <h4 className="font-semibold text-gray-900">Target Size</h4>
+              <p className="text-xs text-gray-500">Compress to 5KB (Premium) or 20KB (Free)</p>
             </div>
           </div>
 
@@ -1223,7 +1295,7 @@ const PDFCompressor = () => {
                 <FaCrown className="text-4xl text-yellow-400 mx-auto mb-3" />
                 <h3 className="text-xl font-bold mb-2">🚀 Unlock Premium Features</h3>
                 <p className="text-orange-100 mb-4">
-                  Get unlimited compressions, batch processing, advanced compression options, and priority support.
+                  Get unlimited compressions, batch processing, target size compression down to 5KB, advanced options, and priority support.
                 </p>
                 <button
                   onClick={handleUpgrade}
@@ -1241,7 +1313,17 @@ const PDFCompressor = () => {
           isOpen={showPaymentModal}
           onClose={() => setShowPaymentModal(false)}
           userEmail={localStorage.getItem('userEmail') || ''}
-          userId={localStorage.getItem('userId') || ''}
+          userId={userId}
+          onSuccess={() => {
+            setIsPremium(true);
+            toast.success('🎉 Premium activated! Enjoy unlimited compression and target sizes down to 5KB.');
+            // Refresh premium status
+            api.checkPremium(userId).then(res => {
+              if (res.data?.is_premium) {
+                setIsPremium(true);
+              }
+            }).catch(() => {});
+          }}
         />
 
         <style dangerouslySetInnerHTML={{ __html: `

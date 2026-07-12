@@ -13,6 +13,7 @@ import {
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { api } from '../../utils/api';
+import { secureStorage } from '../../utils/security';
 import PaymentModal from '../../components/PaymentModal';
 
 // ============================================
@@ -259,6 +260,7 @@ const ImageToPDF = () => {
   const [result, setResult] = useState(null);
   const [usageInfo, setUsageInfo] = useState(null);
   const [isPremium, setIsPremium] = useState(false);
+  const [userId, setUserId] = useState('anonymous');
   const [dragActive, setDragActive] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [conversionHistory, setConversionHistory] = useState([]);
@@ -277,18 +279,25 @@ const ImageToPDF = () => {
   const [selectedIndex, setSelectedIndex] = useState(null);
   const fileInputRef = useRef(null);
 
-  // Check premium status
+  // ✅ Get user ID from storage
+  useEffect(() => {
+    try {
+      const user = secureStorage.get('user');
+      if (user?.id) {
+        setUserId(user.id);
+      } else if (user?.email) {
+        setUserId(user.email);
+      }
+    } catch (e) {
+      console.warn('Could not get user:', e);
+    }
+  }, []);
+
+  // ✅ Check premium status with proper user ID
   useEffect(() => {
     const checkPremiumStatus = async () => {
       try {
-        let response;
-        if (api.checkPremiumStatus) {
-          response = await api.checkPremiumStatus();
-        } else if (api.checkPremium) {
-          response = await api.checkPremium();
-        } else {
-          return;
-        }
+        const response = await api.checkPremium(userId);
         
         if (response.data && response.data.is_premium) {
           setIsPremium(true);
@@ -296,10 +305,14 @@ const ImageToPDF = () => {
         }
       } catch (error) {
         console.error('Premium check failed:', error);
+        setIsPremium(false);
       }
     };
-    checkPremiumStatus();
-  }, []);
+    
+    if (userId) {
+      checkPremiumStatus();
+    }
+  }, [userId]);
 
   // Load conversion history
   useEffect(() => {
@@ -421,7 +434,8 @@ const ImageToPDF = () => {
     
     const formData = new FormData();
     safeArray(files).forEach(file => formData.append('files', file));
-    formData.append('is_premium', isPremium);
+    formData.append('is_premium', isPremium ? 'true' : 'false');
+    formData.append('user_id', userId);
     formData.append('options', JSON.stringify(conversionOptions));
     
     try {
@@ -502,7 +516,8 @@ const ImageToPDF = () => {
     setLoading(true);
     const formData = new FormData();
     formData.append('files', imageFile);
-    formData.append('is_premium', isPremium);
+    formData.append('is_premium', isPremium ? 'true' : 'false');
+    formData.append('user_id', userId);
     formData.append('options', JSON.stringify({ ...conversionOptions, singlePage: true }));
     
     try {
@@ -1048,7 +1063,17 @@ const ImageToPDF = () => {
           isOpen={showPaymentModal}
           onClose={() => setShowPaymentModal(false)}
           userEmail={localStorage.getItem('userEmail') || ''}
-          userId={localStorage.getItem('userId') || ''}
+          userId={userId}
+          onSuccess={() => {
+            setIsPremium(true);
+            toast.success('🎉 Premium activated! Enjoy unlimited conversions.');
+            // Refresh premium status
+            api.checkPremium(userId).then(res => {
+              if (res.data?.is_premium) {
+                setIsPremium(true);
+              }
+            }).catch(() => {});
+          }}
         />
 
         <style dangerouslySetInnerHTML={{ __html: `

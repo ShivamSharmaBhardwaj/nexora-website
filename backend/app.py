@@ -148,7 +148,7 @@ except Exception as e:
 # ============================================
 
 try:
-    from routes.payment import payment_bp
+    from routes.payment_routes import payment_bp  # ← CHANGE: payment → payment_routes
     app.register_blueprint(payment_bp, url_prefix='/api')
     print("  ✅ Payment routes loaded", flush=True)
     print("  💳 Payment endpoints:")

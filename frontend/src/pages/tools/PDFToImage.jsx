@@ -12,6 +12,7 @@ import {
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { api } from '../../utils/api';
+import { secureStorage } from '../../utils/security';
 import PaymentModal from '../../components/PaymentModal';
 
 // ============================================
@@ -66,6 +67,7 @@ const PDFToImage = () => {
   const [result, setResult] = useState(null);
   const [usageInfo, setUsageInfo] = useState(null);
   const [isPremium, setIsPremium] = useState(false);
+  const [userId, setUserId] = useState('anonymous');
   const [selectedImages, setSelectedImages] = useState([]);
   const [previewImage, setPreviewImage] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -77,21 +79,40 @@ const PDFToImage = () => {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
 
-  // Check premium status on load
+  // ✅ Get user ID from storage
+  useEffect(() => {
+    try {
+      const user = secureStorage.get('user');
+      if (user?.id) {
+        setUserId(user.id);
+      } else if (user?.email) {
+        setUserId(user.email);
+      }
+    } catch (e) {
+      console.warn('Could not get user:', e);
+    }
+  }, []);
+
+  // ✅ Check premium status with proper user ID
   useEffect(() => {
     const checkPremiumStatus = async () => {
       try {
-        const response = await api.checkPremium();
-        if (response.data.is_premium) {
+        const response = await api.checkPremium(userId);
+        
+        if (response.data && response.data.is_premium) {
           setIsPremium(true);
           toast.success('🎉 Premium activated! Unlimited conversions unlocked.');
         }
       } catch (error) {
         console.error('Premium check failed:', error);
+        setIsPremium(false);
       }
     };
-    checkPremiumStatus();
-  }, []);
+    
+    if (userId) {
+      checkPremiumStatus();
+    }
+  }, [userId]);
 
   const handleFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
@@ -176,7 +197,8 @@ const PDFToImage = () => {
 
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('is_premium', isPremium);
+        formData.append('is_premium', isPremium ? 'true' : 'false');
+        formData.append('user_id', userId);
 
         try {
           const response = await api.pdfToImage(formData);
@@ -875,10 +897,17 @@ const PDFToImage = () => {
           <PaymentModal 
             isOpen={showPaymentModal}
             onClose={() => setShowPaymentModal(false)}
+            userId={userId}
             onSuccess={() => {
               setIsPremium(true);
               setShowPaymentModal(false);
               toast.success('🎉 Premium activated! Enjoy unlimited conversions.');
+              // Refresh premium status
+              api.checkPremium(userId).then(res => {
+                if (res.data?.is_premium) {
+                  setIsPremium(true);
+                }
+              }).catch(() => {});
             }}
           />
         </div>

@@ -1,8 +1,11 @@
+# backend/routes/tools_routes.py
 from flask import Blueprint, request, jsonify, send_file
 import json
 import os
 import uuid
 import tempfile
+import zipfile
+from io import BytesIO
 from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
 from config import get_db
@@ -327,6 +330,15 @@ def increment_usage(tool_name, ip_address):
     usage_tracking[key]['count'] += 1
     return usage_tracking[key]['count']
 
+def create_zip_download(files_data, zip_name="download.zip"):
+    """Create a ZIP file from multiple files"""
+    zip_buffer = BytesIO()
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        for filename, data in files_data:
+            zip_file.writestr(filename, data)
+    zip_buffer.seek(0)
+    return zip_buffer.getvalue()
+
 # ============================================
 # TEST ROUTE
 # ============================================
@@ -356,9 +368,7 @@ def test_tools():
             '/merge-pdf (POST)',
             '/split-pdf (POST)',
             '/image-resizer (POST)',
-            '/text-to-pdf (POST)',
-            '/premium/check (GET)',
-            '/premium/subscribe (POST)'
+            '/text-to-pdf (POST)'
         ]
     })
 
@@ -413,9 +423,8 @@ def build_resume():
         # Sanitize inputs
         name = sanitize_input(data.get('name', ''))
         email = sanitize_input(data.get('email', ''))
-        skills = sanitize_input(data.get('skills', ''))
         
-        # Generate resume content
+        # Generate resume content with enhanced function
         resume_content = generate_resume_content(data)
         
         # ✅ Add watermark for free users
@@ -434,6 +443,8 @@ def build_resume():
         
     except Exception as e:
         print(f"Resume Builder Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': 'Internal server error'}), 500
 
 # ============================================
@@ -559,7 +570,7 @@ def generate_qr():
         # Generate QR code
         qr = qrcode.QRCode(
             version=1,
-            error_correction=qrcode.constants.ERROR_CORRECT_H,
+            error_correction=qrcode.constants.ERROR_CORRECTION_H,
             box_size=10,
             border=4,
         )
@@ -608,7 +619,7 @@ def generate_qr():
         return jsonify({'success': False, 'error': 'Internal server error'}), 500
 
 # ============================================
-# 4. PDF TO IMAGE
+# 4. PDF TO IMAGE - ENHANCED
 # ============================================
 
 @tools_bp.route('/pdf-to-image', methods=['POST', 'OPTIONS'])
@@ -674,58 +685,80 @@ def pdf_to_image():
                 cleanup_temp_files([temp_path])
                 return jsonify({'success': False, 'error': error}), 400
         
-        # Use PyPDF2 to extract pages (NO PyMuPDF)
-        with open(temp_path, 'rb') as f:
-            pdf_reader = PyPDF2.PdfReader(f)
-            total_pages = len(pdf_reader.pages)
-            
-            # Determine how many pages to convert
+        image_list = []
+        total_pages = 0
+        
+        # ✅ PRIMARY METHOD: PyMuPDF (fitz) - Works on Windows!
+        try:
+            import fitz
+            doc = fitz.open(temp_path)
+            total_pages = len(doc)
             limit = total_pages if is_premium else min(3, total_pages)
             
-            image_list = []
             for i in range(limit):
-                page = pdf_reader.pages[i]
+                page = doc.load_page(i)
+                # Higher DPI for better quality
+                pix = page.get_pixmap(dpi=200)
+                img_data = pix.tobytes('png')
+                img_base64 = base64.b64encode(img_data).decode()
                 
-                # Extract text (for preview)
-                text = page.extract_text() or ''
-                
-                # Create image representation using PIL
-                img = Image.new('RGB', (800, 1000), color='white')
-                draw = ImageDraw.Draw(img)
-                
-                try:
-                    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14)
-                except:
-                    font = ImageFont.load_default()
-                
-                # Draw page content (text preview)
-                draw.text((50, 50), f"Page {i+1} of {total_pages}", fill='black', font=font)
-                draw.text((50, 80), f"Content preview:", fill='black', font=font)
-                
-                # Show extracted text (first 200 chars)
-                preview_text = text[:200] if text else 'No text extracted (scanned page)'
-                y_pos = 110
-                for line in preview_text.split('\n')[:10]:
-                    draw.text((50, y_pos), line[:80], fill='gray', font=font)
-                    y_pos += 20
-                
-                # Convert to base64
-                img_buffer = BytesIO()
-                img.save(img_buffer, format='PNG')
-                
-                # ✅ Add watermark for free users
+                # Add watermark for free users
                 if should_add_watermark(is_premium):
-                    watermarked_img = Image.open(img_buffer)
+                    watermarked_img = Image.open(BytesIO(img_data))
                     watermarked_img = add_watermark_to_image(watermarked_img, is_premium)
-                    img_buffer = BytesIO()
-                    watermarked_img.save(img_buffer, format='PNG')
-                
-                img_base64 = base64.b64encode(img_buffer.getvalue()).decode()
+                    watermarked_buffer = BytesIO()
+                    watermarked_img.save(watermarked_buffer, format='PNG')
+                    img_base64 = base64.b64encode(watermarked_buffer.getvalue()).decode()
                 
                 image_list.append({
                     'page': i + 1,
                     'image': f"data:image/png;base64,{img_base64}"
                 })
+            
+            doc.close()
+            
+        except ImportError:
+            # ✅ FALLBACK: Your existing PyPDF2 code (text-based preview)
+            with open(temp_path, 'rb') as f:
+                pdf_reader = PyPDF2.PdfReader(f)
+                total_pages = len(pdf_reader.pages)
+                limit = total_pages if is_premium else min(3, total_pages)
+                
+                for i in range(limit):
+                    page = pdf_reader.pages[i]
+                    text = page.extract_text() or ''
+                    
+                    img = Image.new('RGB', (800, 1000), color='white')
+                    draw = ImageDraw.Draw(img)
+                    
+                    try:
+                        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14)
+                    except:
+                        font = ImageFont.load_default()
+                    
+                    draw.text((50, 50), f"Page {i+1} of {total_pages}", fill='black', font=font)
+                    draw.text((50, 80), f"Content preview:", fill='black', font=font)
+                    
+                    preview_text = text[:200] if text else 'No text extracted (scanned page)'
+                    y_pos = 110
+                    for line in preview_text.split('\n')[:10]:
+                        draw.text((50, y_pos), line[:80], fill='gray', font=font)
+                        y_pos += 20
+                    
+                    img_buffer = BytesIO()
+                    img.save(img_buffer, format='PNG')
+                    
+                    if should_add_watermark(is_premium):
+                        watermarked_img = Image.open(img_buffer)
+                        watermarked_img = add_watermark_to_image(watermarked_img, is_premium)
+                        img_buffer = BytesIO()
+                        watermarked_img.save(img_buffer, format='PNG')
+                    
+                    img_base64 = base64.b64encode(img_buffer.getvalue()).decode()
+                    image_list.append({
+                        'page': i + 1,
+                        'image': f"data:image/png;base64,{img_base64}"
+                    })
         
         # Clean up
         cleanup_temp_files([temp_path])
@@ -749,15 +782,16 @@ def pdf_to_image():
         print(f"PDF to Image Error: {str(e)}")
         import traceback
         traceback.print_exc()
-        return jsonify({'success': False, 'error': 'Internal server error'}), 500
+        cleanup_temp_files([temp_path] if 'temp_path' in locals() else [])
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # ============================================
-# 5. PDF TO WORD
+# 5. PDF TO WORD - CLEAN & OPTIMIZED
 # ============================================
 
 @tools_bp.route('/pdf-to-word', methods=['POST', 'OPTIONS'])
 def pdf_to_word():
-    """Convert PDF to Word (Free: 2 per day, Premium: Unlimited)"""
+    """Convert PDF to Word with priority-based extraction"""
     if request.method == 'OPTIONS':
         response = jsonify({'success': True})
         response.headers.add('Access-Control-Allow-Origin', '*')
@@ -774,25 +808,21 @@ def pdf_to_word():
         
         # Rate limiting
         if is_rate_limited(ip_address, 'pdf_to_word', limit=15, window=60):
-            return jsonify({
-                'success': False,
-                'error': 'Too many requests. Please try again later.'
-            }), 429
+            return jsonify({'success': False, 'error': 'Too many requests. Please try again later.'}), 429
         
         track_request(ip_address, 'pdf_to_word')
         
-        # ✅ Security: Validate file type
+        # Validate file
         is_valid, error = validate_file_type(file, 'pdf')
         if not is_valid:
             return jsonify({'success': False, 'error': error}), 400
         
-        # ✅ Security: Validate file size
         is_valid, error = validate_file_size(file, MAX_FILE_SIZE['pdf'])
         if not is_valid:
             return jsonify({'success': False, 'error': error}), 400
         
+        # Check limits
         is_premium = request.form.get('is_premium', 'false').lower() == 'true'
-        
         usage_count = get_usage_count('pdf_to_word', ip_address)
         
         if not is_premium and usage_count >= 2:
@@ -804,11 +834,21 @@ def pdf_to_word():
                 'max_free': 2
             }), 403
         
+        # Get options
+        options = {}
+        try:
+            options = json.loads(request.form.get('options', '{}'))
+        except:
+            pass
+        
+        include_images = options.get('includeImages', True)
+        
+        # Save file
         filename = sanitize_filename(file.filename)
         temp_path = os.path.join(tempfile.gettempdir(), f"{uuid.uuid4().hex}_{filename}")
         file.save(temp_path)
         
-        # ✅ Security: Check for malicious content
+        # Security check
         with open(temp_path, 'rb') as f:
             file_bytes = f.read()
             is_malicious, error = detect_malicious_content(file_bytes)
@@ -816,50 +856,338 @@ def pdf_to_word():
                 cleanup_temp_files([temp_path])
                 return jsonify({'success': False, 'error': error}), 400
         
-        text = extract_text_from_pdf(temp_path)
+        doc_data = None
+        method_used = "fallback"
         
-        doc = Document()
-        doc.add_heading('PDF Content', 0)
-        doc.add_paragraph(text)
+        # ============================================
+        # ✅ PRIORITY 1: pdf2docx (BEST overall)
+        # ============================================
+        try:
+            from pdf2docx import Converter
+            output_path = os.path.join(tempfile.gettempdir(), f"{uuid.uuid4().hex}.docx")
+            
+            cv = Converter(temp_path)
+            cv.convert(output_path, start=0, end=None)
+            cv.close()
+            
+            with open(output_path, 'rb') as f:
+                doc_data = f.read()
+            
+            method_used = "pdf2docx"
+            cleanup_temp_files([output_path])
+            
+        except ImportError:
+            # ============================================
+            # ✅ PRIORITY 2: OCRmyPDF (for scanned PDFs)
+            # ============================================
+            try:
+                import subprocess
+                import ocrmypdf
+                
+                # Check if PDF has text
+                has_text = False
+                try:
+                    import fitz
+                    pdf_doc = fitz.open(temp_path)
+                    for page in pdf_doc:
+                        if page.get_text().strip():
+                            has_text = True
+                            break
+                    pdf_doc.close()
+                except:
+                    pass
+                
+                if not has_text:
+                    # Apply OCR
+                    ocr_output = os.path.join(tempfile.gettempdir(), f"{uuid.uuid4().hex}.pdf")
+                    ocrmypdf.ocr(temp_path, ocr_output, language='eng', force_ocr=True)
+                    
+                    # Now convert OCR'd PDF with pdf2docx
+                    from pdf2docx import Converter
+                    output_path = os.path.join(tempfile.gettempdir(), f"{uuid.uuid4().hex}.docx")
+                    
+                    cv = Converter(ocr_output)
+                    cv.convert(output_path, start=0, end=None)
+                    cv.close()
+                    
+                    with open(output_path, 'rb') as f:
+                        doc_data = f.read()
+                    
+                    method_used = "ocr_pdf2docx"
+                    cleanup_temp_files([ocr_output, output_path])
+                else:
+                    # PDF has text but pdf2docx failed, try again with different settings
+                    from pdf2docx import Converter
+                    output_path = os.path.join(tempfile.gettempdir(), f"{uuid.uuid4().hex}.docx")
+                    
+                    cv = Converter(temp_path)
+                    cv.convert(output_path, start=0, end=None, multi_processing=True)
+                    cv.close()
+                    
+                    with open(output_path, 'rb') as f:
+                        doc_data = f.read()
+                    
+                    method_used = "pdf2docx_retry"
+                    cleanup_temp_files([output_path])
+                
+            except (ImportError, Exception):
+                # ============================================
+                # ✅ PRIORITY 3: PyMuPDF (good for images)
+                # ============================================
+                try:
+                    import fitz
+                    from docx import Document
+                    from docx.shared import Inches, Pt
+                    from docx.enum.text import WD_ALIGN_PARAGRAPH
+                    from docx.enum.table import WD_TABLE_ALIGNMENT
+                    
+                    doc = Document()
+                    title = doc.add_heading('PDF Content', 0)
+                    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    
+                    pdf_doc = fitz.open(temp_path)
+                    
+                    # Check if PDF has text
+                    has_text = False
+                    for page in pdf_doc:
+                        if page.get_text().strip():
+                            has_text = True
+                            break
+                    
+                    if not has_text:
+                        # Image PDF - extract images
+                        doc.add_heading('Image PDF - Extracted as Images', level=1)
+                        for page_num, page in enumerate(pdf_doc):
+                            doc.add_heading(f'Page {page_num + 1}', level=2)
+                            pix = page.get_pixmap(dpi=150)
+                            img_data = pix.tobytes("png")
+                            img_buffer = BytesIO(img_data)
+                            doc.add_picture(img_buffer, width=Inches(5))
+                            doc.add_paragraph()
+                        method_used = "pymupdf_images"
+                    else:
+                        # Text PDF - extract content
+                        for page_num, page in enumerate(pdf_doc):
+                            doc.add_heading(f'Page {page_num + 1}', level=1)
+                            
+                            # Extract images
+                            if include_images:
+                                image_list = page.get_images(full=True)
+                                for img in image_list:
+                                    try:
+                                        xref = img[0]
+                                        pix = fitz.Pixmap(pdf_doc, xref)
+                                        if pix.n - pix.alpha < 4:
+                                            img_data = pix.tobytes("png")
+                                            img_buffer = BytesIO(img_data)
+                                            doc.add_picture(img_buffer, width=Inches(4))
+                                            doc.add_paragraph()
+                                        pix = None
+                                    except:
+                                        pass
+                            
+                            # Extract tables
+                            tables = page.find_tables()
+                            if tables:
+                                for table in tables:
+                                    table_data = table.extract()
+                                    if table_data and len(table_data) > 1:
+                                        max_cols = max(len(row) for row in table_data)
+                                        word_table = doc.add_table(rows=len(table_data), cols=max_cols)
+                                        word_table.style = 'Table Grid'
+                                        
+                                        for row_idx, row_data in enumerate(table_data):
+                                            for col_idx in range(max_cols):
+                                                cell_text = str(row_data[col_idx]) if col_idx < len(row_data) and row_data[col_idx] is not None else ''
+                                                word_table.cell(row_idx, col_idx).text = cell_text.strip()
+                                                
+                                                if row_idx == 0:
+                                                    for paragraph in word_table.cell(row_idx, col_idx).paragraphs:
+                                                        for run in paragraph.runs:
+                                                            run.font.bold = True
+                                                            run.font.size = Pt(11)
+                                        doc.add_paragraph()
+                            
+                            # Extract text
+                            text = page.get_text()
+                            if text:
+                                lines = text.split('\n')
+                                for line in lines:
+                                    line = line.strip()
+                                    if line:
+                                        if line.isupper() and len(line) > 5:
+                                            doc.add_heading(line, level=2)
+                                        else:
+                                            doc.add_paragraph(line)
+                    
+                    pdf_doc.close()
+                    doc_bytes = BytesIO()
+                    doc.save(doc_bytes)
+                    doc_data = doc_bytes.getvalue()
+                    if method_used != "pymupdf_images":
+                        method_used = "pymupdf"
+                    
+                except ImportError:
+                    # ============================================
+                    # ✅ PRIORITY 4: pdfplumber (good for tables)
+                    # ============================================
+                    try:
+                        import pdfplumber
+                        from docx import Document
+                        from docx.shared import Inches, Pt
+                        from docx.enum.text import WD_ALIGN_PARAGRAPH
+                        from docx.enum.table import WD_TABLE_ALIGNMENT
+                        import re
+                        
+                        doc = Document()
+                        title = doc.add_heading('PDF Content', 0)
+                        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        
+                        with pdfplumber.open(temp_path) as pdf:
+                            # Check if PDF has text
+                            has_text = False
+                            for page in pdf.pages:
+                                if page.extract_text():
+                                    has_text = True
+                                    break
+                            
+                            if not has_text:
+                                doc.add_paragraph("(Image PDF - No text extracted)")
+                                method_used = "pdfplumber_no_text"
+                            else:
+                                for page_num, page in enumerate(pdf.pages):
+                                    doc.add_heading(f'Page {page_num + 1}', level=1)
+                                    
+                                    # Extract tables
+                                    tables = page.extract_tables()
+                                    unique_tables = []
+                                    seen = set()
+                                    
+                                    for table_data in tables:
+                                        if table_data and len(table_data) > 1:
+                                            table_hash = str(table_data)
+                                            if table_hash not in seen:
+                                                seen.add(table_hash)
+                                                unique_tables.append(table_data)
+                                    
+                                    for table_data in unique_tables:
+                                        filtered_rows = []
+                                        for row in table_data:
+                                            if any(cell and str(cell).strip() for cell in row):
+                                                filtered_rows.append(row)
+                                        
+                                        if filtered_rows:
+                                            max_cols = max(len(row) for row in filtered_rows)
+                                            table = doc.add_table(rows=len(filtered_rows), cols=max_cols)
+                                            table.style = 'Table Grid'
+                                            table.alignment = WD_TABLE_ALIGNMENT.CENTER
+                                            
+                                            for row_idx, row_data in enumerate(filtered_rows):
+                                                for col_idx in range(max_cols):
+                                                    cell_text = str(row_data[col_idx]) if col_idx < len(row_data) and row_data[col_idx] is not None else ''
+                                                    table.cell(row_idx, col_idx).text = cell_text.strip()
+                                                    
+                                                    if row_idx == 0:
+                                                        for paragraph in table.cell(row_idx, col_idx).paragraphs:
+                                                            for run in paragraph.runs:
+                                                                run.font.bold = True
+                                                                run.font.size = Pt(11)
+                                            doc.add_paragraph()
+                                    
+                                    # Extract text
+                                    text = page.extract_text()
+                                    if text:
+                                        lines = text.split('\n')
+                                        for line in lines:
+                                            line = line.strip()
+                                            if line:
+                                                if line.isupper() and len(line) > 5:
+                                                    doc.add_heading(line, level=2)
+                                                else:
+                                                    doc.add_paragraph(line)
+                                
+                                method_used = "pdfplumber"
+                        
+                        doc_bytes = BytesIO()
+                        doc.save(doc_bytes)
+                        doc_data = doc_bytes.getvalue()
+                        
+                    except ImportError:
+                        # ============================================
+                        # ✅ PRIORITY 5: PyPDF2 (emergency fallback)
+                        # ============================================
+                        from docx import Document
+                        from docx.enum.text import WD_ALIGN_PARAGRAPH
+                        
+                        doc = Document()
+                        title = doc.add_heading('PDF Content', 0)
+                        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        
+                        with open(temp_path, 'rb') as f:
+                            pdf_reader = PyPDF2.PdfReader(f)
+                            for page_num, page in enumerate(pdf_reader.pages):
+                                doc.add_heading(f'Page {page_num + 1}', level=1)
+                                text = page.extract_text() or ''
+                                
+                                if not text:
+                                    doc.add_paragraph("(Image PDF - No text extracted)")
+                                else:
+                                    for line in text.split('\n'):
+                                        line = line.strip()
+                                        if line:
+                                            if line.isupper() and len(line) > 5:
+                                                doc.add_heading(line, level=2)
+                                            else:
+                                                doc.add_paragraph(line)
+                        
+                        doc_bytes = BytesIO()
+                        doc.save(doc_bytes)
+                        doc_data = doc_bytes.getvalue()
+                        method_used = "pypdf2_emergency"
         
         # ✅ Add watermark for free users
-        if should_add_watermark(is_premium):
-            doc.add_paragraph()
-            doc.add_paragraph('─' * 50)
-            doc.add_paragraph('Made with ❤️ by Krynova Technologies')
-            doc.add_paragraph('Visit: https://krynovatechnology.pythonanywhere.com')
-            doc.add_paragraph('─' * 50)
+        if should_add_watermark(is_premium) and doc_data:
+            from docx import Document
+            temp_doc = Document(BytesIO(doc_data))
+            temp_doc.add_paragraph()
+            temp_doc.add_paragraph('─' * 50)
+            temp_doc.add_paragraph('Made with ❤️ by Krynova Technologies')
+            temp_doc.add_paragraph('Visit: https://krynovatechnology.pythonanywhere.com')
+            temp_doc.add_paragraph('─' * 50)
+            watermark_bytes = BytesIO()
+            temp_doc.save(watermark_bytes)
+            doc_data = watermark_bytes.getvalue()
         
-        doc_bytes = BytesIO()
-        doc.save(doc_bytes)
-        doc_bytes.seek(0)
-        doc_base64 = base64.b64encode(doc_bytes.read()).decode()
-        
+        # Cleanup and response
         cleanup_temp_files([temp_path])
-        
         increment_usage('pdf_to_word', ip_address)
         
         return jsonify({
             'success': True,
-            'file': doc_base64,
+            'file': base64.b64encode(doc_data).decode() if doc_data else '',
             'filename': filename.replace('.pdf', '.docx'),
             'usage_count': get_usage_count('pdf_to_word', ip_address),
-            'remaining_free': max(0, 2 - get_usage_count('pdf_to_word', ip_address)),
+            'remaining_free': max(0, 2 - get_usage_count('pdf_to_word', ip_address)) if not is_premium else "Unlimited",
             'is_premium': is_premium,
-            'has_watermark': should_add_watermark(is_premium)
+            'has_watermark': should_add_watermark(is_premium),
+            'method_used': method_used,
+            'message': f'Converted using {method_used}'
         })
         
     except Exception as e:
         print(f"PDF to Word Error: {str(e)}")
-        return jsonify({'success': False, 'error': 'Internal server error'}), 500
+        import traceback
+        traceback.print_exc()
+        cleanup_temp_files([temp_path] if 'temp_path' in locals() else [])
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # ============================================
-# 6. PDF TO EXCEL
+# 6. PDF TO EXCEL - ENHANCED
 # ============================================
 
 @tools_bp.route('/pdf-to-excel', methods=['POST', 'OPTIONS'])
 def pdf_to_excel():
-    """Convert PDF to Excel (Free: 2 per day, Premium: Unlimited)"""
+    """Convert PDF to Excel with tables, images, and formatting preservation"""
     if request.method == 'OPTIONS':
         response = jsonify({'success': True})
         response.headers.add('Access-Control-Allow-Origin', '*')
@@ -894,6 +1222,7 @@ def pdf_to_excel():
             return jsonify({'success': False, 'error': error}), 400
         
         is_premium = request.form.get('is_premium', 'false').lower() == 'true'
+        user_id = request.form.get('user_id', 'anonymous')
         
         usage_count = get_usage_count('pdf_to_excel', ip_address)
         
@@ -918,25 +1247,189 @@ def pdf_to_excel():
                 cleanup_temp_files([temp_path])
                 return jsonify({'success': False, 'error': error}), 400
         
-        text = extract_text_from_pdf(temp_path)
-        
         wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "PDF Content"
+        wb.remove(wb.active)  # Remove default sheet
         
-        # Split text into rows
-        lines = text.split('\n')
-        for i, line in enumerate(lines):
-            if i < 10000:  # Limit rows to prevent abuse
-                ws.cell(row=i+1, column=1, value=line[:1000])  # Limit cell length
+        # ✅ Track sheets to avoid duplicate names
+        sheet_names = set()
         
-        # ✅ Add watermark for free users
+        # ✅ METHOD 1: Try tabula-py (best table extraction)
+        try:
+            import tabula
+            import pandas as pd
+            
+            tables = tabula.read_pdf(temp_path, pages='all', multiple_tables=True)
+            
+            if tables:
+                for i, table in enumerate(tables):
+                    if not table.empty:
+                        # Clean column names
+                        table.columns = [str(col).strip() if pd.notna(col) else f'Column_{j+1}' for j, col in enumerate(table.columns)]
+                        
+                        sheet_name = f'Table_{i+1}'[:31]
+                        # Handle duplicate sheet names
+                        if sheet_name in sheet_names:
+                            sheet_name = f'Table_{i+1}_v2'[:31]
+                        sheet_names.add(sheet_name)
+                        
+                        ws = wb.create_sheet(title=sheet_name)
+                        
+                        # ✅ Style the header
+                        header_font = Font(bold=True, color='FFFFFF', size=11)
+                        header_fill = PatternFill(start_color='4472C4', end_color='4472C4', fill_type='solid')
+                        header_alignment = Alignment(horizontal='center', vertical='center')
+                        
+                        # Write headers with styling
+                        for col_idx, header in enumerate(table.columns, 1):
+                            cell = ws.cell(row=1, column=col_idx, value=str(header))
+                            cell.font = header_font
+                            cell.fill = header_fill
+                            cell.alignment = header_alignment
+                        
+                        # Write data with formatting
+                        border = Border(
+                            left=Side(style='thin'),
+                            right=Side(style='thin'),
+                            top=Side(style='thin'),
+                            bottom=Side(style='thin')
+                        )
+                        
+                        for row_idx, row in enumerate(table.values, 2):
+                            for col_idx, value in enumerate(row, 1):
+                                if pd.notna(value):
+                                    # Preserve numbers as numbers
+                                    if isinstance(value, (int, float)):
+                                        cell = ws.cell(row=row_idx, column=col_idx, value=value)
+                                    else:
+                                        cell = ws.cell(row=row_idx, column=col_idx, value=str(value))
+                                    
+                                    cell.alignment = Alignment(horizontal='left', vertical='center', wrap_text=True)
+                                    cell.border = border
+                        
+                        # Auto-fit columns
+                        for col_idx in range(1, len(table.columns) + 1):
+                            max_length = 0
+                            column = get_column_letter(col_idx)
+                            for row in range(1, ws.max_row + 1):
+                                cell_value = ws.cell(row=row, column=col_idx).value
+                                if cell_value:
+                                    max_length = max(max_length, len(str(cell_value)))
+                            ws.column_dimensions[column].width = min(max_length + 3, 50)
+            else:
+                # No tables found - extract text with structure
+                ws = wb.create_sheet(title="Extracted_Text")
+                row_num = 1
+                
+                # ✅ Use PyMuPDF if available for better text extraction
+                try:
+                    import fitz
+                    doc = fitz.open(temp_path)
+                    for page in doc:
+                        text = page.get_text()
+                        for line in text.split('\n'):
+                            if line.strip():
+                                # Try to split by multiple spaces (table-like)
+                                parts = re.split(r'\s{2,}', line.strip())
+                                if len(parts) >= 3:
+                                    for col_idx, part in enumerate(parts, 1):
+                                        ws.cell(row=row_num, column=col_idx, value=part.strip())
+                                else:
+                                    ws.cell(row=row_num, column=1, value=line.strip())
+                                row_num += 1
+                    doc.close()
+                except:
+                    # Fallback to PyPDF2
+                    with open(temp_path, 'rb') as f:
+                        pdf_reader = PyPDF2.PdfReader(f)
+                        for page in pdf_reader.pages:
+                            text = page.extract_text() or ''
+                            for line in text.split('\n'):
+                                if line.strip():
+                                    # Try to split by multiple spaces (table-like)
+                                    parts = re.split(r'\s{2,}', line.strip())
+                                    if len(parts) >= 3:
+                                        for col_idx, part in enumerate(parts, 1):
+                                            ws.cell(row=row_num, column=col_idx, value=part.strip())
+                                    else:
+                                        ws.cell(row=row_num, column=1, value=line.strip())
+                                    row_num += 1
+        
+        except ImportError:
+            # ✅ METHOD 2: Fallback - Use PyMuPDF for better extraction
+            ws = wb.create_sheet(title="PDF_Content")
+            row_num = 1
+            
+            try:
+                import fitz
+                import re
+                
+                doc = fitz.open(temp_path)
+                
+                for page_num, page in enumerate(doc):
+                    # Add page header
+                    ws.cell(row=row_num, column=1, value=f"=== Page {page_num + 1} ===")
+                    row_num += 1
+                    
+                    # Extract text with position info
+                    blocks = page.get_text("dict")
+                    
+                    for block in blocks.get("blocks", []):
+                        if block.get("type") == 0:  # Text block
+                            for line in block.get("lines", []):
+                                spans = line.get("spans", [])
+                                if spans:
+                                    text = "".join([span.get("text", "") for span in spans])
+                                    if text.strip():
+                                        # Try to detect table rows
+                                        parts = re.split(r'\s{2,}', text.strip())
+                                        if len(parts) >= 3:
+                                            for col_idx, part in enumerate(parts, 1):
+                                                ws.cell(row=row_num, column=col_idx, value=part.strip())
+                                        else:
+                                            ws.cell(row=row_num, column=1, value=text.strip())
+                                        row_num += 1
+                
+                doc.close()
+                
+            except:
+                # ✅ METHOD 3: Final fallback - PyPDF2
+                with open(temp_path, 'rb') as f:
+                    pdf_reader = PyPDF2.PdfReader(f)
+                    for page in pdf_reader.pages:
+                        text = page.extract_text() or ''
+                        for line in text.split('\n'):
+                            if line.strip():
+                                ws.cell(row=row_num, column=1, value=line.strip())
+                                row_num += 1
+        
+        # ✅ Add summary sheet
+        summary_ws = wb.create_sheet(title="Summary")
+        summary_ws.cell(row=1, column=1, value="PDF to Excel Conversion Summary")
+        summary_ws.cell(row=1, column=1).font = Font(bold=True, size=14)
+        
+        summary_data = [
+            ["Original File", filename],
+            ["Conversion Date", datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
+            ["Total Sheets", len(wb.sheetnames)],
+            ["Premium User", "Yes" if is_premium else "No"],
+            ["Free Uses Left", str(max(0, 2 - usage_count)) if not is_premium else "Unlimited"],
+        ]
+        
+        for row_idx, (key, value) in enumerate(summary_data, 3):
+            summary_ws.cell(row=row_idx, column=1, value=key).font = Font(bold=True)
+            summary_ws.cell(row=row_idx, column=2, value=value)
+        
+        # Add watermark for free users
         if should_add_watermark(is_premium):
-            max_row = ws.max_row + 2
-            ws.cell(row=max_row, column=1, value='─' * 30)
-            ws.cell(row=max_row+1, column=1, value='Made with ❤️ by Krynova Technologies')
-            ws.cell(row=max_row+2, column=1, value='Visit: https://krynovatechnology.pythonanywhere.com')
-            ws.cell(row=max_row+3, column=1, value='─' * 30)
+            # Add watermark text to all sheets
+            for sheet in wb.sheetnames:
+                ws = wb[sheet]
+                if ws.title != "Summary":
+                    max_row = ws.max_row + 2
+                    ws.cell(row=max_row, column=1, value='─' * 30)
+                    ws.cell(row=max_row+1, column=1, value='Made with ❤️ by Krynova Technologies')
+                    ws.cell(row=max_row+2, column=1, value='Visit: https://krynovatechnology.pythonanywhere.com')
+                    ws.cell(row=max_row+3, column=1, value='─' * 30)
         
         excel_bytes = BytesIO()
         wb.save(excel_bytes)
@@ -944,22 +1437,27 @@ def pdf_to_excel():
         excel_base64 = base64.b64encode(excel_bytes.read()).decode()
         
         cleanup_temp_files([temp_path])
-        
         increment_usage('pdf_to_excel', ip_address)
         
         return jsonify({
             'success': True,
             'file': excel_base64,
             'filename': filename.replace('.pdf', '.xlsx'),
+            'sheets': wb.sheetnames,
+            'sheet_count': len(wb.sheetnames),
             'usage_count': get_usage_count('pdf_to_excel', ip_address),
-            'remaining_free': max(0, 2 - get_usage_count('pdf_to_excel', ip_address)),
+            'remaining_free': max(0, 2 - get_usage_count('pdf_to_excel', ip_address)) if not is_premium else "Unlimited",
             'is_premium': is_premium,
-            'has_watermark': should_add_watermark(is_premium)
+            'has_watermark': should_add_watermark(is_premium),
+            'message': 'Conversion successful' if is_premium else 'Free conversion - Upgrade for unlimited'
         })
         
     except Exception as e:
         print(f"PDF to Excel Error: {str(e)}")
-        return jsonify({'success': False, 'error': 'Internal server error'}), 500
+        import traceback
+        traceback.print_exc()
+        cleanup_temp_files([temp_path] if 'temp_path' in locals() else [])
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # ============================================
 # 7. IMAGE TO PDF
@@ -1134,15 +1632,16 @@ def image_to_pdf():
         print(f"Image to PDF Error: {str(e)}")
         import traceback
         traceback.print_exc()
-        return jsonify({'success': False, 'error': 'Internal server error'}), 500
+        cleanup_temp_files(temp_paths if 'temp_paths' in locals() else [])
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # ============================================
-# 8. PDF COMPRESSOR
+# 8. PDF COMPRESSOR - ENHANCED
 # ============================================
 
 @tools_bp.route('/pdf-compressor', methods=['POST', 'OPTIONS'])
 def compress_pdf():
-    """Compress PDF (Free: Unlimited single, 3 batch/day, Premium: Unlimited)"""
+    """Compress PDF with multiple methods for maximum size reduction"""
     if request.method == 'OPTIONS':
         response = jsonify({'success': True})
         response.headers.add('Access-Control-Allow-Origin', '*')
@@ -1157,31 +1656,49 @@ def compress_pdf():
         file = request.files['file']
         ip_address = get_client_ip(request)
         
-        # Rate limiting
         if is_rate_limited(ip_address, 'pdf_compressor', limit=15, window=60):
-            return jsonify({
-                'success': False,
-                'error': 'Too many requests. Please try again later.'
-            }), 429
+            return jsonify({'success': False, 'error': 'Too many requests. Please try again later.'}), 429
         
         track_request(ip_address, 'pdf_compressor')
         
-        # ✅ Security: Validate file type
         is_valid, error = validate_file_type(file, 'pdf')
         if not is_valid:
             return jsonify({'success': False, 'error': error}), 400
         
-        # ✅ Security: Validate file size
         is_valid, error = validate_file_size(file, MAX_FILE_SIZE['pdf'])
         if not is_valid:
             return jsonify({'success': False, 'error': error}), 400
         
-        is_premium = request.form.get('is_premium', 'false').lower() == 'true'
+        user_id = request.form.get('user_id', 'anonymous')
         
-        # Check if this is a batch request
+        options = {}
+        try:
+            options = json.loads(request.form.get('options', '{}'))
+        except:
+            pass
+        
+        target_size_enabled = options.get('targetSize', False)
+        target_size_kb = options.get('targetSizeKB', 20)
+        
+        is_premium = request.form.get('is_premium', 'false').lower() == 'true'
+        min_target_size = 5 if is_premium else 20
+        
+        if target_size_enabled:
+            if target_size_kb < min_target_size:
+                return jsonify({
+                    'success': False,
+                    'error': f'Target size must be at least {min_target_size}KB. {"Upgrade to premium for 5KB target." if not is_premium else ""}',
+                    'min_target_size': min_target_size,
+                    'is_premium': is_premium
+                }), 400
+            if target_size_kb > 10000:
+                return jsonify({
+                    'success': False,
+                    'error': 'Target size cannot exceed 10MB (10000KB)'
+                }), 400
+        
         is_batch = request.form.get('batch_mode', 'false').lower() == 'true'
         
-        # Track batch usage for free users
         batch_key = f"batch_pdf_compressor:{ip_address}"
         today = datetime.now().strftime('%Y-%m-%d')
         
@@ -1203,12 +1720,10 @@ def compress_pdf():
             batch_data['count'] += 1
             usage_tracking[batch_key] = batch_data
         
-        # Save uploaded file
         filename = sanitize_filename(file.filename)
         temp_path = os.path.join(tempfile.gettempdir(), f"{uuid.uuid4().hex}_{filename}")
         file.save(temp_path)
         
-        # ✅ Security: Check for malicious content
         with open(temp_path, 'rb') as f:
             file_bytes = f.read()
             is_malicious, error = detect_malicious_content(file_bytes)
@@ -1216,58 +1731,192 @@ def compress_pdf():
                 cleanup_temp_files([temp_path])
                 return jsonify({'success': False, 'error': error}), 400
         
-        # Read original size
         original_size = os.path.getsize(temp_path)
+        compressed_data = None
+        compressed_size = original_size
+        saved_percentage = 0
+        target_size_reached = False
         
-        # ============================================
-        # PDF COMPRESSION USING PyPDF2 (NO PyMuPDF)
-        # ============================================
+        # ✅ METHOD 1: PyPDF2 compression (works for text-based PDFs)
+        try:
+            with open(temp_path, 'rb') as pdf_file:
+                pdf_reader = PyPDF2.PdfReader(pdf_file)
+                pdf_writer = PyPDF2.PdfWriter()
+                
+                for page in pdf_reader.pages:
+                    try:
+                        page.compress_content_streams()
+                    except:
+                        pass
+                    pdf_writer.add_page(page)
+                
+                pdf_writer.add_metadata({
+                    '/Creator': 'Krynova PDF Compressor',
+                    '/Producer': 'Krynova'
+                })
+                
+                compressed_buffer = BytesIO()
+                pdf_writer.write(compressed_buffer)
+                test_data = compressed_buffer.getvalue()
+                
+                if len(test_data) < original_size and len(test_data) > 0:
+                    compressed_data = test_data
+                    compressed_size = len(test_data)
+                    
+                    if target_size_enabled and compressed_size <= (target_size_kb * 1024):
+                        target_size_reached = True
+        except:
+            pass
         
-        with open(temp_path, 'rb') as f:
-            pdf_reader = PyPDF2.PdfReader(f)
-            pdf_writer = PyPDF2.PdfWriter()
-            
-            for page in pdf_reader.pages:
+        # ✅ METHOD 2: Ghostscript compression (best for images - if available)
+        if (not compressed_data or compressed_size >= original_size) and not target_size_reached:
+            try:
+                import subprocess
+                output_path = os.path.join(tempfile.gettempdir(), f"{uuid.uuid4().hex}.pdf")
+                
+                # Use different settings for better compression
+                if target_size_enabled:
+                    if target_size_kb <= 10:
+                        settings = "screen"
+                    elif target_size_kb <= 50:
+                        settings = "ebook"
+                    else:
+                        settings = "printer" if is_premium else "ebook"
+                else:
+                    settings = "ebook" if not is_premium else "printer"
+                
+                # Try multiple passes for better compression
+                for quality in ['screen', 'ebook', 'printer']:
+                    output_path = os.path.join(tempfile.gettempdir(), f"{uuid.uuid4().hex}.pdf")
+                    
+                    cmd = [
+                        'gs', '-sDEVICE=pdfwrite',
+                        '-dCompatibilityLevel=1.4',
+                        f'-dPDFSETTINGS=/{quality}',
+                        '-dNOPAUSE', '-dQUIET', '-dBATCH',
+                        '-dDetectDuplicateImages=true',
+                        '-dCompressFonts=true',
+                        '-dSubsetFonts=true',
+                        '-dEmbedAllFonts=false',
+                        '-dMaxSubsetPct=100',
+                        '-dDownsampleColorImages=true',
+                        '-dDownsampleGrayImages=true',
+                        '-dDownsampleMonoImages=true',
+                        '-dColorImageResolution=150',
+                        '-dGrayImageResolution=150',
+                        '-dMonoImageResolution=150',
+                        f'-sOutputFile={output_path}',
+                        temp_path
+                    ]
+                    
+                    try:
+                        subprocess.run(cmd, capture_output=True, timeout=30)
+                        if os.path.exists(output_path):
+                            with open(output_path, 'rb') as f:
+                                test_data = f.read()
+                            if len(test_data) < original_size and len(test_data) > 0:
+                                compressed_data = test_data
+                                compressed_size = len(test_data)
+                                
+                                if target_size_enabled and compressed_size <= (target_size_kb * 1024):
+                                    target_size_reached = True
+                                    break
+                            cleanup_temp_files([output_path])
+                    except:
+                        pass
+            except:
+                pass
+        
+        # ✅ METHOD 3: img2pdf (for image-heavy PDFs)
+        if (not compressed_data or compressed_size >= original_size) and not target_size_reached:
+            try:
+                import img2pdf
+                from PIL import Image
+                
+                # Convert PDF to images and back to PDF with compression
                 try:
-                    page.compress_content_streams()
+                    import fitz
+                    doc = fitz.open(temp_path)
+                    images = []
+                    
+                    for page_num in range(len(doc)):
+                        page = doc.load_page(page_num)
+                        pix = page.get_pixmap(dpi=100)  # Lower DPI for compression
+                        img_data = pix.tobytes("png")
+                        images.append(Image.open(BytesIO(img_data)))
+                    
+                    doc.close()
+                    
+                    if images:
+                        pdf_buffer = BytesIO()
+                        images[0].save(
+                            pdf_buffer,
+                            format='PDF',
+                            save_all=True,
+                            append_images=images[1:] if len(images) > 1 else [],
+                            quality=70 if not is_premium else 85,
+                            optimize=True
+                        )
+                        test_data = pdf_buffer.getvalue()
+                        
+                        if len(test_data) < original_size and len(test_data) > 0:
+                            compressed_data = test_data
+                            compressed_size = len(test_data)
+                            
+                            if target_size_enabled and compressed_size <= (target_size_kb * 1024):
+                                target_size_reached = True
                 except:
                     pass
-                pdf_writer.add_page(page)
-            
-            # Remove metadata to reduce size
-            pdf_writer.add_metadata({
-                '/Creator': 'Krynova PDF Compressor',
-                '/Producer': 'Krynova'
-            })
-            
-            compressed_buffer = BytesIO()
-            pdf_writer.write(compressed_buffer)
-            compressed_data = compressed_buffer.getvalue()
-            compressed_size = len(compressed_data)
+            except:
+                pass
         
-        # Calculate saved percentage
-        if original_size > 0 and compressed_size > 0:
+        # ✅ METHOD 4: pypdf2 with aggressive settings
+        if (not compressed_data or compressed_size >= original_size) and not target_size_reached:
+            try:
+                from PyPDF2 import PdfReader, PdfWriter
+                
+                reader = PdfReader(temp_path)
+                writer = PdfWriter()
+                
+                for page in reader.pages:
+                    # Compress content streams
+                    try:
+                        page.compress_content_streams()
+                    except:
+                        pass
+                    writer.add_page(page)
+                
+                # Remove all metadata
+                writer.add_metadata({})
+                
+                # Compress with different settings
+                compressed_buffer = BytesIO()
+                writer.write(compressed_buffer)
+                test_data = compressed_buffer.getvalue()
+                
+                if len(test_data) < original_size and len(test_data) > 0:
+                    compressed_data = test_data
+                    compressed_size = len(test_data)
+                    
+                    if target_size_enabled and compressed_size <= (target_size_kb * 1024):
+                        target_size_reached = True
+            except:
+                pass
+        
+        # If still no compression, use original
+        if not compressed_data or compressed_size >= original_size:
+            with open(temp_path, 'rb') as f:
+                compressed_data = f.read()
+            compressed_size = original_size
+            saved_percentage = 0
+        else:
             saved_percentage = int((1 - compressed_size / original_size) * 100)
             if saved_percentage < 0:
                 saved_percentage = 0
-        else:
-            saved_percentage = 0
         
-        # If compression didn't reduce size, use original file
-        if compressed_size < original_size:
-            final_data = compressed_data
-            final_size = compressed_size
-            final_saved = saved_percentage
-        else:
-            with open(temp_path, 'rb') as f:
-                final_data = f.read()
-            final_size = original_size
-            final_saved = 0
-        
-        # Clean up temp file
+        # Clean up
         cleanup_temp_files([temp_path])
         
-        # For single files, we don't enforce any limit
         usage_count = get_usage_count('pdf_compressor', ip_address)
         
         if not is_premium:
@@ -1281,29 +1930,41 @@ def compress_pdf():
             current_usage = 0
             remaining = "Unlimited"
         
-        # Return compressed file
-        pdf_base64 = base64.b64encode(final_data).decode()
+        pdf_base64 = base64.b64encode(compressed_data).decode()
+        
+        # ✅ If target size not reached, provide feedback
+        compression_message = f"Saved {saved_percentage}%"
+        if target_size_enabled and not target_size_reached:
+            compression_message = f"Saved {saved_percentage}% (Target {target_size_kb}KB not reached. Try using 'Maximum Size Reduction' mode.)"
+        elif target_size_enabled and target_size_reached:
+            compression_message = f"✅ Target size {target_size_kb}KB reached! Saved {saved_percentage}%"
         
         return jsonify({
             'success': True,
             'file': pdf_base64,
             'filename': f'compressed_{filename}',
             'original_size': original_size,
-            'compressed_size': final_size,
-            'saved_percentage': final_saved,
+            'compressed_size': compressed_size,
+            'saved_percentage': saved_percentage,
             'usage_count': current_usage,
             'remaining_free': remaining,
             'is_premium': is_premium,
             'is_batch': is_batch,
             'batch_remaining': max(0, 3 - batch_data['count']) if not is_premium and is_batch else "Unlimited",
-            'has_watermark': False  # No watermark for compression
+            'has_watermark': False,
+            'target_size_reached': target_size_reached,
+            'target_size_kb': target_size_kb if target_size_enabled else None,
+            'min_target_size': min_target_size,
+            'user_id': user_id,
+            'compression_message': compression_message
         })
         
     except Exception as e:
         print(f"PDF Compressor Error: {str(e)}")
         import traceback
         traceback.print_exc()
-        return jsonify({'success': False, 'error': 'Internal server error'}), 500
+        cleanup_temp_files([temp_path] if 'temp_path' in locals() else [])
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # ============================================
 # 9. MERGE PDF
@@ -1458,7 +2119,8 @@ def merge_pdf():
         print(f"Merge PDF Error: {str(e)}")
         import traceback
         traceback.print_exc()
-        return jsonify({'success': False, 'error': 'Internal server error'}), 500
+        cleanup_temp_files(temp_paths if 'temp_paths' in locals() else [])
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # ============================================
 # 10. SPLIT PDF
@@ -1557,7 +2219,8 @@ def split_pdf():
         
     except Exception as e:
         print(f"Split PDF Error: {str(e)}")
-        return jsonify({'success': False, 'error': 'Internal server error'}), 500
+        cleanup_temp_files([temp_path] if 'temp_path' in locals() else [])
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # ============================================
 # 11. IMAGE RESIZER
@@ -1630,7 +2293,7 @@ def resize_image():
         temp_path = os.path.join(tempfile.gettempdir(), f"{uuid.uuid4().hex}_{filename}")
         file.save(temp_path)
         
-        # Open image
+        # ✅ Open the actual image
         img = Image.open(temp_path)
         original_size = img.size
         
@@ -1653,24 +2316,35 @@ def resize_image():
             output_format = 'PNG'
             background = None
         
-        # Resize image
+        # ✅ ACTUALLY RESIZE THE IMAGE
         img_resized = img.resize((width, height), resample)
         
-        # Convert to appropriate format
-        buffered = BytesIO()
-        save_kwargs = {'format': output_format, 'quality': quality_value, 'optimize': True}
-        
-        if output_format == 'PNG' and img_resized.mode == 'RGBA':
-            save_kwargs['format'] = 'PNG'
-        elif output_format in ['JPEG', 'JPG']:
+        # ✅ Convert RGBA to RGB if needed for JPEG
+        if output_format in ['JPEG', 'JPG']:
             if img_resized.mode == 'RGBA':
                 if background:
                     bg = Image.new('RGB', img_resized.size, background)
                     bg.paste(img_resized, mask=img_resized.split()[3] if len(img_resized.split()) > 3 else None)
                     img_resized = bg
                 else:
-                    img_resized = img_resized.convert('RGB')
-            save_kwargs['format'] = 'JPEG'
+                    # ✅ Convert to RGB with white background
+                    bg = Image.new('RGB', img_resized.size, (255, 255, 255))
+                    if img_resized.mode == 'RGBA':
+                        bg.paste(img_resized, mask=img_resized.split()[3])
+                    else:
+                        bg.paste(img_resized)
+                    img_resized = bg
+        
+        # ✅ Save resized image to buffer
+        buffered = BytesIO()
+        save_kwargs = {'format': output_format, 'quality': quality_value, 'optimize': True}
+        
+        if output_format == 'PNG':
+            save_kwargs['compress_level'] = 6
+        elif output_format in ['JPEG', 'JPG']:
+            save_kwargs['quality'] = quality_value
+            save_kwargs['optimize'] = True
+            save_kwargs['progressive'] = True
         
         img_resized.save(buffered, **save_kwargs)
         img_base64 = base64.b64encode(buffered.getvalue()).decode()
@@ -1683,6 +2357,7 @@ def resize_image():
             watermarked_img.save(watermarked_buffer, format=output_format)
             img_base64 = base64.b64encode(watermarked_buffer.getvalue()).decode()
         
+        # ✅ Clean up temp file
         cleanup_temp_files([temp_path])
         
         increment_usage('image_resizer', ip_address)
@@ -1706,7 +2381,8 @@ def resize_image():
         print(f"Image Resizer Error: {str(e)}")
         import traceback
         traceback.print_exc()
-        return jsonify({'success': False, 'error': 'Internal server error'}), 500
+        cleanup_temp_files([temp_path] if 'temp_path' in locals() else [])
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # ============================================
 # 12. TEXT TO PDF
@@ -1822,60 +2498,16 @@ def text_to_pdf():
         return jsonify({'success': False, 'error': 'Internal server error'}), 500
 
 # ============================================
-# PREMIUM SUBSCRIPTION
+# ❌ PREMIUM CHECK REMOVED - Now in payment_routes.py
+# ❌ PREMIUM SUBSCRIBE REMOVED - Now in payment_routes.py
 # ============================================
-
-@tools_bp.route('/premium/check', methods=['GET'])
-def check_premium_status():
-    """Check if user has premium access"""
-    user_id = request.args.get('user_id')
-    is_premium = False
-    
-    # In production, check from database
-    
-    return jsonify({
-        'success': True,
-        'is_premium': is_premium,
-        'features': {
-            'resume_builder': {'free_limit': 3, 'premium_unlimited': True},
-            'cover_letter': {'free_limit': 3, 'premium_unlimited': True},
-            'qr_generator': {'free_limit': 5, 'premium_unlimited': True},
-            'pdf_to_image': {'free_limit': 3, 'premium_unlimited': True},
-            'pdf_to_word': {'free_limit': 2, 'premium_unlimited': True},
-            'pdf_to_excel': {'free_limit': 2, 'premium_unlimited': True},
-            'image_to_pdf': {'free_limit': 3, 'premium_unlimited': True},
-            'pdf_compressor': {'free_limit': 3, 'premium_unlimited': True},
-            'merge_pdf': {'free_limit': 3, 'premium_unlimited': True},
-            'split_pdf': {'free_limit': 3, 'premium_unlimited': True},
-            'image_resizer': {'free_limit': 5, 'premium_unlimited': True},
-            'text_to_pdf': {'free_limit': 5, 'premium_unlimited': True}
-        }
-    })
-
-@tools_bp.route('/premium/subscribe', methods=['POST', 'OPTIONS'])
-def subscribe_premium():
-    """Subscribe to premium"""
-    if request.method == 'OPTIONS':
-        response = jsonify({'success': True})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
-        return response
-    
-    data = request.get_json()
-    return jsonify({
-        'success': True,
-        'message': 'Premium subscription activated!',
-        'plan': data.get('plan', 'monthly'),
-        'expires': (datetime.now() + timedelta(days=30)).isoformat()
-    })
 
 # ============================================
 # HELPER FUNCTIONS
 # ============================================
 
 def generate_resume_content(data):
-    """Generate professional resume content"""
+    """Generate professional resume content with support for multiple entries"""
     name = data.get('name', '')
     email = data.get('email', '')
     phone = data.get('phone', '')
@@ -1883,12 +2515,21 @@ def generate_resume_content(data):
     title = data.get('title', '')
     summary = data.get('summary', '')
     skills = data.get('skills', [])
-    experience = data.get('experience', '')
-    education = data.get('education', '')
     
+    # Handle skills - could be string or array
     if isinstance(skills, str):
-        skills = skills.split(',')
-
+        skills = [s.strip() for s in skills.split(',') if s.strip()]
+    elif not isinstance(skills, list):
+        skills = []
+    
+    # Get dynamic entries
+    experience = data.get('experience', [])
+    education = data.get('education', [])
+    projects = data.get('projects', [])
+    certifications = data.get('certifications', [])
+    languages = data.get('languages', [])
+    
+    # Build resume
     resume = f"""
 {name}
 {email} | {phone}
@@ -1906,23 +2547,135 @@ PROFESSIONAL SUMMARY
 SKILLS
 """
     for skill in skills:
-        resume += f"• {skill.strip()}\n"
+        resume += f"• {skill}\n"
     
-    if experience:
+    # EXPERIENCE SECTION
+    if experience and len(experience) > 0:
         resume += f"""
 {'-' * 50}
 
 EXPERIENCE
-{experience}
 """
+        for exp in experience:
+            if isinstance(exp, dict):
+                exp_title = exp.get('title', '')
+                company = exp.get('company', '')
+                start_date = exp.get('startDate', '')
+                end_date = exp.get('endDate', 'Present')
+                description = exp.get('description', '')
+                
+                resume += f"\n{exp_title} | {company}\n"
+                resume += f"{start_date} - {end_date}\n"
+                if description:
+                    # Handle bullet points in description
+                    for line in description.split('\n'):
+                        line = line.strip()
+                        if line:
+                            if line.startswith('•') or line.startswith('-'):
+                                resume += f"{line}\n"
+                            else:
+                                resume += f"• {line}\n"
+            else:
+                # Fallback if it's a string
+                resume += f"\n{exp}\n"
     
-    if education:
+    # EDUCATION SECTION
+    if education and len(education) > 0:
         resume += f"""
 {'-' * 50}
 
 EDUCATION
-{education}
 """
+        for edu in education:
+            if isinstance(edu, dict):
+                degree = edu.get('degree', '')
+                institution = edu.get('institution', '')
+                start_year = edu.get('startYear', '')
+                end_year = edu.get('endYear', 'Present')
+                gpa = edu.get('gpa', '')
+                description = edu.get('description', '')
+                
+                resume += f"\n{degree}\n{institution}\n{start_year} - {end_year}"
+                if gpa:
+                    resume += f"\nGPA: {gpa}"
+                if description:
+                    resume += f"\n{description}"
+                resume += "\n"
+            else:
+                resume += f"\n{edu}\n"
+    
+    # PROJECTS SECTION
+    if projects and len(projects) > 0:
+        resume += f"""
+{'-' * 50}
+
+PROJECTS
+"""
+        for proj in projects:
+            if isinstance(proj, dict):
+                proj_name = proj.get('name', '')
+                year = proj.get('year', '')
+                technologies = proj.get('technologies', '')
+                description = proj.get('description', '')
+                
+                resume += f"\n{proj_name}"
+                if year:
+                    resume += f" ({year})"
+                resume += "\n"
+                if technologies:
+                    resume += f"Technologies: {technologies}\n"
+                if description:
+                    for line in description.split('\n'):
+                        line = line.strip()
+                        if line:
+                            if line.startswith('•') or line.startswith('-'):
+                                resume += f"{line}\n"
+                            else:
+                                resume += f"• {line}\n"
+            else:
+                resume += f"\n{proj}\n"
+    
+    # CERTIFICATIONS SECTION
+    if certifications and len(certifications) > 0:
+        resume += f"""
+{'-' * 50}
+
+CERTIFICATIONS
+"""
+        for cert in certifications:
+            if isinstance(cert, dict):
+                cert_name = cert.get('name', '')
+                issuer = cert.get('issuer', '')
+                year = cert.get('year', '')
+                
+                resume += f"• {cert_name}"
+                if issuer:
+                    resume += f" - {issuer}"
+                if year:
+                    resume += f" ({year})"
+                resume += "\n"
+            else:
+                resume += f"• {cert}\n"
+    
+    # LANGUAGES SECTION
+    if languages and len(languages) > 0:
+        resume += f"""
+{'-' * 50}
+
+LANGUAGES
+"""
+        for lang in languages:
+            if isinstance(lang, dict):
+                language = lang.get('language', '')
+                proficiency = lang.get('proficiency', '')
+                
+                if language:
+                    resume += f"• {language}"
+                    if proficiency:
+                        resume += f" - {proficiency}"
+                    resume += "\n"
+            else:
+                resume += f"• {lang}\n"
     
     return resume
 

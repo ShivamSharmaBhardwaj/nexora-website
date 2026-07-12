@@ -16,6 +16,7 @@ import {
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { api } from '../../utils/api';
+import { secureStorage } from '../../utils/security';
 import PaymentModal from '../../components/PaymentModal';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -467,6 +468,7 @@ const CoverLetterGenerator = () => {
   const [usageInfo, setUsageInfo] = useState(null);
   const [activeTab, setActiveTab] = useState('form');
   const [isPremium, setIsPremium] = useState(false);
+  const [userId, setUserId] = useState('anonymous');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showKeywords, setShowKeywords] = useState(false);
   const [templateDropdownOpen, setTemplateDropdownOpen] = useState(false);
@@ -474,18 +476,25 @@ const CoverLetterGenerator = () => {
 
   const siteUrl = window.location.origin;
 
-  // Check premium status
+  // ✅ Get user ID from storage
+  useEffect(() => {
+    try {
+      const user = secureStorage.get('user');
+      if (user?.id) {
+        setUserId(user.id);
+      } else if (user?.email) {
+        setUserId(user.email);
+      }
+    } catch (e) {
+      console.warn('Could not get user:', e);
+    }
+  }, []);
+
+  // ✅ Check premium status with proper user ID
   useEffect(() => {
     const checkPremiumStatus = async () => {
       try {
-        let response;
-        if (api.checkPremiumStatus) {
-          response = await api.checkPremiumStatus();
-        } else if (api.checkPremium) {
-          response = await api.checkPremium();
-        } else {
-          return;
-        }
+        const response = await api.checkPremium(userId);
         
         if (response.data && response.data.is_premium) {
           setIsPremium(true);
@@ -494,10 +503,15 @@ const CoverLetterGenerator = () => {
         }
       } catch (error) {
         console.error('Premium check failed:', error);
+        // Don't show error to user - default to free
+        setIsPremium(false);
       }
     };
-    checkPremiumStatus();
-  }, []);
+    
+    if (userId) {
+      checkPremiumStatus();
+    }
+  }, [userId]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -541,7 +555,8 @@ const CoverLetterGenerator = () => {
         ...formData,
         skills: skillsArray,
         template: selectedTemplate,
-        is_premium: isPremium || formData.is_premium
+        is_premium: isPremium || formData.is_premium,
+        user_id: userId // ✅ Pass user ID
       };
       
       const response = await api.generateCoverLetter(payload);
@@ -1384,7 +1399,17 @@ const CoverLetterGenerator = () => {
       </div>
 
       {/* Payment Modal */}
-      <PaymentModal isOpen={showPaymentModal} onClose={() => setShowPaymentModal(false)} userEmail={formData.email} userId={localStorage.getItem('userId')} />
+      <PaymentModal 
+        isOpen={showPaymentModal} 
+        onClose={() => setShowPaymentModal(false)} 
+        userEmail={formData.email} 
+        userId={userId}
+        onSuccess={() => {
+          setIsPremium(true);
+          setFormData(prev => ({ ...prev, is_premium: true }));
+          toast.success('🎉 Premium activated! Enjoy unlimited access.');
+        }}
+      />
 
       <style dangerouslySetInnerHTML={{ __html: `
         .gradient-text {

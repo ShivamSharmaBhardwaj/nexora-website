@@ -1,5 +1,5 @@
 // src/pages/tools/TextToPDF.jsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { 
   FaSpinner, FaDownload, FaStar, FaLock, FaFileAlt, 
@@ -14,21 +14,19 @@ import {
   FaFont, FaHeading, FaParagraph, FaQuoteRight,
   FaTable, FaImage, FaLink, FaCode, FaTerminal,
   FaFile, FaCopy, FaFolderOpen, FaGlobe, FaMapMarkerAlt,
-  FaLanguage, FaHeadphones
+  FaLanguage, FaHeadphones, FaStrikethrough, FaHighlighter,
+  FaTextHeight, FaTextWidth, FaUndo, FaRedo, FaEraser,
+  FaSave, FaEye, FaEyeSlash, FaPrint, FaFileCode,
+  FaFileImage, FaFilePdf as FaFilePdfIcon
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { api } from '../../utils/api';
+import { secureStorage } from '../../utils/security';
 import PaymentModal from '../../components/PaymentModal';
 
 // ============================================
-// ✅ SAFE ARRAY HELPERS - Fix for .map() errors
+// ✅ SAFE ARRAY HELPERS
 // ============================================
-
-const safeMap = (data, callback) => {
-  if (!data) return null;
-  const arr = Array.isArray(data) ? data : [];
-  return arr.map(callback);
-};
 
 const safeArray = (data) => {
   return Array.isArray(data) ? data : [];
@@ -63,19 +61,20 @@ const globalCountries = [
 ];
 
 // ============================================
-// TEMPLATES
+// ADVANCED TEMPLATES
 // ============================================
 
-const TEMPLATES = {
-  letter: {
-    id: 'letter',
-    name: 'Formal Letter',
+const ADVANCED_TEMPLATES = {
+  business_letter: {
+    id: 'business_letter',
+    name: 'Business Letter',
     icon: FaFileWord,
-    description: 'Professional business letter template',
-    content: `[Your Name]
+    description: 'Professional business letter with proper formatting',
+    category: 'Business',
+    content: `[Your Company Name]
 [Your Address]
 [City, State, ZIP Code]
-[Your Email] | [Your Phone]
+[Phone] | [Email]
 
 [Date]
 
@@ -87,326 +86,864 @@ const TEMPLATES = {
 
 Dear [Recipient Name],
 
-I am writing to express my interest in [opportunity/position/project] at [Company Name]. With my [X]+ years of experience in [industry/field], I am confident in my ability to contribute meaningfully to your team.
+Subject: [Subject Line]
 
-Throughout my career, I have developed strong skills in [skill 1], [skill 2], and [skill 3]. I have successfully [achievement 1], [achievement 2], and [achievement 3]. I am particularly proud of [specific accomplishment].
+I am writing to formally [state the purpose of your letter]. This letter serves as [explain the context and importance].
 
-I am very interested in [Company Name] because [reason for interest]. I would welcome the opportunity to discuss how my experience and skills align with your needs.
+[Paragraph 2: Provide details, background, or supporting information]
 
-Thank you for your time and consideration.
+[Paragraph 3: State your request, recommendation, or next steps]
 
-Sincerely,
-[Your Name]`
-  },
-  resume: {
-    id: 'resume',
-    name: 'Resume/CV',
-    icon: FaFileAlt,
-    description: 'Professional resume template',
-    content: `RESUME
+[Paragraph 4: Conclude with a call to action or next steps]
 
+Thank you for your time and consideration. I look forward to your response.
+
+Yours sincerely,
 [Your Full Name]
-[Your Email] | [Your Phone] | [Your LinkedIn]
-[Your Location]
+[Your Title]
+[Your Signature]`
+  },
+  modern_resume: {
+    id: 'modern_resume',
+    name: 'Modern Resume',
+    icon: FaFileAlt,
+    description: 'Clean, modern resume design',
+    category: 'Career',
+    content: `[YOUR FULL NAME]
+[Title/Position]
+[Phone] • [Email] • [LinkedIn] • [Location]
+
+───────────────────────────────────────
 
 PROFESSIONAL SUMMARY
-[2-3 sentences describing your experience, skills, and career goals]
+───────────────────────────────────────
+[2-3 sentences highlighting your experience, key skills, and career goals]
 
-SKILLS
-• [Skill 1]
-• [Skill 2]
-• [Skill 3]
-• [Skill 4]
-• [Skill 5]
+CORE COMPETENCIES
+───────────────────────────────────────
+• [Skill 1] • [Skill 2] • [Skill 3] • [Skill 4]
+• [Skill 5] • [Skill 6] • [Skill 7] • [Skill 8]
 
 PROFESSIONAL EXPERIENCE
-[Job Title] | [Company Name] | [Start Date] - [End Date]
-• [Responsibility/achievement 1]
-• [Responsibility/achievement 2]
-• [Responsibility/achievement 3]
+───────────────────────────────────────
+[Job Title] | [Company Name] | [Start Date] – [End Date]
+• [Key achievement with measurable result]
+• [Key achievement with measurable result]
+• [Key achievement with measurable result]
 
-[Job Title] | [Company Name] | [Start Date] - [End Date]
-• [Responsibility/achievement 1]
-• [Responsibility/achievement 2]
-• [Responsibility/achievement 3]
+[Job Title] | [Company Name] | [Start Date] – [End Date]
+• [Key achievement with measurable result]
+• [Key achievement with measurable result]
+• [Key achievement with measurable result]
 
 EDUCATION
-[Degree] | [University Name] | [Graduation Year]
+───────────────────────────────────────
+[Degree] | [University Name] | [Year]
 • [Relevant coursework or achievements]
-• [GPA if high]
+• [GPA or honors]
 
 CERTIFICATIONS & AWARDS
-• [Certification 1]
-• [Certification 2]`
-  },
-  report: {
-    id: 'report',
-    name: 'Business Report',
-    icon: FaFileExport,
-    description: 'Professional business report template',
-    content: `BUSINESS REPORT
+───────────────────────────────────────
+• [Certification 1] – [Issuing Organization]
+• [Certification 2] – [Issuing Organization]
 
-Title: [Report Title]
+ADDITIONAL INFORMATION
+───────────────────────────────────────
+• Languages: [Language 1] ([Proficiency]), [Language 2] ([Proficiency])
+• Technical Skills: [Skill 1], [Skill 2], [Skill 3]
+• Interests: [Interest 1], [Interest 2]`
+  },
+  project_proposal: {
+    id: 'project_proposal',
+    name: 'Project Proposal',
+    icon: FaFileExport,
+    description: 'Comprehensive project proposal template',
+    category: 'Business',
+    content: `PROJECT PROPOSAL
+───────────────────────────────────────
+
+Project Title: [Project Name]
+Prepared For: [Client/Organization Name]
+Prepared By: [Your Company Name]
 Date: [Current Date]
-Prepared By: [Your Name]
-Department: [Your Department]
+Version: 1.0
 
 EXECUTIVE SUMMARY
-[Brief overview of the report's key findings and recommendations]
+───────────────────────────────────────
+[Brief overview of the project, its purpose, and key benefits]
 
-INTRODUCTION
-[Background information and purpose of the report]
+PROJECT BACKGROUND
+───────────────────────────────────────
+[Background information about the project context and need]
 
-FINDINGS AND ANALYSIS
-Key Finding 1: [Description of finding]
-• Supporting data: [Data/evidence]
-• Impact: [Impact on business]
+OBJECTIVES
+───────────────────────────────────────
+• [Objective 1]
+• [Objective 2]
+• [Objective 3]
 
-Key Finding 2: [Description of finding]
-• Supporting data: [Data/evidence]
-• Impact: [Impact on business]
+SCOPE OF WORK
+───────────────────────────────────────
+Phase 1: [Phase Name]
+• [Task 1]
+• [Task 2]
+• [Task 3]
 
-Key Finding 3: [Description of finding]
-• Supporting data: [Data/evidence]
-• Impact: [Impact on business]
+Phase 2: [Phase Name]
+• [Task 1]
+• [Task 2]
+• [Task 3]
 
-RECOMMENDATIONS
-Recommendation 1: [Specific recommendation]
-• Benefits: [Expected outcomes]
-• Timeline: [Implementation timeline]
+Phase 3: [Phase Name]
+• [Task 1]
+• [Task 2]
+• [Task 3]
 
-Recommendation 2: [Specific recommendation]
-• Benefits: [Expected outcomes]
-• Timeline: [Implementation timeline]
+DELIVERABLES
+───────────────────────────────────────
+• [Deliverable 1] – [Description and format]
+• [Deliverable 2] – [Description and format]
+• [Deliverable 3] – [Description and format]
 
-CONCLUSION
-[Summary of the report and next steps]`
+TIMELINE
+───────────────────────────────────────
+Phase 1: [Start Date] – [End Date]
+Phase 2: [Start Date] – [End Date]
+Phase 3: [Start Date] – [End Date]
+
+BUDGET
+───────────────────────────────────────
+Item | Description | Quantity | Unit Price | Total
+[Item 1] | [Description] | [Qty] | [Price] | [Total]
+[Item 2] | [Description] | [Qty] | [Price] | [Total]
+[Item 3] | [Description] | [Qty] | [Price] | [Total]
+
+Total Budget: [Total Amount]
+
+TEAM COMPOSITION
+───────────────────────────────────────
+• [Role 1]: [Name] – [Expertise/Experience]
+• [Role 2]: [Name] – [Expertise/Experience]
+• [Role 3]: [Name] – [Expertise/Experience]
+
+RISK ASSESSMENT
+───────────────────────────────────────
+Risk 1: [Description] – [Mitigation Strategy]
+Risk 2: [Description] – [Mitigation Strategy]
+
+NEXT STEPS
+───────────────────────────────────────
+1. [Step 1]
+2. [Step 2]
+3. [Step 3]
+
+We look forward to the opportunity to work with you.
+
+[Your Name]
+[Your Title]
+[Your Company]`
   },
   invoice: {
     id: 'invoice',
-    name: 'Invoice',
+    name: 'Professional Invoice',
     icon: FaFileExport,
-    description: 'Professional invoice template',
+    description: 'Professional invoice with tax calculations',
+    category: 'Finance',
     content: `INVOICE
+───────────────────────────────────────
 
-Invoice Number: [INV-YYYY-XXXX]
-Date: [Current Date]
+Invoice #: [INV-YYYY-XXXX]
+Invoice Date: [Current Date]
 Due Date: [Due Date]
 
 FROM:
 [Your Company Name]
 [Your Address]
 [City, State, ZIP Code]
-[Your Email]
-[Your Phone]
+[Phone] | [Email]
+GST/TIN: [Tax ID]
 
 BILL TO:
 [Client Company Name]
 [Client Address]
 [Client City, State, ZIP Code]
-[Client Email]
+[Client Email] | [Client Phone]
 
 DESCRIPTION OF SERVICES
+───────────────────────────────────────
 Item | Description | Qty | Rate | Amount
-1 | [Service Description] | [Qty] | [Rate] | [Total]
-2 | [Service Description] | [Qty] | [Rate] | [Total]
-3 | [Service Description] | [Qty] | [Rate] | [Total]
+[1] | [Service Description] | [Qty] | [Rate] | [Total]
+[2] | [Service Description] | [Qty] | [Rate] | [Total]
+[3] | [Service Description] | [Qty] | [Rate] | [Total]
 
 Subtotal: [Subtotal Amount]
 Tax Rate: [Tax Rate]%
 Tax Amount: [Tax Amount]
-Total Amount: [Total Amount]
+Shipping/Handling: [Amount]
+Discount: [Amount]
 
-Payment Terms: [Payment Terms]
+TOTAL AMOUNT: [Total Amount]
+
+PAYMENT TERMS
+───────────────────────────────────────
 Payment Method: [Bank Transfer/UPI/Cheque]
+Payment Due: [Due Date]
+Bank Details: [Bank Name] – [Account Number] – [IFSC Code]
 
-Notes: [Additional notes or instructions]
+NOTES
+───────────────────────────────────────
+[Additional notes or instructions]
 
 Thank you for your business!
-[Your Company Name]`
+
+[Your Signature]
+[Your Name]
+[Your Title]`
   },
-  proposal: {
-    id: 'proposal',
-    name: 'Project Proposal',
+  meeting_agenda: {
+    id: 'meeting_agenda',
+    name: 'Meeting Agenda',
+    icon: FaListUl,
+    description: 'Professional meeting agenda template',
+    category: 'Meeting',
+    content: `MEETING AGENDA
+───────────────────────────────────────
+
+Meeting Title: [Meeting Name]
+Date: [Date]
+Time: [Start Time] – [End Time]
+Location: [Location/Virtual Link]
+Chair: [Chair Name]
+Attendees: [List of Attendees]
+
+OBJECTIVES
+───────────────────────────────────────
+• [Objective 1]
+• [Objective 2]
+• [Objective 3]
+
+AGENDA
+───────────────────────────────────────
+1. Call to Order
+   - [Time allocated: X min]
+   - [Description]
+
+2. Approval of Previous Minutes
+   - [Time allocated: X min]
+   - [Description]
+
+3. [Agenda Item 1]
+   - [Time allocated: X min]
+   - [Presenter: Name]
+   - [Description and discussion points]
+
+4. [Agenda Item 2]
+   - [Time allocated: X min]
+   - [Presenter: Name]
+   - [Description and discussion points]
+
+5. [Agenda Item 3]
+   - [Time allocated: X min]
+   - [Presenter: Name]
+   - [Description and discussion points]
+
+6. New Business
+   - [Time allocated: X min]
+   - [Discussion items]
+
+7. Next Steps and Action Items
+   - [Time allocated: X min]
+   - [List action items]
+
+8. Adjournment
+   - [Time allocated: X min]
+
+PRE-READING MATERIALS
+───────────────────────────────────────
+• [Document 1] – [Description]
+• [Document 2] – [Description]
+
+ACTION ITEMS
+───────────────────────────────────────
+Action Item | Owner | Due Date | Status
+[Item 1] | [Name] | [Date] | [Status]
+[Item 2] | [Name] | [Date] | [Status]
+
+NOTES
+───────────────────────────────────────
+[Additional notes or special instructions]
+
+Meeting prepared by: [Preparer Name]`
+  },
+  memo: {
+    id: 'memo',
+    name: 'Business Memo',
     icon: FaFileWord,
-    description: 'Professional project proposal template',
-    content: `PROJECT PROPOSAL
+    description: 'Professional internal memo template',
+    category: 'Business',
+    content: `INTERNAL MEMO
+───────────────────────────────────────
 
-Project Title: [Project Name]
-Prepared For: [Client Company Name]
-Prepared By: [Your Company Name]
-Date: [Current Date]
+TO: [Recipient/Department]
+FROM: [Your Name/Department]
+DATE: [Current Date]
+SUBJECT: [Memo Subject]
 
-EXECUTIVE SUMMARY
-[Brief overview of the project and key benefits]
+[Opening paragraph stating the purpose of the memo]
 
-PROJECT OVERVIEW
-[Description of the project, its purpose, and objectives]
+[Background/Context paragraph]
 
-SCOPE OF WORK
-Phase 1: [Phase 1 Name]
-• [Task 1]
-• [Task 2]
-• [Task 3]
+[Key Discussion/Information paragraph]
 
-Phase 2: [Phase 2 Name]
-• [Task 1]
-• [Task 2]
-• [Task 3]
+[Action Items/Recommendations]
 
-TIMELINE AND DELIVERABLES
-Phase 1: [Timeline] - [Deliverables]
-Phase 2: [Timeline] - [Deliverables]
-Phase 3: [Timeline] - [Deliverables]
+[Closing paragraph with next steps]
 
-BUDGET ESTIMATE
-Item | Description | Cost
-1 | [Item 1] | [Cost 1]
-2 | [Item 2] | [Cost 2]
-3 | [Item 3] | [Cost 3]
-Total Budget: [Total Cost]
+CONTACT INFORMATION
+───────────────────────────────────────
+[Your Name]
+[Your Title]
+[Phone] | [Email]
 
-TEAM COMPOSITION
-Role 1: [Team Member Name] - [Expertise]
-Role 2: [Team Member Name] - [Expertise]
-Role 3: [Team Member Name] - [Expertise]
+CC: [CC Recipients]
 
-NEXT STEPS
-1. [Step 1]
-2. [Step 2]
-3. [Step 3]
-
-We look forward to working with you on this project!
-[Your Company Name]`
-  },
-  newsletter: {
-    id: 'newsletter',
-    name: 'Newsletter',
-    icon: FaFileAlt,
-    description: 'Professional newsletter template',
-    content: `[NEWSLETTER TITLE]
-
-Issue: [Issue Number] | Date: [Current Date]
-
-WELCOME MESSAGE
-[Welcome message to subscribers]
-
-FEATURE ARTICLE
-[Article Title]
-[Feature article content with key information]
-
-INDUSTRY NEWS
-• [News item 1]
-• [News item 2]
-• [News item 3]
-
-TIPS & TRICKS
-[Tip 1]: [Description]
-[Tip 2]: [Description]
-[Tip 3]: [Description]
-
-UPCOMING EVENTS
-• [Event 1] - [Date] - [Location]
-• [Event 2] - [Date] - [Location]
-
-RESOURCES
-• [Resource 1]: [Brief description]
-• [Resource 2]: [Brief description]
-• [Resource 3]: [Brief description]
-
-CONNECT WITH US
-[Social Media Links]
-[Website]
-[Email]
-
-Thank you for subscribing!
-[Your Company Name]`
-  },
-  contract: {
-    id: 'contract',
-    name: 'Service Contract',
-    icon: FaFileWord,
-    description: 'Professional service contract template',
-    content: `SERVICE CONTRACT
-
-Contract Number: [CON-YYYY-XXXX]
-Date: [Current Date]
-Effective Date: [Effective Date]
-
-BETWEEN:
-
-[Service Provider Name]
-[Provider Address]
-[Provider City, State, ZIP Code]
-[Provider Email]
-[Provider Phone]
-(Hereinafter referred to as "Service Provider")
-
-AND:
-
-[Client Name]
-[Client Address]
-[Client City, State, ZIP Code]
-[Client Email]
-[Client Phone]
-(Hereinafter referred to as "Client")
-
-1. SERVICES
-The Service Provider agrees to provide the following services:
-• [Service 1]
-• [Service 2]
-• [Service 3]
-• [Service 4]
-
-2. TERM AND TERMINATION
-This contract shall commence on [Start Date] and continue until [End Date] unless terminated earlier.
-Termination Conditions:
-• [Condition 1]
-• [Condition 2]
-
-3. COMPENSATION
-The Client agrees to pay the Service Provider as follows:
-Service Fee: [Amount]
-Payment Terms: [Payment Terms]
-Payment Schedule: [Schedule]
-
-4. RESPONSIBILITIES
-Service Provider Responsibilities:
-• [Responsibility 1]
-• [Responsibility 2]
-
-Client Responsibilities:
-• [Responsibility 1]
-• [Responsibility 2]
-
-5. CONFIDENTIALITY
-Both parties agree to maintain confidentiality regarding all business information.
-
-6. GOVERNING LAW
-This contract shall be governed by the laws of [State/Country].
-
-IN WITNESS WHEREOF, the parties have executed this contract as of the date first written above.
-
-Service Provider Signature: _______________________
-Date: _________
-
-Client Signature: _______________________
-Date: _________`
+───────────────────────────────────────
+This memo is for internal use only.`
   }
 };
 
 // ============================================
-// PDF STYLES
+// ADVANCED PDF STYLES
 // ============================================
 
-const PDF_STYLES = [
-  { id: 'classic', name: 'Classic', font: 'Times New Roman', size: 12 },
-  { id: 'modern', name: 'Modern', font: 'Arial', size: 12 },
-  { id: 'elegant', name: 'Elegant', font: 'Georgia', size: 12 },
-  { id: 'minimal', name: 'Minimal', font: 'Helvetica', size: 11 },
-  { id: 'tech', name: 'Tech', font: 'Consolas', size: 11 },
-  { id: 'formal', name: 'Formal', font: 'Times New Roman', size: 12 },
+const ADVANCED_PDF_STYLES = [
+  { id: 'classic', name: 'Classic', font: 'Times New Roman', size: 12, color: '#333333', lineHeight: 1.5, spacing: 'normal' },
+  { id: 'modern', name: 'Modern', font: 'Arial', size: 12, color: '#2c3e50', lineHeight: 1.6, spacing: 'normal' },
+  { id: 'elegant', name: 'Elegant', font: 'Georgia', size: 12, color: '#1a1a2e', lineHeight: 1.6, spacing: 'normal' },
+  { id: 'minimal', name: 'Minimal', font: 'Helvetica', size: 11, color: '#2d2d2d', lineHeight: 1.5, spacing: 'compact' },
+  { id: 'tech', name: 'Tech', font: 'Consolas', size: 11, color: '#1a1a1a', lineHeight: 1.4, spacing: 'compact' },
+  { id: 'formal', name: 'Formal', font: 'Times New Roman', size: 12, color: '#000000', lineHeight: 1.5, spacing: 'normal' },
+  { id: 'creative', name: 'Creative', font: 'Poppins', size: 12, color: '#2d1b69', lineHeight: 1.7, spacing: 'relaxed' },
+  { id: 'newsletter', name: 'Newsletter', font: 'Georgia', size: 11, color: '#333333', lineHeight: 1.5, spacing: 'normal' },
 ];
+
+// ============================================
+// RICH TEXT EDITOR COMPONENT - FULLY WORKING
+// ============================================
+
+const RichTextEditor = ({ value, onChange, isPremium }) => {
+  const [isBold, setIsBold] = useState(false);
+  const [isItalic, setIsItalic] = useState(false);
+  const [isUnderline, setIsUnderline] = useState(false);
+  const [isStrikethrough, setIsStrikethrough] = useState(false);
+  const [alignment, setAlignment] = useState('left');
+  const [history, setHistory] = useState([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const textareaRef = useRef(null);
+
+  // Save to history
+  const saveToHistory = (text) => {
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push(text);
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+  };
+
+  // Undo
+  const handleUndo = () => {
+    if (historyIndex > 0) {
+      setHistoryIndex(historyIndex - 1);
+      onChange(history[historyIndex - 1]);
+      toast.success('Undo');
+    }
+  };
+
+  // Redo
+  const handleRedo = () => {
+    if (historyIndex < history.length - 1) {
+      setHistoryIndex(historyIndex + 1);
+      onChange(history[historyIndex + 1]);
+      toast.success('Redo');
+    }
+  };
+
+  // ✅ FIXED: Get selected text from textarea
+  const getSelectedText = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) return { start: 0, end: 0, text: '' };
+    
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = value.substring(start, end);
+    
+    return { start, end, text: selectedText };
+  };
+
+  // ✅ FIXED: Replace selected text with formatted text
+  const replaceSelectedText = (start, end, replacement) => {
+    const newText = value.substring(0, start) + replacement + value.substring(end);
+    onChange(newText);
+    saveToHistory(newText);
+    
+    // Set cursor position after the inserted text
+    setTimeout(() => {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const newCursorPos = start + replacement.length;
+        textarea.selectionStart = newCursorPos;
+        textarea.selectionEnd = newCursorPos;
+        textarea.focus();
+      }
+    }, 10);
+  };
+
+  // ✅ FIXED: Format text with proper selection handling
+  const formatText = (format) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const { start, end, text: selectedText } = getSelectedText();
+
+    if (!selectedText) {
+      // If no text selected, insert the formatting at cursor position
+      let prefix = '';
+      let suffix = '';
+      
+      switch (format) {
+        case 'bold': prefix = '**'; suffix = '**'; break;
+        case 'italic': prefix = '*'; suffix = '*'; break;
+        case 'underline': prefix = '__'; suffix = '__'; break;
+        case 'strikethrough': prefix = '~~'; suffix = '~~'; break;
+        case 'heading1': prefix = '# '; suffix = '\n'; break;
+        case 'heading2': prefix = '## '; suffix = '\n'; break;
+        case 'heading3': prefix = '### '; suffix = '\n'; break;
+        case 'code': prefix = '`'; suffix = '`'; break;
+        case 'blockquote': prefix = '> '; suffix = '\n'; break;
+        default: return;
+      }
+      
+      // Insert at cursor position
+      const newText = value.substring(0, start) + prefix + suffix + value.substring(end);
+      onChange(newText);
+      saveToHistory(newText);
+      
+      // Set cursor between prefix and suffix
+      setTimeout(() => {
+        const textarea = textareaRef.current;
+        if (textarea) {
+          const newPos = start + prefix.length;
+          textarea.selectionStart = newPos;
+          textarea.selectionEnd = newPos;
+          textarea.focus();
+        }
+      }, 10);
+      
+      toast.success(`Inserted ${format}`);
+      return;
+    }
+
+    // If text is selected, wrap it with formatting
+    let prefix = '';
+    let suffix = '';
+
+    switch (format) {
+      case 'bold': prefix = '**'; suffix = '**'; break;
+      case 'italic': prefix = '*'; suffix = '*'; break;
+      case 'underline': prefix = '__'; suffix = '__'; break;
+      case 'strikethrough': prefix = '~~'; suffix = '~~'; break;
+      case 'heading1': prefix = '# '; suffix = ''; break;
+      case 'heading2': prefix = '## '; suffix = ''; break;
+      case 'heading3': prefix = '### '; suffix = ''; break;
+      case 'code': prefix = '`'; suffix = '`'; break;
+      case 'blockquote': prefix = '> '; suffix = ''; break;
+      default: return;
+    }
+
+    const formattedText = prefix + selectedText + suffix;
+    replaceSelectedText(start, end, formattedText);
+    
+    // Update button states
+    switch (format) {
+      case 'bold': setIsBold(!isBold); break;
+      case 'italic': setIsItalic(!isItalic); break;
+      case 'underline': setIsUnderline(!isUnderline); break;
+      case 'strikethrough': setIsStrikethrough(!isStrikethrough); break;
+      default: break;
+    }
+    
+    toast.success(`Applied ${format}`);
+  };
+
+  // Insert list - FIXED
+  const insertList = (type) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const { start, end } = getSelectedText();
+    let listText = '';
+    let prefix = '';
+
+    if (type === 'bullet') {
+      prefix = '• ';
+    } else if (type === 'numbered') {
+      const lines = value.split('\n');
+      const num = lines.filter(l => l.match(/^\d+\. /)).length + 1;
+      prefix = `${num}. `;
+    } else if (type === 'todo') {
+      prefix = '☐ ';
+    }
+
+    // Insert at current position or on new line
+    const before = value.substring(0, start);
+    const after = value.substring(start);
+    const newText = before + prefix + after;
+    onChange(newText);
+    saveToHistory(newText);
+    
+    // Move cursor after the prefix
+    setTimeout(() => {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const newPos = start + prefix.length;
+        textarea.selectionStart = newPos;
+        textarea.selectionEnd = newPos;
+        textarea.focus();
+      }
+    }, 10);
+  };
+
+  // Insert table - FIXED
+  const insertTable = (rows = 3, cols = 3) => {
+    if (!isPremium) {
+      toast.error('Tables are a premium feature. Upgrade to unlock!');
+      return;
+    }
+
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const cursorPos = textarea.selectionStart;
+    let table = '\n';
+    table += '| ' + Array(cols).fill('Column').join(' | ') + ' |\n';
+    table += '|' + Array(cols).fill('---').join('|') + '|\n';
+    for (let i = 0; i < rows; i++) {
+      table += '| ' + Array(cols).fill('').join(' | ') + ' |\n';
+    }
+    table += '\n';
+
+    const newText = value.substring(0, cursorPos) + table + value.substring(cursorPos);
+    onChange(newText);
+    saveToHistory(newText);
+    toast.success(`Inserted ${rows}x${cols} table`);
+  };
+
+  // Insert divider
+  const insertDivider = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const cursorPos = textarea.selectionStart;
+    const divider = '\n---\n';
+    const newText = value.substring(0, cursorPos) + divider + value.substring(cursorPos);
+    onChange(newText);
+    saveToHistory(newText);
+    toast.success('Divider inserted');
+  };
+
+  // Insert placeholder
+  const insertPlaceholder = (type) => {
+    const placeholders = {
+      date: '[Current Date]',
+      name: '[Your Name]',
+      company: '[Company Name]',
+      address: '[Your Address]',
+      phone: '[Phone Number]',
+      email: '[Email Address]',
+      signature: '[Your Signature]',
+    };
+    const placeholder = placeholders[type] || `[${type}]`;
+    
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const cursorPos = textarea.selectionStart;
+    const newText = value.substring(0, cursorPos) + placeholder + value.substring(cursorPos);
+    onChange(newText);
+    saveToHistory(newText);
+    
+    // Move cursor after the placeholder
+    setTimeout(() => {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const newPos = cursorPos + placeholder.length;
+        textarea.selectionStart = newPos;
+        textarea.selectionEnd = newPos;
+        textarea.focus();
+      }
+    }, 10);
+  };
+
+  // Toolbar Button
+  const ToolbarButton = ({ icon: Icon, onClick, title, active = false, premium = false }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`p-1.5 rounded transition ${
+        active ? 'bg-blue-100 text-blue-600' : 'hover:bg-gray-200 text-gray-600'
+      } ${premium && !isPremium ? 'opacity-50 cursor-not-allowed' : ''}`}
+      title={title + (premium && !isPremium ? ' (Premium)' : '')}
+      disabled={premium && !isPremium}
+    >
+      <Icon className="text-sm" />
+    </button>
+  );
+
+  // Placeholder dropdown
+  const [showPlaceholderDropdown, setShowPlaceholderDropdown] = useState(false);
+
+  return (
+    <div className="border border-gray-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-cyan-500">
+      {/* Toolbar */}
+      <div className="bg-gray-50 px-3 py-2 border-b border-gray-200 flex flex-wrap items-center gap-1">
+        {/* Undo/Redo */}
+        <ToolbarButton icon={FaUndo} onClick={handleUndo} title="Undo" />
+        <ToolbarButton icon={FaRedo} onClick={handleRedo} title="Redo" />
+        <div className="w-px h-6 bg-gray-300 mx-1"></div>
+
+        {/* Text Formatting */}
+        <ToolbarButton icon={FaBold} onClick={() => formatText('bold')} title="Bold" active={isBold} />
+        <ToolbarButton icon={FaItalic} onClick={() => formatText('italic')} title="Italic" active={isItalic} />
+        <ToolbarButton icon={FaUnderline} onClick={() => formatText('underline')} title="Underline" active={isUnderline} />
+        <ToolbarButton icon={FaStrikethrough} onClick={() => formatText('strikethrough')} title="Strikethrough" active={isStrikethrough} />
+        <div className="w-px h-6 bg-gray-300 mx-1"></div>
+
+        {/* Headings */}
+        <ToolbarButton icon={FaHeading} onClick={() => formatText('heading1')} title="Heading 1" />
+        <ToolbarButton icon={FaHeading} onClick={() => formatText('heading2')} title="Heading 2" />
+        <ToolbarButton icon={FaHeading} onClick={() => formatText('heading3')} title="Heading 3" />
+        <div className="w-px h-6 bg-gray-300 mx-1"></div>
+
+        {/* Alignment */}
+        <ToolbarButton icon={FaAlignLeft} onClick={() => setAlignment('left')} title="Align Left" active={alignment === 'left'} />
+        <ToolbarButton icon={FaAlignCenter} onClick={() => setAlignment('center')} title="Align Center" active={alignment === 'center'} />
+        <ToolbarButton icon={FaAlignRight} onClick={() => setAlignment('right')} title="Align Right" active={alignment === 'right'} />
+        <div className="w-px h-6 bg-gray-300 mx-1"></div>
+
+        {/* Lists */}
+        <ToolbarButton icon={FaListUl} onClick={() => insertList('bullet')} title="Bullet List" />
+        <ToolbarButton icon={FaListOl} onClick={() => insertList('numbered')} title="Numbered List" />
+        <div className="w-px h-6 bg-gray-300 mx-1"></div>
+
+        {/* Premium Features */}
+        <ToolbarButton icon={FaTable} onClick={() => insertTable(3, 3)} title="Insert Table" premium={true} />
+        <ToolbarButton icon={FaCode} onClick={() => formatText('code')} title="Code Block" premium={true} />
+        <ToolbarButton icon={FaQuoteRight} onClick={() => formatText('blockquote')} title="Blockquote" premium={true} />
+        <div className="w-px h-6 bg-gray-300 mx-1"></div>
+
+        {/* Insert */}
+        <ToolbarButton icon={FaPlus} onClick={() => insertDivider()} title="Insert Divider" />
+        
+        {/* Placeholder Dropdown */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setShowPlaceholderDropdown(!showPlaceholderDropdown)}
+            className="p-1.5 hover:bg-gray-200 rounded transition text-gray-600"
+            title="Insert Placeholder"
+          >
+            <FaMagic className="text-sm" />
+          </button>
+          {showPlaceholderDropdown && (
+            <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-10 min-w-[150px]">
+              {Object.entries({
+                date: '📅 Date',
+                name: '👤 Name',
+                company: '🏢 Company',
+                address: '📍 Address',
+                phone: '📞 Phone',
+                email: '✉️ Email',
+                signature: '✍️ Signature'
+              }).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => {
+                    insertPlaceholder(key);
+                    setShowPlaceholderDropdown(false);
+                  }}
+                  className="w-full px-3 py-2 text-left hover:bg-cyan-50 transition text-sm flex items-center gap-2"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Premium badge */}
+        {!isPremium && (
+          <span className="ml-auto text-xs text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded-full">
+            <FaCrown className="inline mr-1 text-yellow-500" /> Premium features locked
+          </span>
+        )}
+      </div>
+
+      {/* Editor */}
+      <textarea
+        ref={textareaRef}
+        value={value}
+        onChange={(e) => {
+          onChange(e.target.value);
+          saveToHistory(e.target.value);
+        }}
+        className="w-full px-4 py-3 focus:outline-none resize-y min-h-[300px] font-mono text-sm"
+        placeholder="Enter your text content here... Use bullet points with - or * for lists"
+        style={{ fontFamily: 'monospace' }}
+        onSelect={(e) => {
+          // Update button states based on selection
+          const { start, end, text } = getSelectedText();
+          // You can add logic here to detect if selected text has formatting
+        }}
+      />
+
+      {/* Status Bar */}
+      <div className="bg-gray-50 px-3 py-1.5 border-t border-gray-200 flex justify-between text-xs text-gray-400">
+        <div className="flex gap-3">
+          <span>Words: {value.trim() ? value.trim().split(/\s+/).length : 0}</span>
+          <span>Characters: {value.length}</span>
+          <span>Lines: {value.split('\n').length}</span>
+        </div>
+        <div>
+          {isPremium && <span className="text-purple-500">✨ Premium Editor</span>}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================
+// LIVE PREVIEW COMPONENT
+// ============================================
+
+const LivePreview = ({ text, style, template }) => {
+  const previewRef = useRef(null);
+
+  const currentStyle = ADVANCED_PDF_STYLES.find(s => s.id === style) || ADVANCED_PDF_STYLES[0];
+
+  const renderText = (text) => {
+    if (!text) return <span className="text-gray-400 italic">No content to preview</span>;
+    
+    // Split by lines and render
+    const lines = text.split('\n');
+    return lines.map((line, index) => {
+      // Skip empty lines
+      if (!line.trim()) {
+        return <br key={index} />;
+      }
+
+      // Check for headings
+      if (line.startsWith('# ')) {
+        return <h2 key={index} className="text-xl font-bold mt-2">{line.slice(2)}</h2>;
+      }
+      if (line.startsWith('## ')) {
+        return <h3 key={index} className="text-lg font-bold mt-2">{line.slice(3)}</h3>;
+      }
+      if (line.startsWith('### ')) {
+        return <h4 key={index} className="text-base font-bold mt-2">{line.slice(4)}</h4>;
+      }
+
+      // Check for bold/italic
+      let processedLine = line;
+      const boldRegex = /\*\*(.*?)\*\*/g;
+      const italicRegex = /\*(.*?)\*/g;
+      const underlineRegex = /__(.*?)__/g;
+      const strikeRegex = /~~(.*?)~~/g;
+      
+      // Replace formatting
+      const parts = [];
+      let lastIndex = 0;
+      let match;
+      
+      // Simple rendering - convert markdown-like syntax
+      processedLine = processedLine.replace(boldRegex, '<strong>$1</strong>');
+      processedLine = processedLine.replace(italicRegex, '<em>$1</em>');
+      processedLine = processedLine.replace(underlineRegex, '<u>$1</u>');
+      processedLine = processedLine.replace(strikeRegex, '<del>$1</del>');
+      
+      // Check for lists
+      if (line.trim().startsWith('• ') || line.trim().startsWith('- ')) {
+        return <div key={index} className="flex items-start gap-2 pl-4">
+          <span className="text-blue-500">•</span>
+          <span dangerouslySetInnerHTML={{ __html: processedLine.replace(/^[•\-]\s*/, '') }} />
+        </div>;
+      }
+      if (line.trim().match(/^\d+\. /)) {
+        const num = line.trim().match(/^(\d+)\. /)[1];
+        return <div key={index} className="flex items-start gap-2 pl-4">
+          <span className="text-gray-500 font-medium">{num}.</span>
+          <span dangerouslySetInnerHTML={{ __html: processedLine.replace(/^\d+\.\s*/, '') }} />
+        </div>;
+      }
+
+      // Check for blockquotes
+      if (line.trim().startsWith('> ')) {
+        return <div key={index} className="border-l-4 border-blue-400 pl-4 my-2 text-gray-600">
+          <span dangerouslySetInnerHTML={{ __html: processedLine.replace(/^>\s*/, '') }} />
+        </div>;
+      }
+
+      // Check for dividers
+      if (line.trim() === '---' || line.trim() === '***') {
+        return <hr key={index} className="my-4 border-gray-300" />;
+      }
+
+      // Check for code blocks
+      if (line.trim().startsWith('`') && line.trim().endsWith('`')) {
+        return <code key={index} className="bg-gray-100 px-2 py-0.5 rounded text-sm font-mono">
+          {line.trim().replace(/`/g, '')}
+        </code>;
+      }
+
+      // Normal paragraph
+      return <p key={index} className="mb-1" dangerouslySetInnerHTML={{ __html: processedLine }} />;
+    });
+  };
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-4 min-h-[400px] max-h-[500px] overflow-y-auto">
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+          <FaEye className="text-cyan-500" /> Live Preview
+        </h4>
+        <span className="text-xs text-gray-400">
+          {currentStyle.name} • {currentStyle.font}
+        </span>
+      </div>
+      <div 
+        ref={previewRef}
+        className="prose prose-sm max-w-none"
+        style={{
+          fontFamily: currentStyle.font,
+          fontSize: `${currentStyle.size}px`,
+          color: currentStyle.color,
+          lineHeight: currentStyle.lineHeight,
+          letterSpacing: currentStyle.spacing === 'compact' ? '-0.5px' : 'normal',
+          padding: '20px',
+          backgroundColor: 'white',
+          borderRadius: '4px',
+          minHeight: '300px'
+        }}
+      >
+        {renderText(text)}
+        {template && (
+          <div className="mt-4 pt-4 border-t border-gray-200 text-xs text-gray-400">
+            Template: {ADVANCED_TEMPLATES[template]?.name || 'Custom'}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 // ============================================
 // CONVERSION HISTORY
@@ -476,7 +1013,7 @@ const ConversionHistory = ({ history, onReuse }) => {
 };
 
 // ============================================
-// TEXT TO PDF COMPONENT
+// MAIN TEXT TO PDF COMPONENT - ADVANCED
 // ============================================
 
 const TextToPDF = () => {
@@ -486,6 +1023,7 @@ const TextToPDF = () => {
   const [result, setResult] = useState(null);
   const [usageInfo, setUsageInfo] = useState(null);
   const [isPremium, setIsPremium] = useState(false);
+  const [userId, setUserId] = useState('anonymous');
   const [wordCount, setWordCount] = useState(0);
   const [charCount, setCharCount] = useState(0);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -496,30 +1034,68 @@ const TextToPDF = () => {
   const [progressStatus, setProgressStatus] = useState('');
   const [showTemplateDropdown, setShowTemplateDropdown] = useState(false);
   const [showStyleDropdown, setShowStyleDropdown] = useState(false);
+  const [showPreview, setShowPreview] = useState(true);
+  const [fontSize, setFontSize] = useState(12);
+  const [fontFamily, setFontFamily] = useState('Arial');
+  const [pageSize, setPageSize] = useState('A4');
+  const [marginSize, setMarginSize] = useState('normal');
+  const [draftName, setDraftName] = useState('');
 
-  // Check premium status
-  useEffect(() => {
-    const checkPremiumStatus = async () => {
-      try {
-        let response;
-        if (api.checkPremiumStatus) {
-          response = await api.checkPremiumStatus();
-        } else if (api.checkPremium) {
-          response = await api.checkPremium();
-        } else {
-          return;
-        }
-        
-        if (response.data && response.data.is_premium) {
-          setIsPremium(true);
-          toast.success('🎉 Premium activated! Unlimited conversions.');
-        }
-      } catch (error) {
-        console.error('Premium check failed:', error);
+  // ✅ GET USER ID
+  const getUserId = useCallback(() => {
+    try {
+      const storedId = localStorage.getItem('userId');
+      if (storedId && storedId !== 'anonymous' && storedId !== 'null') {
+        return storedId;
       }
-    };
-    checkPremiumStatus();
+      const user = secureStorage.get('user');
+      if (user?.id) return user.id;
+      const email = localStorage.getItem('userEmail');
+      if (email) {
+        const savedId = localStorage.getItem(`userId_${email}`);
+        if (savedId) return savedId;
+      }
+      return 'anonymous';
+    } catch (error) {
+      console.error('Error getting userId:', error);
+      return 'anonymous';
+    }
   }, []);
+
+  // ✅ CHECK PREMIUM STATUS
+  const checkPremiumStatus = useCallback(async () => {
+    try {
+      const cached = localStorage.getItem('isPremium');
+      if (cached === 'true') setIsPremium(true);
+      
+      const id = getUserId();
+      setUserId(id);
+      const response = await api.checkPremium(id);
+      
+      if (response?.data) {
+        const isPremiumUser = response.data.is_premium === true;
+        setIsPremium(isPremiumUser);
+        localStorage.setItem('isPremium', isPremiumUser ? 'true' : 'false');
+        return isPremiumUser;
+      }
+      setIsPremium(false);
+      localStorage.setItem('isPremium', 'false');
+      return false;
+    } catch (error) {
+      console.error('Premium check failed:', error);
+      const cached = localStorage.getItem('isPremium');
+      if (cached === 'true') {
+        setIsPremium(true);
+        return true;
+      }
+      setIsPremium(false);
+      return false;
+    }
+  }, [getUserId]);
+
+  useEffect(() => {
+    checkPremiumStatus();
+  }, [checkPremiumStatus]);
 
   // Load conversion history
   useEffect(() => {
@@ -556,6 +1132,7 @@ const TextToPDF = () => {
     setCharCount(newText.length);
   };
 
+  // ✅ HANDLE SUBMIT
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!text.trim()) {
@@ -563,7 +1140,19 @@ const TextToPDF = () => {
       return;
     }
 
-    // Check free limit for non-premium
+    let currentUserId = userId;
+    if (!currentUserId || currentUserId === 'anonymous') {
+      const newId = getUserId();
+      if (newId && newId !== 'anonymous') {
+        currentUserId = newId;
+        setUserId(newId);
+      } else {
+        currentUserId = `user_${Date.now()}`;
+        localStorage.setItem('userId', currentUserId);
+        setUserId(currentUserId);
+      }
+    }
+
     if (!isPremium) {
       const today = new Date().toDateString();
       const usage = JSON.parse(localStorage.getItem('textToPdfUsage') || '{"date":"","count":0}');
@@ -586,8 +1175,13 @@ const TextToPDF = () => {
         text,
         title: title || 'Document',
         is_premium: isPremium,
+        user_id: currentUserId,
         style: selectedStyle,
-        template: selectedTemplate
+        template: selectedTemplate,
+        fontSize: fontSize,
+        fontFamily: fontFamily,
+        pageSize: pageSize,
+        margin: marginSize
       });
       
       setProgress(90);
@@ -596,12 +1190,16 @@ const TextToPDF = () => {
       if (response.data.success) {
         setResult(response.data);
         setUsageInfo({
-          used: response.data.usage_count,
-          remaining: response.data.remaining_free,
-          isPremium: response.data.is_premium
+          used: response.data.usage_count || 0,
+          remaining: response.data.remaining_free || 0,
+          isPremium: response.data.is_premium || isPremium
         });
         
-        // Track usage
+        if (response.data.is_premium && !isPremium) {
+          setIsPremium(true);
+          localStorage.setItem('isPremium', 'true');
+        }
+        
         if (!isPremium) {
           const today = new Date().toDateString();
           const usage = JSON.parse(localStorage.getItem('textToPdfUsage') || '{"date":"","count":0}');
@@ -614,7 +1212,7 @@ const TextToPDF = () => {
           localStorage.setItem('textToPdfUsage', JSON.stringify(usage));
         }
         
-        saveToHistory(title, 'completed', response.data);
+        saveToHistory(title || 'Document', 'completed', response.data);
         
         setProgress(100);
         setProgressStatus('✅ Conversion complete!');
@@ -646,13 +1244,18 @@ const TextToPDF = () => {
 
   const downloadFile = () => {
     if (!result) return;
-    const link = document.createElement('a');
-    link.href = `data:application/pdf;base64,${result.file}`;
-    link.download = result.filename || `${title}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success('PDF downloaded!');
+    try {
+      const link = document.createElement('a');
+      link.href = `data:application/pdf;base64,${result.file}`;
+      link.download = result.filename || `${title || 'Document'}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success('PDF downloaded!');
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Failed to download PDF');
+    }
   };
 
   const clearText = () => {
@@ -673,7 +1276,7 @@ const TextToPDF = () => {
   };
 
   const applyTemplate = (templateId) => {
-    const template = TEMPLATES[templateId];
+    const template = ADVANCED_TEMPLATES[templateId];
     if (template) {
       setText(template.content);
       setSelectedTemplate(templateId);
@@ -685,189 +1288,85 @@ const TextToPDF = () => {
   };
 
   const getCurrentStyle = () => {
-    return PDF_STYLES.find(s => s.id === selectedStyle) || PDF_STYLES[0];
+    return ADVANCED_PDF_STYLES.find(s => s.id === selectedStyle) || ADVANCED_PDF_STYLES[0];
   };
 
   const getCurrentTemplate = () => {
-    return selectedTemplate ? TEMPLATES[selectedTemplate] : null;
+    return selectedTemplate ? ADVANCED_TEMPLATES[selectedTemplate] : null;
+  };
+
+  // ✅ Handle payment success
+  const handlePaymentSuccess = async () => {
+    toast.success('🎉 Payment successful!');
+    setShowPaymentModal(false);
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    const result = await checkPremiumStatus();
+    if (result) {
+      toast.success('🎉 Premium activated! All 12 tools unlocked for ₹99/month.');
+      const id = getUserId();
+      try {
+        const response = await api.checkPremium(id);
+        if (response?.data) {
+          setUsageInfo({
+            used: 0,
+            remaining: 'Unlimited',
+            isPremium: true
+          });
+        }
+      } catch (e) {
+        console.error('Failed to refresh usage:', e);
+      }
+    }
   };
 
   return (
     <>
-      {/* ============================================ */}
-      {/* SEO + AEO + GEO Helmet Implementation */}
-      {/* ============================================ */}
+      {/* Helmet */}
       <Helmet>
-        <title>Free Text to PDF Generator - Convert Text to PDF Online | Krynova Technologies</title>
-        <meta name="description" content="Convert text to PDF online for free with Krynova Technologies. Generate professional PDF documents from text with 7 templates and 6 styles. Free users get 5 conversions per day. Premium users get unlimited conversions." />
-        <meta name="keywords" content="text to PDF, convert text to PDF, text to PDF generator, free text to PDF, create PDF from text, online PDF generator, Krynova text to PDF, best text to PDF tool, text to PDF converter India" />
+        <title>Advanced Text to PDF Generator - Professional PDF Creator | Krynova Technologies</title>
+        <meta name="description" content="Professional text to PDF generator with rich text editing, live preview, 8 templates, 8 styles, and advanced formatting. Free users get 5 conversions per day. Premium users get unlimited conversions across all 12 tools." />
+        <meta name="keywords" content="text to PDF, advanced text to PDF, rich text to PDF, PDF generator, professional PDF creator, Krynova text to PDF" />
         <link rel="canonical" href={`${siteUrl}/tools/text-to-pdf`} />
-        
-        {/* GEO Meta Tags */}
         <meta name="geo.region" content="IN-UP" />
         <meta name="geo.placename" content="Agra" />
         <meta name="geo.position" content="27.1767;78.0081" />
         <meta name="ICBM" content="27.1767, 78.0081" />
         <meta name="areaServed" content={indianCities.join(", ")} />
-        <meta name="serviceArea" content={`India, ${globalCountries.join(", ")}, Worldwide`} />
-        <meta name="targetGeo" content="India" />
-        
-        {/* AEO Meta Tags */}
-        <meta name="question" content="How to convert text to PDF for free in India?" />
-        <meta name="answer" content="Krynova Technologies offers a free text to PDF generator in India. Enter your text, choose a template (Letter, Resume, Report, Invoice, Proposal, Newsletter, Contract), select a style, and generate your PDF. Free users get 5 conversions per day. Premium users get unlimited conversions." />
-        <meta name="faq" content="true" />
-        <meta name="speakable" content="true" />
-        <meta name="voice-search" content="true" />
-        
-        {/* Open Graph */}
-        <meta property="og:title" content="Free Text to PDF Generator - Convert Text to PDF Online | Krynova Technologies" />
-        <meta property="og:description" content="Convert text to PDF online for free. Generate professional PDF documents from text with 7 templates and 6 styles. Free users get 5 conversions per day." />
-        <meta property="og:url" content={`${siteUrl}/tools/text-to-pdf`} />
-        <meta property="og:type" content="website" />
-        <meta property="og:site_name" content="Krynova Technologies" />
-        
-        {/* Twitter Card */}
+        <meta property="og:title" content="Advanced Text to PDF Generator - Professional PDF Creator" />
+        <meta property="og:description" content="Professional text to PDF generator with rich text editing, live preview, and advanced formatting." />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Free Text to PDF Generator - Convert Text to PDF Online" />
-        <meta name="twitter:description" content="Convert text to PDF online for free with Krynova Technologies." />
       </Helmet>
 
-      {/* ============================================ */}
-      {/* Speakable Content for Voice Assistants */}
-      {/* ============================================ */}
+      {/* Speakable Content */}
       <div className="speakable sr-only" aria-hidden="true">
-        <h2>Free Text to PDF Generator - Krynova Technologies</h2>
-        <p>Convert text to PDF online for free. Generate professional PDF documents from text with templates and styles.</p>
+        <h2>Advanced Text to PDF Generator - Krynova Technologies</h2>
+        <p>Convert text to professional PDF documents with rich text editing, live preview, and advanced formatting.</p>
         <ul>
-          <li>Free text to PDF conversion - 5 conversions per day</li>
-          <li>7 professional templates: Letter, Resume, Report, Invoice, Proposal, Newsletter, Contract</li>
-          <li>6 PDF styles: Classic, Modern, Elegant, Minimal, Tech, Formal</li>
-          <li>Premium - Unlimited conversions, all templates</li>
-          <li>Rich text editing with formatting tools</li>
-          <li>Secure and encrypted file processing</li>
+          <li>Rich text editing - Bold, Italic, Underline, Strikethrough</li>
+          <li>8 professional templates</li>
+          <li>8 PDF styles</li>
+          <li>Live preview</li>
+          <li>Undo/Redo functionality</li>
+          <li>Insert tables, dividers, code blocks, blockquotes</li>
+          <li>Premium - Unlimited conversions across all 12 tools</li>
         </ul>
-        <p>Krynova Technologies is the best text to PDF generator in India, serving cities like Agra, Delhi, Mumbai, Bengaluru, Chennai, Hyderabad, and all across India.</p>
+        <p>Krynova Technologies is the best text to PDF generator in India.</p>
       </div>
 
-      {/* ============================================ */}
-      {/* Schema.org WebApplication */}
-      {/* ============================================ */}
-      <script type="application/ld+json">
-        {JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "WebApplication",
-          "name": "Text to PDF Generator",
-          "description": "Free online text to PDF generator. Convert text to professional PDF documents with 7 templates and 6 styles. Supports 5 free conversions per day.",
-          "url": `${siteUrl}/tools/text-to-pdf`,
-          "applicationCategory": "Utilities",
-          "operatingSystem": "All",
-          "browserRequirements": "Requires JavaScript",
-          "offers": {
-            "@type": "Offer",
-            "price": "0",
-            "priceCurrency": "INR",
-            "description": "Free text to PDF generator with 5 conversions per day. Premium upgrade available for unlimited conversions."
-          },
-          "provider": {
-            "@type": "Organization",
-            "name": "Krynova Technologies",
-            "url": siteUrl,
-            "address": {
-              "@type": "PostalAddress",
-              "addressLocality": "Agra",
-              "addressRegion": "Uttar Pradesh",
-              "addressCountry": "India"
-            }
-          },
-          "areaServed": indianCities,
-          "availableLanguage": ["English", "Hindi", "Marathi", "Bengali", "Tamil", "Telugu", "Kannada", "Malayalam", "Gujarati", "Punjabi", "Urdu"],
-          "potentialAction": {
-            "@type": "CreateAction",
-            "target": `${siteUrl}/tools/text-to-pdf`,
-            "result": {
-              "@type": "CreativeWork",
-              "name": "PDF Document"
-            }
-          }
-        })}
-      </script>
-
-      {/* ============================================ */}
-      {/* FAQ Schema */}
-      {/* ============================================ */}
-      <script type="application/ld+json">
-        {JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "FAQPage",
-          "mainEntity": [
-            {
-              "@type": "Question",
-              "name": "How to convert text to PDF for free?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "To convert text to PDF for free, visit Krynova Technologies' Text to PDF Generator, enter your text or use a template, choose a style, and click Generate PDF. Download your PDF instantly. Free users get 5 conversions per day."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "What templates are available for text to PDF conversion?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Krynova Technologies offers 7 professional templates: Formal Letter, Resume/CV, Business Report, Invoice, Project Proposal, Newsletter, and Service Contract. Each template is designed for professional document creation."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "What PDF styles are available?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Krynova Technologies' text to PDF generator offers 6 styles: Classic (Times New Roman), Modern (Arial), Elegant (Georgia), Minimal (Helvetica), Tech (Consolas), and Formal (Times New Roman). Each style has a different font and layout."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "What is the best text to PDF generator in India?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Krynova Technologies offers one of the best free text to PDF generators in India. It supports 7 templates, 6 styles, word count tracking, and serves users across all major Indian cities including Agra, Delhi, Mumbai, Bengaluru, Chennai, and Hyderabad."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "Is it safe to generate PDF from text online?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Yes, Krynova Technologies ensures secure text to PDF conversion with encrypted processing. Your text content is never stored permanently and is automatically deleted after PDF generation."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "Can I use the text to PDF generator for professional documents?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Yes, Krynova Technologies' text to PDF generator is designed for professional document creation. With templates like Formal Letter, Business Report, Invoice, and Project Proposal, you can create professional documents for business, education, and personal use."
-              }
-            }
-          ]
-        })}
-      </script>
-
-      {/* ============================================ */}
       {/* Main Component */}
-      {/* ============================================ */}
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8">
-        <div className="container mx-auto px-4 max-w-6xl">
+        <div className="container mx-auto px-4 max-w-7xl">
           {/* Header */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 bg-cyan-100 text-cyan-700 px-4 py-2 rounded-full text-sm font-medium mb-4">
               <FaFileAlt className="text-cyan-500" />
-              Free Text to PDF Generator
+              Advanced Text to PDF Generator
             </div>
             <h1 className="text-4xl font-bold text-gray-900 mb-2">
               Text to <span className="gradient-text">PDF Generator</span>
             </h1>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              Convert text into professional PDF documents with templates, styles, and formatting. Free users get 5 conversions per day.
+              Create professional PDF documents with rich text editing, live preview, and advanced formatting.
             </p>
             <div className="flex flex-wrap justify-center gap-3 mt-3">
               <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm">
@@ -876,17 +1375,26 @@ const TextToPDF = () => {
               <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">
                 <FaCrown className="text-yellow-500" /> Premium: Unlimited
               </span>
-              <span className="inline-flex items-center gap-1 bg-cyan-100 text-cyan-700 px-3 py-1 rounded-full text-sm">
-                <FaFile className="text-cyan-500" /> 7 Templates
-              </span>
               <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm">
-                <FaPalette className="text-purple-500" /> 6 Styles
+                <FaMagic className="text-purple-500" /> Rich Editor
+              </span>
+              <span className="inline-flex items-center gap-1 bg-cyan-100 text-cyan-700 px-3 py-1 rounded-full text-sm">
+                <FaEye className="text-cyan-500" /> Live Preview
               </span>
               <span className="inline-flex items-center gap-1 bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-sm">
-                <FaGlobe className="text-indigo-500" /> Serving 60+ Indian Cities
+                <FaGlobe className="text-indigo-500" /> 8 Templates • 8 Styles
               </span>
             </div>
           </div>
+
+          {/* Premium Status Badge */}
+          {isPremium && (
+            <div className="mb-6 p-3 bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200 rounded-lg text-center">
+              <FaCrown className="text-yellow-500 inline mr-2" />
+              <span className="font-semibold text-yellow-700">🎉 Premium Active!</span>
+              <span className="text-sm text-gray-600 ml-2">Unlimited access to all 12 tools for ₹99/month.</span>
+            </div>
+          )}
 
           {/* Usage Info */}
           {usageInfo && (
@@ -896,7 +1404,7 @@ const TextToPDF = () => {
             }`}>
               <div className="text-sm flex flex-wrap items-center gap-2">
                 {usageInfo.isPremium ? (
-                  <><FaCrown className="text-yellow-500" /> <span className="font-semibold">Premium:</span> Unlimited conversions • All templates</>
+                  <><FaCrown className="text-yellow-500" /> <span className="font-semibold">Premium:</span> Unlimited • All 12 tools</>
                 ) : (
                   <>
                     <FaClock className="text-blue-500" />
@@ -909,7 +1417,7 @@ const TextToPDF = () => {
                   onClick={handleUpgrade}
                   className="px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition flex items-center gap-2"
                 >
-                  <FaCrown /> Upgrade Now — ₹99/month
+                  <FaCrown /> Upgrade — ₹99/month
                 </button>
               )}
             </div>
@@ -926,231 +1434,196 @@ const TextToPDF = () => {
                 <span className="text-sm font-semibold text-cyan-600">{Math.round(progress)}%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                <div 
-                  className="bg-gradient-to-r from-cyan-500 to-blue-600 h-2.5 rounded-full transition-all duration-500"
-                  style={{ width: `${progress}%` }}
-                />
+                <div className="bg-gradient-to-r from-cyan-500 to-blue-600 h-2.5 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
               </div>
             </div>
           )}
 
-          {/* Main Card */}
-          <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Title & Template Row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Document Title</label>
-                  <input 
-                    type="text" 
-                    value={title} 
-                    onChange={(e) => setTitle(e.target.value)} 
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                    placeholder="Enter document title"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Template</label>
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setShowTemplateDropdown(!showTemplateDropdown)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg flex items-center justify-between hover:border-cyan-400 transition"
-                    >
-                      <span className="flex items-center gap-2">
-                        <FaFile className="text-cyan-500" />
-                        {getCurrentTemplate() ? getCurrentTemplate().name : 'Select Template'}
-                      </span>
-                      <FaChevronDown className={`text-gray-400 transition ${showTemplateDropdown ? 'rotate-180' : ''}`} />
-                    </button>
-                    {showTemplateDropdown && (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto z-10">
-                        {Object.entries(TEMPLATES).map(([key, template]) => {
-                          const Icon = template.icon;
-                          return (
-                            <button
-                              key={key}
-                              type="button"
-                              onClick={() => applyTemplate(key)}
-                              className="w-full px-4 py-2 text-left hover:bg-cyan-50 transition flex items-center gap-3 border-b border-gray-100 last:border-0"
-                            >
-                              <Icon className="text-cyan-500" />
-                              <div>
-                                <p className="text-sm font-medium">{template.name}</p>
-                                <p className="text-xs text-gray-400">{template.description}</p>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
+          {/* Main Content */}
+          <div className="grid lg:grid-cols-2 gap-6">
+            {/* Left: Editor */}
+            <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Title & Template */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Document Title</label>
+                    <input 
+                      type="text" 
+                      value={title} 
+                      onChange={(e) => setTitle(e.target.value)} 
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                      placeholder="Document title"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Template</label>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setShowTemplateDropdown(!showTemplateDropdown)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg flex items-center justify-between hover:border-cyan-400 transition"
+                      >
+                        <span className="truncate">
+                          {getCurrentTemplate() ? getCurrentTemplate().name : 'Select Template'}
+                        </span>
+                        <FaChevronDown className={`text-gray-400 transition ${showTemplateDropdown ? 'rotate-180' : ''}`} />
+                      </button>
+                      {showTemplateDropdown && (
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto z-10">
+                          {Object.entries(ADVANCED_TEMPLATES).map(([key, template]) => {
+                            const Icon = template.icon;
+                            return (
+                              <button
+                                key={key}
+                                type="button"
+                                onClick={() => applyTemplate(key)}
+                                className="w-full px-3 py-2 text-left hover:bg-cyan-50 transition flex items-center gap-2 border-b border-gray-100 last:border-0 text-sm"
+                              >
+                                <Icon className="text-cyan-500 text-sm" />
+                                <div>
+                                  <p className="font-medium">{template.name}</p>
+                                  <p className="text-xs text-gray-400">{template.category}</p>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Style Selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">PDF Style</label>
-                <div className="flex flex-wrap gap-2">
-                  {safeArray(PDF_STYLES).map((style) => (
-                    <button
-                      key={style.id}
-                      type="button"
-                      onClick={() => setSelectedStyle(style.id)}
-                      className={`px-3 py-1.5 rounded-lg text-xs transition border ${
-                        selectedStyle === style.id
-                          ? 'border-cyan-500 bg-cyan-50 text-cyan-700'
-                          : 'border-gray-200 hover:border-cyan-300'
-                      }`}
-                    >
-                      {style.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Text Editor */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Content *</label>
-                <div className="border border-gray-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-cyan-500">
-                  <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex flex-wrap gap-2">
-                    <button type="button" className="p-1 hover:bg-gray-200 rounded transition" title="Bold">
-                      <FaBold className="text-sm text-gray-600" />
-                    </button>
-                    <button type="button" className="p-1 hover:bg-gray-200 rounded transition" title="Italic">
-                      <FaItalic className="text-sm text-gray-600" />
-                    </button>
-                    <button type="button" className="p-1 hover:bg-gray-200 rounded transition" title="Underline">
-                      <FaUnderline className="text-sm text-gray-600" />
-                    </button>
-                    <span className="w-px h-6 bg-gray-300 mx-1"></span>
-                    <button type="button" className="p-1 hover:bg-gray-200 rounded transition" title="Align Left">
-                      <FaAlignLeft className="text-sm text-gray-600" />
-                    </button>
-                    <button type="button" className="p-1 hover:bg-gray-200 rounded transition" title="Align Center">
-                      <FaAlignCenter className="text-sm text-gray-600" />
-                    </button>
-                    <button type="button" className="p-1 hover:bg-gray-200 rounded transition" title="Align Right">
-                      <FaAlignRight className="text-sm text-gray-600" />
-                    </button>
-                    <span className="w-px h-6 bg-gray-300 mx-1"></span>
-                    <button type="button" className="p-1 hover:bg-gray-200 rounded transition" title="Bullet List">
-                      <FaListUl className="text-sm text-gray-600" />
-                    </button>
-                    <button type="button" className="p-1 hover:bg-gray-200 rounded transition" title="Numbered List">
-                      <FaListOl className="text-sm text-gray-600" />
-                    </button>
-                    {isPremium && (
-                      <>
-                        <span className="w-px h-6 bg-gray-300 mx-1"></span>
-                        <button type="button" className="p-1 hover:bg-gray-200 rounded transition text-purple-500" title="Table (Premium)">
-                          <FaTable className="text-sm" />
-                        </button>
-                        <button type="button" className="p-1 hover:bg-gray-200 rounded transition text-purple-500" title="Image (Premium)">
-                          <FaImage className="text-sm" />
-                        </button>
-                      </>
-                    )}
+                {/* Style Selection */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">PDF Style</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {safeArray(ADVANCED_PDF_STYLES).map((style) => (
+                      <button
+                        key={style.id}
+                        type="button"
+                        onClick={() => setSelectedStyle(style.id)}
+                        className={`px-2.5 py-1 rounded-lg text-xs transition border ${
+                          selectedStyle === style.id
+                            ? 'border-cyan-500 bg-cyan-50 text-cyan-700'
+                            : 'border-gray-200 hover:border-cyan-300'
+                        }`}
+                      >
+                        {style.name}
+                      </button>
+                    ))}
                   </div>
-                  <textarea 
-                    rows="12" 
+                </div>
+
+                {/* Rich Text Editor */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Content *</label>
+                  <RichTextEditor 
                     value={text} 
-                    onChange={handleTextChange} 
-                    className="w-full px-4 py-3 focus:outline-none resize-y min-h-[300px] font-mono text-sm"
-                    placeholder="Enter your text content here... Use bullet points with - or * for lists"
+                    onChange={setText} 
+                    isPremium={isPremium}
                   />
                 </div>
-                <div className="flex justify-between mt-2">
-                  <div className="flex flex-wrap gap-4 text-xs text-gray-400">
-                    <span>Words: {wordCount}</span>
-                    <span>Characters: {charCount}</span>
-                    {isPremium && <span className="text-purple-500">✨ Premium Editor</span>}
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setText('');
-                        setSelectedTemplate(null);
-                      }}
-                      className="text-xs text-red-500 hover:text-red-700 transition"
-                    >
-                      Clear
-                    </button>
-                  </div>
-                </div>
-              </div>
 
-              {/* Premium Toggle */}
-              <div className="flex items-center gap-3 pt-2">
-                <input
-                  type="checkbox"
-                  checked={isPremium}
-                  onChange={(e) => setIsPremium(e.target.checked)}
-                  className="w-4 h-4 text-cyan-600 rounded focus:ring-cyan-500"
-                />
-                <label className="text-sm text-gray-700 flex items-center gap-1">
-                  <FaCrown className="text-yellow-500" /> Premium Mode (Unlimited • All Templates)
-                </label>
+                {/* Premium Toggle */}
+                <div className="flex items-center gap-3 pt-2 border-t border-gray-200 pt-3">
+                  <input
+                    type="checkbox"
+                    checked={isPremium}
+                    onChange={(e) => {
+                      setIsPremium(e.target.checked);
+                      localStorage.setItem('isPremium', e.target.checked ? 'true' : 'false');
+                    }}
+                    className="w-4 h-4 text-cyan-600 rounded focus:ring-cyan-500"
+                  />
+                  <label className="text-sm text-gray-700 flex items-center gap-1">
+                    <FaCrown className="text-yellow-500" /> Premium Mode (Unlimited • All 12 Tools)
+                  </label>
+                  {!isPremium && (
+                    <span className="text-xs text-gray-400 ml-2">
+                      (Free: 5/day)
+                    </span>
+                  )}
+                </div>
+
                 {!isPremium && (
-                  <span className="text-xs text-gray-400 ml-2">
-                    (Free: 5/day • 7 Templates)
-                  </span>
+                  <div className="bg-yellow-50 border border-yellow-200 p-2 rounded-lg text-xs text-yellow-700 flex items-center gap-2">
+                    <FaInfoCircle />
+                    Free: 5 conversions/day. Premium: Unlimited across all 12 tools for ₹99/month.
+                  </div>
                 )}
+
+                <button
+                  type="submit"
+                  disabled={loading || !text.trim()}
+                  className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg hover:shadow-cyan-500/30 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {loading ? <FaSpinner className="animate-spin" /> : <FaFilePdf />}
+                  {loading ? 'Generating...' : 'Generate PDF'}
+                </button>
+              </form>
+            </div>
+
+            {/* Right: Live Preview */}
+            <div className="space-y-4">
+              <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                    <FaEye className="text-cyan-500" /> Live Preview
+                  </h3>
+                  <div className="flex items-center gap-2 text-xs text-gray-400">
+                    <span>{wordCount} words</span>
+                    <span>|</span>
+                    <span>{charCount} chars</span>
+                  </div>
+                </div>
+                <LivePreview 
+                  text={text} 
+                  style={selectedStyle} 
+                  template={selectedTemplate}
+                />
               </div>
 
-              {!isPremium && (
-                <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-lg text-xs text-yellow-700 flex items-center gap-2">
-                  <FaInfoCircle />
-                  Free users get 5 conversions per day. Upgrade to premium for unlimited conversions and advanced features.
+              {/* Quick Stats */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-white rounded-xl p-3 border border-gray-100 text-center">
+                  <p className="text-xs text-gray-400">Style</p>
+                  <p className="font-semibold text-gray-700 text-sm">{getCurrentStyle().name}</p>
                 </div>
-              )}
+                <div className="bg-white rounded-xl p-3 border border-gray-100 text-center">
+                  <p className="text-xs text-gray-400">Template</p>
+                  <p className="font-semibold text-gray-700 text-sm truncate">
+                    {getCurrentTemplate() ? getCurrentTemplate().name : 'Custom'}
+                  </p>
+                </div>
+                <div className="bg-white rounded-xl p-3 border border-gray-100 text-center">
+                  <p className="text-xs text-gray-400">Status</p>
+                  <p className={`font-semibold text-sm ${isPremium ? 'text-green-500' : 'text-yellow-500'}`}>
+                    {isPremium ? 'Premium' : 'Free'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
 
-              <button
-                type="submit"
-                disabled={loading || !text.trim()}
-                className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 text-white py-3.5 rounded-xl font-semibold hover:shadow-lg hover:shadow-cyan-500/30 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-lg"
-              >
-                {loading ? <FaSpinner className="animate-spin" /> : <FaFilePdf />}
-                {loading ? 'Generating...' : 'Generate PDF'}
-              </button>
-            </form>
-
-            {/* Results */}
-            {result && (
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <div className="bg-gradient-to-r from-cyan-50 to-blue-50 p-4 rounded-xl border border-cyan-200">
+          {/* Result */}
+          {result && result.file && (
+            <div className="mt-6">
+              <div className="bg-gradient-to-r from-cyan-50 to-blue-50 p-4 rounded-xl border border-cyan-200">
+                <div className="flex items-center justify-between flex-wrap gap-3">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-cyan-500 rounded-lg flex items-center justify-center text-white">
                       <FaCheckCircle />
                     </div>
-                    <div className="flex-1">
+                    <div>
                       <p className="font-semibold text-cyan-800">✅ PDF Generated!</p>
-                      <p className="text-sm text-cyan-600">
-                        Document "{title}" created with {wordCount} words
-                      </p>
+                      <p className="text-sm text-cyan-600">{wordCount} words • {charCount} characters</p>
                     </div>
                   </div>
-                  
-                  <div className="grid grid-cols-3 gap-3 mt-4">
-                    <div className="bg-white p-3 rounded-lg text-center">
-                      <p className="text-xs text-gray-500">Words</p>
-                      <p className="font-bold text-gray-900">{wordCount}</p>
-                    </div>
-                    <div className="bg-white p-3 rounded-lg text-center">
-                      <p className="text-xs text-gray-500">Characters</p>
-                      <p className="font-bold text-gray-900">{charCount}</p>
-                    </div>
-                    <div className="bg-white p-3 rounded-lg text-center">
-                      <p className="text-xs text-gray-500">Style</p>
-                      <p className="font-bold text-gray-900">{getCurrentStyle().name}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-3 mt-4">
+                  <div className="flex gap-2">
                     <button
                       onClick={downloadFile}
-                      className="flex-1 bg-cyan-500 text-white py-2.5 rounded-lg hover:bg-cyan-600 transition flex items-center justify-center gap-2 font-semibold shadow-md hover:shadow-lg"
+                      className="bg-cyan-500 text-white px-4 py-2 rounded-lg hover:bg-cyan-600 transition flex items-center gap-2 text-sm font-semibold"
                     >
                       <FaDownload /> Download PDF
                     </button>
@@ -1159,45 +1632,42 @@ const TextToPDF = () => {
                         clearText();
                         setResult(null);
                       }}
-                      className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg hover:bg-gray-300 transition flex items-center justify-center gap-2 font-semibold"
+                      className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition flex items-center gap-2 text-sm font-semibold"
                     >
-                      <FaPlus /> Convert Another
+                      <FaPlus /> New
                     </button>
                   </div>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
-          {/* Conversion History */}
+          {/* History */}
           <div className="mt-6">
-            <ConversionHistory 
-              history={conversionHistory} 
-              onReuse={reuseHistory}
-            />
+            <ConversionHistory history={conversionHistory} onReuse={reuseHistory} />
           </div>
 
-          {/* Features Section */}
-          <div className="mt-8 grid md:grid-cols-4 gap-4">
+          {/* Features */}
+          <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
-              <FaFile className="text-3xl text-cyan-500 mx-auto mb-2" />
-              <h4 className="font-semibold text-gray-900">7 Templates</h4>
-              <p className="text-xs text-gray-500">Letter, Resume, Report, Invoice, Proposal, Newsletter, Contract</p>
+              <FaMagic className="text-2xl text-cyan-500 mx-auto mb-2" />
+              <h4 className="font-semibold text-gray-900 text-sm">Rich Editor</h4>
+              <p className="text-xs text-gray-500">Bold, Italic, Lists & more</p>
             </div>
             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
-              <FaPalette className="text-3xl text-cyan-500 mx-auto mb-2" />
-              <h4 className="font-semibold text-gray-900">6 PDF Styles</h4>
-              <p className="text-xs text-gray-500">Classic, Modern, Elegant, Minimal, Tech, Formal</p>
+              <FaEye className="text-2xl text-cyan-500 mx-auto mb-2" />
+              <h4 className="font-semibold text-gray-900 text-sm">Live Preview</h4>
+              <p className="text-xs text-gray-500">See changes in real-time</p>
             </div>
             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
-              <FaMagic className="text-3xl text-cyan-500 mx-auto mb-2" />
-              <h4 className="font-semibold text-gray-900">Instant Conversion</h4>
-              <p className="text-xs text-gray-500">Convert text to PDF in seconds</p>
+              <FaFile className="text-2xl text-cyan-500 mx-auto mb-2" />
+              <h4 className="font-semibold text-gray-900 text-sm">8 Templates</h4>
+              <p className="text-xs text-gray-500">Professional templates</p>
             </div>
             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
-              <FaShieldAlt className="text-3xl text-cyan-500 mx-auto mb-2" />
-              <h4 className="font-semibold text-gray-900">Secure & Private</h4>
-              <p className="text-xs text-gray-500">Your content is safe and private</p>
+              <FaPalette className="text-2xl text-cyan-500 mx-auto mb-2" />
+              <h4 className="font-semibold text-gray-900 text-sm">8 Styles</h4>
+              <p className="text-xs text-gray-500">Different fonts & layouts</p>
             </div>
           </div>
 
@@ -1210,9 +1680,9 @@ const TextToPDF = () => {
               </div>
               <div className="relative z-10 max-w-2xl mx-auto">
                 <FaCrown className="text-4xl text-yellow-400 mx-auto mb-3" />
-                <h3 className="text-xl font-bold mb-2">🚀 Unlock Premium Features</h3>
+                <h3 className="text-xl font-bold mb-2">🚀 Unlock All 12 Premium Tools</h3>
                 <p className="text-cyan-100 mb-4">
-                  Get unlimited conversions, all templates, advanced styling with tables and images, and priority support.
+                  Get unlimited conversions across all 12 tools, all templates, advanced features, and priority support for just ₹99/month.
                 </p>
                 <button
                   onClick={handleUpgrade}
@@ -1224,45 +1694,67 @@ const TextToPDF = () => {
             </div>
           )}
         </div>
-
-        {/* Payment Modal */}
-        <PaymentModal
-          isOpen={showPaymentModal}
-          onClose={() => setShowPaymentModal(false)}
-          userEmail={localStorage.getItem('userEmail') || ''}
-          userId={localStorage.getItem('userId') || ''}
-        />
-
-        <style dangerouslySetInnerHTML={{ __html: `
-          .gradient-text {
-            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-          }
-          @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-          }
-          .animate-pulse {
-            animation: pulse 1.5s ease-in-out infinite;
-          }
-          .custom-scrollbar::-webkit-scrollbar {
-            width: 4px;
-          }
-          .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
-          }
-          .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #c1c1c1;
-            border-radius: 10px;
-          }
-          .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #a8a8a8;
-          }
-        `}} />
       </div>
+
+      {/* Payment Modal */}
+      <PaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        userEmail={localStorage.getItem('userEmail') || ''}
+        userId={userId}
+        onSuccess={handlePaymentSuccess}
+      />
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        .gradient-text {
+          background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #c1c1c1;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #a8a8a8;
+        }
+        .speakable {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          padding: 0;
+          margin: -1px;
+          overflow: hidden;
+          clip: rect(0, 0, 0, 0);
+          white-space: nowrap;
+          border-width: 0;
+        }
+        .prose p {
+          margin-bottom: 0.25rem;
+        }
+        .prose h2, .prose h3, .prose h4 {
+          margin-top: 0.5rem;
+          margin-bottom: 0.25rem;
+        }
+        .prose ul, .prose ol {
+          padding-left: 1.5rem;
+          margin-bottom: 0.25rem;
+        }
+        .prose li {
+          margin-bottom: 0.1rem;
+        }
+        .prose hr {
+          margin: 0.5rem 0;
+        }
+      `}} />
     </>
   );
 };

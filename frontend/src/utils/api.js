@@ -83,16 +83,16 @@ export const api = {
   },
 
   // ============================================
-  // PROJECTS
+  // PROJECTS - FIXED
   // ============================================
   getProjects: () => {
-    return apiClient.get('/api/projects');
+    return publicApiClient.get('/api/projects');
   },
   getProject: (id) => {
-    return apiClient.get(`/api/projects/${id}`);
+    return publicApiClient.get(`/api/projects/${id}`);
   },
   getProjectsByCategory: (category) => {
-    return apiClient.get(`/api/projects/category/${encodeURIComponent(category)}`);
+    return publicApiClient.get(`/api/projects/category/${encodeURIComponent(category)}`);
   },
   createProject: (data) => {
     return apiClient.post('/api/projects', data);
@@ -117,16 +117,16 @@ export const api = {
   },
 
   // ============================================
-  // TESTIMONIALS
+  // TESTIMONIALS - FIXED
   // ============================================
   getTestimonials: () => {
-    return apiClient.get('/api/testimonials');
+    return publicApiClient.get('/api/testimonials');
   },
   getAllTestimonials: () => {
     return apiClient.get('/api/testimonials/all');
   },
   submitTestimonial: (data) => {
-    return apiClient.post('/api/testimonials', data);
+    return publicApiClient.post('/api/testimonials', data);
   },
   approveTestimonial: (id) => {
     return apiClient.put(`/api/testimonials/${id}/approve`);
@@ -152,111 +152,105 @@ export const api = {
   },
 
   // ============================================
-  // ✅ TOOLS - FIXED: Using publicApiClient (no auth required)
+  // ✅ TOOLS - Using publicApiClient (no auth required)
   // ============================================
   
-  // Resume Builder
   buildResume: (data) => {
     return publicApiClient.post('/api/tools/resume-builder', data);
   },
   
-  // Cover Letter
   generateCoverLetter: (data) => {
     return publicApiClient.post('/api/tools/cover-letter', data);
   },
   
-  // QR Generator
   generateQR: (data) => {
     return publicApiClient.post('/api/tools/qr-generator', data);
   },
   
-  // PDF to Image
   pdfToImage: (formData) => {
     return publicApiClient.post('/api/tools/pdf-to-image', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
   
-  // PDF to Word
   pdfToWord: (formData) => {
     return publicApiClient.post('/api/tools/pdf-to-word', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
   
-  // PDF to Excel
   pdfToExcel: (formData) => {
     return publicApiClient.post('/api/tools/pdf-to-excel', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
   
-  // Image to PDF
   imageToPdf: (formData) => {
     return publicApiClient.post('/api/tools/image-to-pdf', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
   
-  // PDF Compressor
   compressPdf: (formData) => {
     return publicApiClient.post('/api/tools/pdf-compressor', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
   
-  // Merge PDF
   mergePdf: (formData) => {
     return publicApiClient.post('/api/tools/merge-pdf', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
   
-  // Split PDF
   splitPdf: (formData) => {
     return publicApiClient.post('/api/tools/split-pdf', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
   
-  // Image Resizer
   imageResizer: (formData) => {
     return publicApiClient.post('/api/tools/image-resizer', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
   
-  // Text to PDF
   textToPdf: (data) => {
     return publicApiClient.post('/api/tools/text-to-pdf', data);
   },
   
   // ============================================
-  // PAYMENT METHODS
+  // ✅ PAYMENT METHODS
   // ============================================
   
   createRazorpayOrder: (data) => {
-    return apiClient.post('/api/create-razorpay-order', data);
+    return publicApiClient.post('/api/create-razorpay-order', data);
   },
   
   verifyRazorpayPayment: (data) => {
-    return apiClient.post('/api/verify-razorpay-payment', data);
+    return publicApiClient.post('/api/verify-razorpay-payment', data);
   },
   
-  checkPremium: () => {
-    const user = secureStorage.get('user');
-    const userId = user?.id || '';
-    return apiClient.get(`/api/premium/check?user_id=${userId}`);
+  checkPremium: (userId) => {
+    const safeUserId = userId || 'anonymous';
+    return publicApiClient.get(`/api/premium/check?user_id=${encodeURIComponent(safeUserId)}`);
   },
-  
-  checkPremiumStatus: () => {
-    const user = secureStorage.get('user');
-    const userId = user?.id || '';
-    return apiClient.get(`/api/premium/check?user_id=${userId}`);
+
+  checkPremiumStatus: (userId) => {
+    const safeUserId = userId || 'anonymous';
+    return publicApiClient.get(`/api/premium/check?user_id=${encodeURIComponent(safeUserId)}`);
   },
-  
+
   getPremiumStatus: (userId) => {
-    return apiClient.get(`/api/premium/check?user_id=${userId}`);
+    const safeUserId = userId || 'anonymous';
+    return publicApiClient.get(`/api/premium/check?user_id=${encodeURIComponent(safeUserId)}`);
+  },
+
+  // ============================================
+  // CREATE USER
+  // ============================================
+  createUser: (userData) => {
+    return publicApiClient.post('/api/create-user', userData);
   },
 
   // ============================================

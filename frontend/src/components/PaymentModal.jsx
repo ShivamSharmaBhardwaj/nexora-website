@@ -34,7 +34,7 @@ const PaymentModal = ({ isOpen, onClose, userEmail, userId, onSuccess }) => {
       id: 'monthly',
       name: 'Monthly',
       price: '₹99',
-      priceAmount: 9900, // in paise for Stripe
+      priceAmount: 9900, // in paise for Razorpay
       description: 'Perfect for getting started',
       features: [
         'Unlimited resume generation',
@@ -52,7 +52,7 @@ const PaymentModal = ({ isOpen, onClose, userEmail, userId, onSuccess }) => {
       id: 'yearly',
       name: 'Yearly',
       price: '₹999',
-      priceAmount: 99900, // in paise for Stripe
+      priceAmount: 99900, // in paise for Razorpay
       description: 'Best value - Save 16%',
       features: [
         'Everything in Monthly',
@@ -67,6 +67,7 @@ const PaymentModal = ({ isOpen, onClose, userEmail, userId, onSuccess }) => {
     }
   };
 
+  // ✅ FIXED: Direct Razorpay - No Stripe fallback
   const handleUpgrade = async () => {
     setLoading(true);
     setError(null);
@@ -77,47 +78,19 @@ const PaymentModal = ({ isOpen, onClose, userEmail, userId, onSuccess }) => {
     const name = user?.name || 'User';
     
     try {
-      // Try Stripe first
-      let response;
-      try {
-        response = await api.createCheckoutSession({
-          plan: selectedPlan,
-          email: email,
-          user_id: uid,
-          name: name,
-          price_amount: plans[selectedPlan].priceAmount,
-          plan_name: plans[selectedPlan].name,
-          plan_price: plans[selectedPlan].price
-        });
-      } catch (stripeError) {
-        console.log('Stripe not configured, falling back to Razorpay...', stripeError);
-        // Fallback to Razorpay
-        response = await api.createRazorpayOrder({
-          plan: selectedPlan,
-          email: email,
-          user_id: uid,
-          name: name,
-          amount: plans[selectedPlan].priceAmount,
-          plan_name: plans[selectedPlan].name
-        });
-      }
+      // ✅ Use Razorpay directly
+      const response = await api.createRazorpayOrder({
+        plan: selectedPlan,
+        email: email,
+        user_id: uid,
+        name: name,
+        amount: plans[selectedPlan].priceAmount,
+        plan_name: plans[selectedPlan].name
+      });
       
       if (response.data.success) {
-        // Handle different payment gateways
-        if (response.data.checkout_url) {
-          // Stripe - redirect to checkout
-          window.location.href = response.data.checkout_url;
-        } else if (response.data.order_id) {
-          // Razorpay - open payment modal
-          await handleRazorpayPayment(response.data, email, name);
-        } else if (response.data.payment_id) {
-          // Payment successful
-          toast.success('🎉 Payment successful! Premium activated.');
-          if (onSuccess) {
-            onSuccess(response.data);
-          }
-          onClose();
-        }
+        // ✅ Open Razorpay payment modal
+        await handleRazorpayPayment(response.data, email, name);
       } else {
         setError('Failed to initiate payment. Please try again.');
         toast.error('Payment initiation failed');
@@ -194,7 +167,6 @@ const PaymentModal = ({ isOpen, onClose, userEmail, userId, onSuccess }) => {
   // Load Razorpay script
   useEffect(() => {
     if (isOpen) {
-      // Check if Razorpay is already loaded
       if (!window.Razorpay) {
         const script = document.createElement('script');
         script.src = 'https://checkout.razorpay.com/v1/checkout.js';
@@ -293,8 +265,6 @@ const PaymentModal = ({ isOpen, onClose, userEmail, userId, onSuccess }) => {
               🔒 Secure payment powered by
             </p>
             <div className="flex items-center justify-center gap-4 flex-wrap">
-              <span className="text-sm font-semibold text-gray-700">Stripe</span>
-              <span className="text-gray-300">|</span>
               <span className="text-sm font-semibold text-gray-700">Razorpay</span>
               <span className="text-gray-300">|</span>
               <span className="text-sm font-semibold text-gray-700">UPI</span>

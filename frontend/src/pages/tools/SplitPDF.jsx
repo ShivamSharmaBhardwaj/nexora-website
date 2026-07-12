@@ -1,5 +1,5 @@
 // src/pages/tools/SplitPDF.jsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { 
   FaSpinner, FaDownload, FaStar, FaLock, FaFilePdf, 
@@ -16,20 +16,21 @@ import {
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { api } from '../../utils/api';
+import { secureStorage } from '../../utils/security';
 import PaymentModal from '../../components/PaymentModal';
 
 // ============================================
-// ✅ SAFE ARRAY HELPERS - Fix for .map() errors
+// ✅ SAFE ARRAY HELPERS
 // ============================================
+
+const safeArray = (data) => {
+  return Array.isArray(data) ? data : [];
+};
 
 const safeMap = (data, callback) => {
   if (!data) return null;
   const arr = Array.isArray(data) ? data : [];
   return arr.map(callback);
-};
-
-const safeArray = (data) => {
-  return Array.isArray(data) ? data : [];
 };
 
 // ============================================
@@ -72,7 +73,7 @@ const formatSize = (bytes) => {
 };
 
 // ============================================
-// SPLIT OPTIONS
+// SPLIT OPTIONS COMPONENT
 // ============================================
 
 const SplitOptions = ({ options, onChange }) => {
@@ -180,7 +181,7 @@ const SplitOptions = ({ options, onChange }) => {
                 className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
               />
               <label htmlFor="compressOutput" className="text-xs text-gray-700">
-                Compress output PDFs
+                Compress output PDFs {!options.isPremium && <span className="text-yellow-500">(Premium)</span>}
               </label>
             </div>
 
@@ -193,7 +194,7 @@ const SplitOptions = ({ options, onChange }) => {
                 className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
               />
               <label htmlFor="mergeSelected" className="text-xs text-gray-700">
-                Merge selected pages into one PDF
+                Merge selected pages into one PDF {!options.isPremium && <span className="text-yellow-500">(Premium)</span>}
               </label>
             </div>
           </div>
@@ -204,7 +205,7 @@ const SplitOptions = ({ options, onChange }) => {
 };
 
 // ============================================
-// SPLIT HISTORY
+// SPLIT HISTORY COMPONENT
 // ============================================
 
 const SplitHistory = ({ history, onReuse }) => {
@@ -315,6 +316,7 @@ const SplitPDF = () => {
   const [result, setResult] = useState(null);
   const [usageInfo, setUsageInfo] = useState(null);
   const [isPremium, setIsPremium] = useState(false);
+  const [userId, setUserId] = useState('anonymous');
   const [dragActive, setDragActive] = useState(false);
   const [selectedPages, setSelectedPages] = useState([]);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -327,6 +329,7 @@ const SplitPDF = () => {
     outputFormat: 'separate',
     compressOutput: false,
     mergeSelected: false,
+    isPremium: false,
   });
   const [progress, setProgress] = useState(0);
   const [progressStatus, setProgressStatus] = useState('');
@@ -335,29 +338,45 @@ const SplitPDF = () => {
   const [sortOrder, setSortOrder] = useState('asc');
   const fileInputRef = useRef(null);
 
-  // Check premium status
+  // ✅ GET USER ID
+  const getUserId = useCallback(() => {
+    try {
+      const user = secureStorage.get('user');
+      if (user?.id) return user.id;
+      if (user?.email) return user.email;
+      return localStorage.getItem('userId') || 'anonymous';
+    } catch (error) {
+      console.error('Error getting userId:', error);
+      return 'anonymous';
+    }
+  }, []);
+
+  // ✅ CHECK PREMIUM STATUS
   useEffect(() => {
     const checkPremiumStatus = async () => {
       try {
+        const id = getUserId();
+        setUserId(id);
+        
         let response;
-        if (api.checkPremiumStatus) {
-          response = await api.checkPremiumStatus();
-        } else if (api.checkPremium) {
-          response = await api.checkPremium();
+        if (api.checkPremium) {
+          response = await api.checkPremium(id);
         } else {
           return;
         }
         
         if (response.data && response.data.is_premium) {
           setIsPremium(true);
+          setSplitOptions(prev => ({ ...prev, isPremium: true }));
           toast.success('🎉 Premium activated! Unlimited splits.');
         }
       } catch (error) {
         console.error('Premium check failed:', error);
+        setIsPremium(false);
       }
     };
     checkPremiumStatus();
-  }, []);
+  }, [getUserId]);
 
   // Load split history
   useEffect(() => {
@@ -374,7 +393,7 @@ const SplitPDF = () => {
   const saveToHistory = (filename, status, resultData) => {
     const newEntry = {
       filename,
-      pageCount: resultData.total_pages || 0,
+      pageCount: resultData?.total_pages || 0,
       timestamp: new Date().toISOString(),
       status,
     };
@@ -433,6 +452,7 @@ const SplitPDF = () => {
     }
   };
 
+  // ✅ HANDLE SUBMIT - FIXED
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!file) {
@@ -451,13 +471,27 @@ const SplitPDF = () => {
       }
     }
 
+    // Check premium features
+    if (splitOptions.compressOutput && !isPremium) {
+      toast.error('Compress output is a premium feature. Please upgrade.');
+      setShowPaymentModal(true);
+      return;
+    }
+
+    if (splitOptions.mergeSelected && !isPremium) {
+      toast.error('Merge selected pages is a premium feature. Please upgrade.');
+      setShowPaymentModal(true);
+      return;
+    }
+
     setLoading(true);
     setProgress(0);
     setProgressStatus('Starting split...');
     
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('is_premium', isPremium);
+    formData.append('is_premium', isPremium ? 'true' : 'false');
+    formData.append('user_id', userId);
     formData.append('options', JSON.stringify(splitOptions));
     
     try {
@@ -472,9 +506,9 @@ const SplitPDF = () => {
       if (response.data.success) {
         setResult(response.data);
         setUsageInfo({
-          used: response.data.usage_count,
-          remaining: response.data.remaining_free,
-          isPremium: response.data.is_premium
+          used: response.data.usage_count || 0,
+          remaining: response.data.remaining_free || 0,
+          isPremium: response.data.is_premium || isPremium
         });
         
         // Track usage
@@ -496,15 +530,14 @@ const SplitPDF = () => {
         setProgressStatus('✅ Split complete!');
         
         // Select all pages by default
-        setSelectedPages(safeArray(response.data.pages).map((_, i) => i));
+        const pages = safeArray(response.data.pages);
+        setSelectedPages(pages.map((_, i) => i));
         
-        toast.success(`✅ ${response.data.total_pages} pages split successfully!`);
+        toast.success(`✅ ${response.data.total_pages || pages.length} pages split successfully!`);
         
-        if (isPremium) {
+        if (isPremium && pages.length > 0) {
           setTimeout(() => {
-            if (safeArray(response.data.pages).length > 0) {
-              downloadPage(response.data.pages[0], 0);
-            }
+            downloadPage(pages[0], 0);
           }, 1000);
         }
       }
@@ -529,6 +562,7 @@ const SplitPDF = () => {
   };
 
   const downloadPage = (pageData, index) => {
+    if (!pageData) return;
     const link = document.createElement('a');
     link.href = `data:application/pdf;base64,${pageData}`;
     link.download = `${file?.name?.replace('.pdf', '') || 'page'}-${index + 1}.pdf`;
@@ -539,8 +573,9 @@ const SplitPDF = () => {
 
   const downloadSelected = () => {
     if (!result) return;
-    const selected = safeArray(selectedPages).map(i => safeArray(result.pages)[i]).filter(Boolean);
-    if (safeArray(selected).length === 0) {
+    const pages = safeArray(result.pages);
+    const selected = safeArray(selectedPages).map(i => pages[i]).filter(Boolean);
+    if (selected.length === 0) {
       toast.error('Please select at least one page');
       return;
     }
@@ -556,22 +591,23 @@ const SplitPDF = () => {
     
     selected.forEach((page, idx) => {
       setTimeout(() => {
-        const originalIndex = safeArray(result.pages).indexOf(page);
+        const originalIndex = pages.indexOf(page);
         downloadPage(page, originalIndex);
       }, idx * 400);
     });
-    toast.success(`Downloading ${safeArray(selected).length} pages...`);
+    toast.success(`Downloading ${selected.length} pages...`);
   };
 
   const downloadAll = () => {
     if (!result) return;
-    if (safeArray(result.pages).length > 20 && !isPremium) {
+    const pages = safeArray(result.pages);
+    if (pages.length > 20 && !isPremium) {
       toast.warning('Large file detected. Premium users get faster bulk downloads.');
     }
-    safeArray(result.pages).forEach((page, index) => {
+    pages.forEach((page, index) => {
       setTimeout(() => downloadPage(page, index), index * 300);
     });
-    toast.success(`Downloading ${safeArray(result.pages).length} pages...`);
+    toast.success(`Downloading ${pages.length} pages...`);
   };
 
   const togglePageSelection = (index) => {
@@ -582,17 +618,19 @@ const SplitPDF = () => {
 
   const selectAll = () => {
     if (!result) return;
-    if (safeArray(selectedPages).length === safeArray(result.pages).length) {
+    const pages = safeArray(result.pages);
+    if (safeArray(selectedPages).length === pages.length) {
       setSelectedPages([]);
     } else {
-      setSelectedPages(safeArray(result.pages).map((_, i) => i));
+      setSelectedPages(pages.map((_, i) => i));
     }
   };
 
   const selectRange = (start, end) => {
     if (!result) return;
+    const pages = safeArray(result.pages);
     const newSelected = [];
-    for (let i = start; i <= end && i < safeArray(result.pages).length; i++) {
+    for (let i = start; i <= end && i < pages.length; i++) {
       newSelected.push(i);
     }
     setSelectedPages(newSelected);
@@ -617,8 +655,9 @@ const SplitPDF = () => {
 
   // Get filtered pages based on search
   const getFilteredPages = () => {
-    if (!result || !safeArray(result.pages)) return [];
-    if (!searchTerm || searchTerm.trim() === '') return safeArray(result.pages);
+    if (!result || !safeArray(result.pages).length) return [];
+    const pages = safeArray(result.pages);
+    if (!searchTerm || searchTerm.trim() === '') return pages;
     
     const term = searchTerm.trim().toLowerCase();
     const uniquePages = [];
@@ -631,11 +670,11 @@ const SplitPDF = () => {
       const end = parseInt(parts[1]);
       if (!isNaN(start) && !isNaN(end)) {
         const startIdx = Math.max(0, start - 1);
-        const endIdx = Math.min(safeArray(result.pages).length, end);
+        const endIdx = Math.min(pages.length, end);
         for (let i = startIdx; i < endIdx; i++) {
           if (!seen.has(i)) {
             seen.add(i);
-            uniquePages.push(safeArray(result.pages)[i]);
+            uniquePages.push(pages[i]);
           }
         }
         return uniquePages;
@@ -644,8 +683,8 @@ const SplitPDF = () => {
     
     // Handle single page
     const pageNum = parseInt(term);
-    if (!isNaN(pageNum) && pageNum > 0 && pageNum <= safeArray(result.pages).length) {
-      return [safeArray(result.pages)[pageNum - 1]];
+    if (!isNaN(pageNum) && pageNum > 0 && pageNum <= pages.length) {
+      return [pages[pageNum - 1]];
     }
     
     // Handle multiple comma-separated pages like "1,3,5"
@@ -657,19 +696,19 @@ const SplitPDF = () => {
           const start = parseInt(rangeParts[0]);
           const end = parseInt(rangeParts[1]);
           if (!isNaN(start) && !isNaN(end)) {
-            for (let i = start - 1; i < end && i < safeArray(result.pages).length; i++) {
+            for (let i = start - 1; i < end && i < pages.length; i++) {
               if (!seen.has(i)) {
                 seen.add(i);
-                uniquePages.push(safeArray(result.pages)[i]);
+                uniquePages.push(pages[i]);
               }
             }
           }
         } else {
           const num = parseInt(part);
-          if (!isNaN(num) && num > 0 && num <= safeArray(result.pages).length) {
+          if (!isNaN(num) && num > 0 && num <= pages.length) {
             if (!seen.has(num - 1)) {
               seen.add(num - 1);
-              uniquePages.push(safeArray(result.pages)[num - 1]);
+              uniquePages.push(pages[num - 1]);
             }
           }
         }
@@ -677,7 +716,7 @@ const SplitPDF = () => {
       return uniquePages;
     }
     
-    return safeArray(result.pages);
+    return pages;
   };
 
   const filteredPages = getFilteredPages();
@@ -693,7 +732,6 @@ const SplitPDF = () => {
         <meta name="keywords" content="split PDF, PDF splitter, split PDF online, free PDF splitter, split PDF pages, extract PDF pages, PDF split tool, Krynova PDF splitter, best PDF splitter India" />
         <link rel="canonical" href={`${siteUrl}/tools/split-pdf`} />
         
-        {/* GEO Meta Tags */}
         <meta name="geo.region" content="IN-UP" />
         <meta name="geo.placename" content="Agra" />
         <meta name="geo.position" content="27.1767;78.0081" />
@@ -702,29 +740,24 @@ const SplitPDF = () => {
         <meta name="serviceArea" content={`India, ${globalCountries.join(", ")}, Worldwide`} />
         <meta name="targetGeo" content="India" />
         
-        {/* AEO Meta Tags */}
         <meta name="question" content="How to split PDF pages for free in India?" />
         <meta name="answer" content="Krynova Technologies offers a free PDF splitter in India. Upload your PDF file, choose your split mode (all pages, range, or custom), and download individual pages. Free users get 3 splits per day with 20MB file limit. Premium users get unlimited splits with 50MB file limit." />
         <meta name="faq" content="true" />
         <meta name="speakable" content="true" />
         <meta name="voice-search" content="true" />
         
-        {/* Open Graph */}
         <meta property="og:title" content="Free PDF Splitter - Split PDF Pages Online | Krynova Technologies" />
         <meta property="og:description" content="Split PDF files into separate pages online for free. Split large PDF documents into individual pages. Free users get 3 splits per day." />
         <meta property="og:url" content={`${siteUrl}/tools/split-pdf`} />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="Krynova Technologies" />
         
-        {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Free PDF Splitter - Split PDF Pages Online" />
         <meta name="twitter:description" content="Split PDF files into separate pages online for free with Krynova Technologies." />
       </Helmet>
 
-      {/* ============================================ */}
-      {/* Speakable Content for Voice Assistants */}
-      {/* ============================================ */}
+      {/* Speakable Content */}
       <div className="speakable sr-only" aria-hidden="true">
         <h2>Free PDF Splitter - Krynova Technologies</h2>
         <p>Split PDF files into separate pages online for free. Split large PDF documents into individual pages or custom ranges.</p>
@@ -740,9 +773,7 @@ const SplitPDF = () => {
         <p>Krynova Technologies is the best PDF splitter in India, serving cities like Agra, Delhi, Mumbai, Bengaluru, Chennai, Hyderabad, and all across India.</p>
       </div>
 
-      {/* ============================================ */}
       {/* Schema.org WebApplication */}
-      {/* ============================================ */}
       <script type="application/ld+json">
         {JSON.stringify({
           "@context": "https://schema.org",
@@ -783,9 +814,7 @@ const SplitPDF = () => {
         })}
       </script>
 
-      {/* ============================================ */}
       {/* FAQ Schema */}
-      {/* ============================================ */}
       <script type="application/ld+json">
         {JSON.stringify({
           "@context": "https://schema.org",
@@ -829,14 +858,6 @@ const SplitPDF = () => {
               "acceptedAnswer": {
                 "@type": "Answer",
                 "text": "Yes, Krynova Technologies ensures secure PDF splitting with encrypted file processing. All uploaded files are automatically deleted after splitting, and your documents are never shared with third parties."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "Can I merge selected pages after splitting?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Yes, premium users can merge selected pages after splitting. Select the pages you want to merge and use the 'Merge & Download' feature to combine them into a single PDF file."
               }
             }
           ]
@@ -994,16 +1015,19 @@ const SplitPDF = () => {
 
               {/* Split Options */}
               <SplitOptions 
-                options={splitOptions}
+                options={{ ...splitOptions, isPremium }}
                 onChange={setSplitOptions}
               />
 
               {/* Premium Toggle */}
-              <div className="flex items-center gap-3 pt-2">
+              <div className="flex items-center gap-3 pt-2 border-t border-gray-200 pt-3">
                 <input
                   type="checkbox"
                   checked={isPremium}
-                  onChange={(e) => setIsPremium(e.target.checked)}
+                  onChange={(e) => {
+                    setIsPremium(e.target.checked);
+                    setSplitOptions(prev => ({ ...prev, isPremium: e.target.checked }));
+                  }}
                   className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
                 />
                 <label className="text-sm text-gray-700 flex items-center gap-1">
@@ -1037,7 +1061,7 @@ const SplitPDF = () => {
                       </div>
                       <div>
                         <p className="font-semibold text-red-800">✅ Split Complete!</p>
-                        <p className="text-sm text-red-600">{result.total_pages} pages extracted</p>
+                        <p className="text-sm text-red-600">{result.total_pages || safeArray(result.pages).length} pages extracted</p>
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -1070,16 +1094,8 @@ const SplitPDF = () => {
                       onClick={downloadAll}
                       className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition text-sm flex items-center gap-2"
                     >
-                      <FaDownload /> Download All
+                      <FaDownload /> Download All ({safeArray(result.pages).length})
                     </button>
-                    {isPremium && splitOptions.mergeSelected && safeArray(selectedPages).length > 1 && (
-                      <button
-                        onClick={() => toast.info('Merging selected pages... (Premium)')}
-                        className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition text-sm flex items-center gap-2"
-                      >
-                        <FaFileExport /> Merge & Download
-                      </button>
-                    )}
                   </div>
 
                   {/* View Controls */}
@@ -1132,7 +1148,7 @@ const SplitPDF = () => {
                   }`}>
                     {safeArray(filteredPages).map((page, idx) => {
                       const index = safeArray(result.pages).findIndex(p => p === page);
-                      const uniqueKey = `${index}-${String(page).slice(0, 50)}-${idx}`;
+                      const uniqueKey = `page-${index}-${idx}`;
                       
                       if (viewMode === 'grid') {
                         return (
@@ -1254,7 +1270,20 @@ const SplitPDF = () => {
           isOpen={showPaymentModal}
           onClose={() => setShowPaymentModal(false)}
           userEmail={localStorage.getItem('userEmail') || ''}
-          userId={localStorage.getItem('userId') || ''}
+          userId={userId}
+          onSuccess={() => {
+            setIsPremium(true);
+            setSplitOptions(prev => ({ ...prev, isPremium: true }));
+            toast.success('🎉 Premium activated! Enjoy unlimited PDF splitting.');
+            // Refresh premium status
+            const id = getUserId();
+            api.checkPremium(id).then(res => {
+              if (res.data?.is_premium) {
+                setIsPremium(true);
+                setSplitOptions(prev => ({ ...prev, isPremium: true }));
+              }
+            }).catch(() => {});
+          }}
         />
 
         <style dangerouslySetInnerHTML={{ __html: `

@@ -1,7 +1,8 @@
+// frontend/src/pages/Home.jsx
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import axios from 'axios';
+import { api } from '../utils/api';
 import { 
   FaRocket, FaUsers, FaCode, FaShieldAlt, FaArrowRight, 
   FaCheckCircle, FaSpinner, FaStar, FaPhone, FaEnvelope,
@@ -15,7 +16,6 @@ import {
   FaChartLine, FaCoins, FaRupeeSign, FaDollarSign,
   FaEuroSign, FaPoundSign, FaWallet, FaCreditCard,
   FaTag, FaShoppingCart, FaStore, FaBox, FaShippingFast,
-  // Free Tools Icons
   FaFileAlt, FaFilePdf, FaFileWord, FaFileExcel,
   FaQrcode, FaImage, FaDownload, FaUpload,
   FaPrint, FaCopy, FaFile,
@@ -24,11 +24,14 @@ import {
   FaUserEdit, FaRegFilePdf, FaRegFileWord, FaRegFileExcel,
   FaRegFileAlt, FaRegFileArchive, FaRegFileImage,
   FaArrowUp, FaArrowDown, FaExchangeAlt,
-  // Website Creation Icons
   FaPalette, FaReact, FaNode, FaPython,
   FaDocker, FaAws, FaGitAlt, FaFigma,
-  FaMicrophone, FaComments, FaMapPin
+  FaMicrophone, FaComments, FaMapPin,
+  FaMoon, FaSun, FaGem, FaCubes, FaCube,
+  FaBorderAll, FaLayerGroup, FaQuestionCircle, FaBars, FaTimes,
+  FaTextHeight
 } from 'react-icons/fa';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // ============================================
 // CONSTANTS
@@ -39,40 +42,248 @@ const PROJECTS_LIMIT = 4;
 const TESTIMONIALS_LIMIT = 3;
 
 // ============================================
-// UI COMPONENTS
+// CONTROLS COMPONENT - Bottom Right with Full Controls
+// ============================================
+
+const ControlsPanel = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  // Dark Mode
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem('darkMode');
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  // Language
+  const [language, setLanguage] = useState(() => {
+    const saved = localStorage.getItem('language');
+    return saved || 'en';
+  });
+
+  // Font Size
+  const [fontSize, setFontSize] = useState(() => {
+    const saved = localStorage.getItem('fontSize');
+    return saved || 'medium';
+  });
+
+  // Apply Dark Mode
+  useEffect(() => {
+    localStorage.setItem('darkMode', JSON.stringify(darkMode));
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [darkMode]);
+
+  // Apply Language
+  useEffect(() => {
+    localStorage.setItem('language', language);
+    // You can add i18n or translation logic here
+    console.log('Language changed to:', language);
+  }, [language]);
+
+  // Apply Font Size
+  useEffect(() => {
+    localStorage.setItem('fontSize', fontSize);
+    const sizes = {
+      small: '14px',
+      medium: '16px',
+      large: '18px'
+    };
+    document.documentElement.style.fontSize = sizes[fontSize] || '16px';
+  }, [fontSize]);
+
+  return (
+    <div className="fixed bottom-6 right-6 z-50">
+      <motion.button
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-14 h-14 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-2xl shadow-blue-500/30 hover:shadow-blue-500/50 transition-all duration-300 flex items-center justify-center backdrop-blur-xl border border-white/20"
+      >
+        {isOpen ? (
+          <FaTimes className="text-2xl" />
+        ) : (
+          <FaBars className="text-2xl" />
+        )}
+      </motion.button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 20 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="absolute bottom-20 right-0 p-4 rounded-2xl min-w-[240px] bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border border-white/20 dark:border-white/5 shadow-2xl"
+          >
+            <div className="space-y-4">
+              {/* Dark Mode Toggle */}
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Theme</span>
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setDarkMode(!darkMode)}
+                  className="p-2 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                >
+                  {darkMode ? <FaSun className="text-yellow-400 text-lg" /> : <FaMoon className="text-white text-lg" />}
+                </motion.button>
+              </div>
+
+              {/* Language Switcher */}
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Language</span>
+                <div className="flex items-center gap-1 p-1 rounded-full bg-gray-100 dark:bg-gray-700 shadow-inner">
+                  <button
+                    onClick={() => setLanguage('en')}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-300 ${
+                      language === 'en' 
+                        ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg' 
+                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                  >
+                    EN
+                  </button>
+                  <button
+                    onClick={() => setLanguage('hi')}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-300 ${
+                      language === 'hi' 
+                        ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg' 
+                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                  >
+                    हिं
+                  </button>
+                </div>
+              </div>
+
+              {/* Font Size Controls */}
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Font Size</span>
+                <div className="flex items-center gap-1 p-1 rounded-full bg-gray-100 dark:bg-gray-700 shadow-inner">
+                  {[
+                    { size: 'small', label: 'S', icon: FaTextHeight },
+                    { size: 'medium', label: 'M', icon: FaTextHeight },
+                    { size: 'large', label: 'L', icon: FaTextHeight }
+                  ].map(({ size, label, icon: Icon }) => (
+                    <button
+                      key={size}
+                      onClick={() => setFontSize(size)}
+                      className={`p-1.5 rounded-full transition-all duration-300 ${
+                        fontSize === size 
+                          ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg scale-110' 
+                          : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <Icon className={size === 'small' ? 'text-xs' : size === 'large' ? 'text-lg' : 'text-sm'} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Active Settings Display */}
+              <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                <div className="text-xs text-gray-500 dark:text-gray-400 text-center space-y-1">
+                  <p>Theme: <span className="font-medium text-gray-700 dark:text-gray-300">{darkMode ? 'Dark' : 'Light'}</span></p>
+                  <p>Language: <span className="font-medium text-gray-700 dark:text-gray-300">{language === 'en' ? 'English' : 'हिंदी'}</span></p>
+                  <p>Font: <span className="font-medium text-gray-700 dark:text-gray-300">{fontSize.charAt(0).toUpperCase() + fontSize.slice(1)}</span></p>
+                </div>
+              </div>
+
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setIsOpen(false)}
+                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                Close
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+// ============================================
+// UI COMPONENTS - COLORFUL & ELEGANT
 // ============================================
 
 // Loading Skeleton
 const LoadingSkeleton = () => (
-  <div className="container py-20 text-center">
-    <div className="flex justify-center items-center space-x-3">
-      <FaSpinner className="text-4xl text-blue-600 animate-spin" />
-      <p className="text-xl text-gray-600">Loading...</p>
-    </div>
-  </div>
+  <motion.div 
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    exit={{ opacity: 0 }}
+    className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900"
+  >
+    <motion.div 
+      animate={{ 
+        scale: [1, 1.05, 1],
+      }}
+      transition={{ 
+        scale: { duration: 2, repeat: Infinity },
+      }}
+      className="p-8 rounded-2xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border border-blue-200/50 dark:border-blue-500/20 shadow-2xl shadow-blue-500/10"
+    >
+      <div className="flex flex-col items-center space-y-4">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+          className="text-5xl text-blue-600 dark:text-blue-400"
+        >
+          <FaSpinner />
+        </motion.div>
+        <p className="text-xl font-medium text-gray-700 dark:text-gray-300">Loading...</p>
+        <div className="flex gap-2">
+          {[0, 0.2, 0.4].map((delay) => (
+            <motion.div 
+              key={delay}
+              className="w-2 h-2 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full"
+              animate={{ scale: [1, 1.5, 1] }}
+              transition={{ duration: 0.8, repeat: Infinity, delay }}
+            />
+          ))}
+        </div>
+      </div>
+    </motion.div>
+  </motion.div>
 );
 
-// Stat Card
-const StatCard = ({ icon: Icon, text, className = '' }) => (
-  <span className={`bg-blue-800/50 px-4 py-2 rounded-full ${className}`}>
-    <Icon className="inline mr-2" /> {text}
-  </span>
-);
+// Feature Item with Color
+const FeatureItem = ({ icon: Icon, title, description, color = 'blue', delay = 0 }) => {
+  const colorClasses = {
+    blue: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
+    green: 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400',
+    purple: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400',
+    orange: 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400',
+    pink: 'bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400',
+    teal: 'bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400',
+  };
 
-// Feature Item
-const FeatureItem = ({ icon: Icon, title, description, delay = 0 }) => (
-  <div className="flex items-start gap-3 animate-slide-up" style={{ animationDelay: `${delay}ms` }}>
-    <div className="bg-blue-100 p-2 rounded-lg flex-shrink-0">
-      <Icon className="text-blue-600 text-lg" />
-    </div>
-    <div>
-      <h4 className="font-semibold text-gray-900">{title}</h4>
-      <p className="text-gray-600 text-sm">{description}</p>
-    </div>
-  </div>
-);
+  return (
+    <motion.div 
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: delay / 1000 }}
+      whileHover={{ scale: 1.02, x: 5 }}
+      className="flex items-start gap-3 p-4 rounded-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 shadow-lg hover:shadow-xl transition-all duration-300"
+    >
+      <div className={`p-2.5 rounded-lg flex-shrink-0 ${colorClasses[color]}`}>
+        <Icon className="text-lg" />
+      </div>
+      <div>
+        <h4 className="font-semibold text-gray-900 dark:text-white">{title}</h4>
+        <p className="text-gray-600 dark:text-gray-400 text-sm">{description}</p>
+      </div>
+    </motion.div>
+  );
+};
 
-// Enhanced Pricing Card with Website Plans
+// Pricing Card
 const PricingCard = ({ 
   title, 
   price, 
@@ -82,142 +293,233 @@ const PricingCard = ({
   icon: Icon, 
   period = 'project',
   tag = '',
-  delay = 0 
+  delay = 0,
+  gradient = 'from-blue-500 to-indigo-500'
 }) => (
-  <div 
-    className={`bg-white rounded-2xl p-8 border-2 transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 animate-fade-in-up ${
-      isPopular ? 'border-blue-600 shadow-xl relative' : 'border-gray-200 hover:border-blue-400'
+  <motion.div 
+    initial={{ opacity: 0, y: 50 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay: delay / 1000, duration: 0.5, type: "spring", stiffness: 100 }}
+    whileHover={{ y: -15, scale: 1.02 }}
+    className={`relative p-8 rounded-2xl transition-all duration-300 ${
+      isPopular 
+        ? 'bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-2 border-blue-500/50 dark:border-blue-400/50 shadow-2xl shadow-blue-500/20' 
+        : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl hover:shadow-2xl'
     }`}
-    style={{ animationDelay: `${delay}ms` }}
   >
     {isPopular && (
-      <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-1.5 rounded-full text-sm font-semibold shadow-lg shadow-blue-500/25">
-        Most Popular
-      </div>
+      <motion.div 
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        transition={{ delay: delay / 1000 + 0.3, type: "spring", stiffness: 200 }}
+        className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-1.5 rounded-full text-sm font-semibold shadow-lg shadow-blue-500/25"
+      >
+        <FaStar className="inline mr-1 text-yellow-300" /> Most Popular
+      </motion.div>
     )}
     {tag && (
-      <div className="absolute top-4 right-4 bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold">
+      <div className="absolute top-4 right-4 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-3 py-1 rounded-full text-xs font-semibold">
         {tag}
       </div>
     )}
     <div className="text-center">
-      <div className="text-5xl text-blue-600 mb-4">{Icon && <Icon />}</div>
-      <h3 className="text-2xl font-bold text-gray-900">{title}</h3>
+      <motion.div 
+        whileHover={{ rotate: 360, scale: 1.1 }}
+        transition={{ duration: 0.6 }}
+        className={`text-5xl mb-4 bg-gradient-to-r ${gradient} bg-clip-text text-transparent`}
+      >
+        {Icon && <Icon />}
+      </motion.div>
+      <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{title}</h3>
       <div className="mt-4">
-        <span className="text-5xl font-bold text-gray-900">{currency}{price}</span>
-        <span className="text-gray-500 text-sm ml-1">/{period}</span>
+        <span className={`text-5xl font-bold bg-gradient-to-r ${gradient} bg-clip-text text-transparent`}>
+          {currency}{price}
+        </span>
+        <span className="text-gray-500 dark:text-gray-400 text-sm ml-1">/{period}</span>
       </div>
-      <p className="text-xs text-gray-400 mt-1">{period === 'project' ? 'One-time payment' : 'Starting price'}</p>
+      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{period === 'project' ? 'One-time payment' : 'Starting price'}</p>
     </div>
     <ul className="mt-6 space-y-3">
       {features.map((feature, index) => (
-        <li key={index} className="flex items-start gap-2 text-sm text-gray-600">
+        <motion.li 
+          key={index}
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: delay / 1000 + index * 0.05 }}
+          className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-300"
+        >
           <FaCheckCircle className="text-green-500 mt-0.5 flex-shrink-0" />
           <span>{feature}</span>
-        </li>
+        </motion.li>
       ))}
     </ul>
-    <Link
-      to="/contact"
-      className={`mt-8 w-full py-3.5 rounded-xl font-semibold transition-all duration-300 block text-center ${
-        isPopular
-          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-lg hover:shadow-blue-500/30 hover:-translate-y-0.5'
-          : 'bg-gray-100 text-gray-800 hover:bg-gray-200 hover:-translate-y-0.5'
-      }`}
+    <motion.div
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
     >
-      Get Started
-    </Link>
-  </div>
+      <Link
+        to="/contact"
+        className={`mt-8 w-full py-3.5 rounded-xl font-semibold transition-all duration-300 block text-center ${
+          isPopular
+            ? `bg-gradient-to-r ${gradient} text-white hover:shadow-lg hover:shadow-blue-500/30 hover:-translate-y-0.5`
+            : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-600 hover:-translate-y-0.5'
+        }`}
+      >
+        Get Started
+      </Link>
+    </motion.div>
+  </motion.div>
 );
 
-// Tool Card Component for Free Tools
+// Tool Card
 const ToolCard = ({ icon: Icon, title, description, link, isPopular = false, delay = 0 }) => (
-  <Link 
-    to={link}
-    className={`group bg-white rounded-2xl p-6 border-2 transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 animate-fade-in-up ${
-      isPopular ? 'border-blue-600 shadow-xl relative' : 'border-gray-200 hover:border-blue-400'
-    }`}
-    style={{ animationDelay: `${delay}ms` }}
+  <motion.div
+    initial={{ opacity: 0, scale: 0.9 }}
+    animate={{ opacity: 1, scale: 1 }}
+    transition={{ delay: delay / 1000, duration: 0.4, type: "spring", stiffness: 200 }}
+    whileHover={{ y: -10, scale: 1.03 }}
+    whileTap={{ scale: 0.95 }}
   >
-    {isPopular && (
-      <div className="absolute -top-3 right-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
-        Free
+    <Link 
+      to={link}
+      className={`group block p-6 rounded-2xl transition-all duration-300 relative ${
+        isPopular 
+          ? 'bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-2 border-green-500/50 dark:border-green-400/50 shadow-xl shadow-green-500/20' 
+          : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-2xl'
+      }`}
+    >
+      {isPopular && (
+        <div className="absolute -top-3 right-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-lg shadow-green-500/30">
+          <FaGem className="inline mr-1 text-yellow-300 text-[10px]" /> Free
+        </div>
+      )}
+      <div className="text-4xl text-blue-600 dark:text-blue-400 mb-4 group-hover:scale-110 transition-transform">
+        <Icon />
       </div>
-    )}
-    <div className="text-4xl text-blue-600 mb-4 group-hover:scale-110 transition-transform">
-      <Icon />
-    </div>
-    <h3 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
-      {title}
-    </h3>
-    <p className="text-gray-600 text-sm mt-2">{description}</p>
-    <span className="inline-flex items-center gap-1 mt-4 text-blue-600 font-semibold text-sm group-hover:gap-2 transition-all">
-      Use Tool <FaArrowRight className="text-xs" />
-    </span>
-  </Link>
+      <h3 className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+        {title}
+      </h3>
+      <p className="text-gray-600 dark:text-gray-400 text-sm mt-2">{description}</p>
+      <div className="inline-flex items-center gap-1 mt-4 text-blue-600 dark:text-blue-400 font-semibold text-sm group-hover:gap-2 transition-all">
+        Use Tool <FaArrowRight className="text-xs" />
+      </div>
+    </Link>
+  </motion.div>
 );
 
 // Project Card
 const ProjectCard = ({ project }) => {
   const IconComponent = useMemo(() => {
     try {
-      return require(`react-icons/fa`)[`Fa${project.icon?.charAt(0).toUpperCase() + project.icon?.slice(1) || 'Cube'}`];
+      const iconName = project.icon?.charAt(0).toUpperCase() + project.icon?.slice(1);
+      if (iconName) {
+        const Icon = require(`react-icons/fa`)[`Fa${iconName}`];
+        return Icon || FaCode;
+      }
+      return FaCode;
     } catch {
       return FaCode;
     }
   }, [project.icon]);
 
+  const gradients = [
+    'from-blue-500 to-indigo-500',
+    'from-purple-500 to-pink-500',
+    'from-green-500 to-emerald-500',
+    'from-orange-500 to-red-500',
+    'from-teal-500 to-cyan-500',
+    'from-pink-500 to-rose-500',
+  ];
+
+  const gradient = gradients[project.id % gradients.length] || gradients[0];
+
   return (
-    <Link 
-      to={`/products/${project.id}`} 
-      className="bg-white rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 p-6 group transform hover:-translate-y-1"
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, type: "spring", stiffness: 100 }}
+      whileHover={{ y: -10, scale: 1.02 }}
     >
-      <div className="text-4xl text-blue-600 mb-4">
-        <IconComponent />
-      </div>
-      <h3 className="text-xl font-bold mb-2 group-hover:text-blue-600 transition-colors duration-300">
-        {project.title}
-      </h3>
-      <p className="text-gray-600 text-sm line-clamp-2">
-        {project.short_desc || project.description?.substring(0, 60) || ''}
-      </p>
-      {project.is_upcoming && (
-        <span className="inline-block mt-2 bg-yellow-200 text-yellow-800 text-xs px-2 py-1 rounded-full">
-          Upcoming
-        </span>
-      )}
-      <span className="inline-block mt-4 text-blue-600 font-semibold group-hover:translate-x-2 transition-transform duration-300">
-        View Demo →
-      </span>
-    </Link>
+      <Link 
+        to={`/products/${project.id}`} 
+        className="block p-6 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 group relative overflow-hidden"
+      >
+        <div className={`absolute inset-0 bg-gradient-to-r ${gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500`}></div>
+        <motion.div 
+          whileHover={{ rotate: 360, scale: 1.1 }}
+          transition={{ duration: 0.6 }}
+          className={`text-4xl mb-4 bg-gradient-to-r ${gradient} bg-clip-text text-transparent`}
+        >
+          <IconComponent />
+        </motion.div>
+        <h3 className="text-xl font-bold mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300 text-gray-900 dark:text-white">
+          {project.title}
+        </h3>
+        <p className="text-gray-600 dark:text-gray-400 text-sm line-clamp-2">
+          {project.short_desc || project.description?.substring(0, 60) || ''}
+        </p>
+        {project.is_upcoming && (
+          <span className="inline-block mt-2 bg-yellow-200 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400 text-xs px-2 py-1 rounded-full">
+            🚀 Upcoming
+          </span>
+        )}
+        <div className="inline-block mt-4 text-blue-600 dark:text-blue-400 font-semibold group-hover:translate-x-2 transition-transform duration-300">
+          View Details →
+        </div>
+      </Link>
+    </motion.div>
   );
 };
 
 // Testimonial Card
-const TestimonialCard = ({ testimonial }) => (
-  <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-300">
-    <div className="flex items-center gap-4 mb-4">
-      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl">
-        {testimonial.client_name?.charAt(0) || '?'}
+const TestimonialCard = ({ testimonial, index }) => {
+  const colors = [
+    'from-blue-500 to-indigo-500',
+    'from-purple-500 to-pink-500',
+    'from-green-500 to-emerald-500',
+  ];
+  
+  return (
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: index * 0.1 }}
+      whileHover={{ y: -10, scale: 1.02 }}
+      className="p-6 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl hover:shadow-2xl transition-all duration-300"
+    >
+      <div className="flex items-center gap-4 mb-4">
+        <motion.div 
+          whileHover={{ rotate: 360, scale: 1.1 }}
+          transition={{ duration: 0.6 }}
+          className={`w-12 h-12 bg-gradient-to-r ${colors[index % colors.length]} rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg`}
+        >
+          {testimonial.client_name?.charAt(0) || '?'}
+        </motion.div>
+        <div>
+          <h4 className="font-semibold text-gray-900 dark:text-white">{testimonial.client_name}</h4>
+          <p className="text-gray-500 dark:text-gray-400 text-sm">{testimonial.client_company || 'Client'}</p>
+        </div>
       </div>
-      <div>
-        <h4 className="font-semibold">{testimonial.client_name}</h4>
-        <p className="text-gray-500 text-sm">{testimonial.client_company || 'Client'}</p>
+      <div className="flex text-yellow-400 mb-2">
+        {[...Array(5)].map((_, i) => (
+          <motion.span 
+            key={i}
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: i * 0.1 }}
+            className="text-lg"
+          >
+            {i < (testimonial.rating || 0) ? '★' : '☆'}
+          </motion.span>
+        ))}
       </div>
-    </div>
-    <div className="flex text-yellow-400 mb-2">
-      {[...Array(5)].map((_, i) => (
-        <span key={i} className="text-lg">
-          {i < (testimonial.rating || 0) ? '★' : '☆'}
-        </span>
-      ))}
-    </div>
-    <p className="text-gray-600 text-sm italic">"{testimonial.feedback}"</p>
-  </div>
-);
+      <p className="text-gray-600 dark:text-gray-400 text-sm italic">"{testimonial.feedback}"</p>
+    </motion.div>
+  );
+};
 
-// Counter Animation Component
-const Counter = ({ target, label, icon: Icon, suffix = '' }) => {
+// Counter Animation
+const Counter = ({ target, label, icon: Icon, suffix = '', color = 'from-blue-500 to-indigo-500' }) => {
   const [count, setCount] = useState(0);
   const ref = useRef(null);
   const [isVisible, setIsVisible] = useState(false);
@@ -260,15 +562,75 @@ const Counter = ({ target, label, icon: Icon, suffix = '' }) => {
   }, [target, isVisible]);
 
   return (
-    <div ref={ref} className="text-center">
-      <div className="text-4xl font-bold text-blue-600">{count}{suffix}</div>
-      <div className="text-sm text-gray-500 mt-1">{label}</div>
-      {Icon && <Icon className="text-2xl text-gray-400 mt-2 mx-auto" />}
-    </div>
+    <motion.div 
+      ref={ref}
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 30 }}
+      transition={{ duration: 0.6 }}
+      whileHover={{ scale: 1.05, y: -5 }}
+      className="text-center p-6 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl hover:shadow-2xl transition-all duration-300"
+    >
+      <motion.div 
+        className={`text-4xl font-bold bg-gradient-to-r ${color} bg-clip-text text-transparent`}
+        animate={{ scale: isVisible ? [0.5, 1.2, 1] : 1 }}
+        transition={{ duration: 0.8 }}
+      >
+        {count}{suffix}
+      </motion.div>
+      <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">{label}</div>
+      {Icon && <Icon className="text-2xl text-gray-400 dark:text-gray-500 mt-2 mx-auto" />}
+    </motion.div>
   );
 };
 
-// ✅ Indian Cities for GEO Targeting
+// FAQ Item
+const FAQItem = ({ faq, index, activeFaq, setActiveFaq }) => {
+  const isOpen = activeFaq === index;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.1 }}
+      className={`rounded-xl overflow-hidden border transition-all duration-300 ${
+        isOpen 
+          ? 'border-blue-500/50 dark:border-blue-400/50 shadow-xl shadow-blue-500/10 bg-blue-50/50 dark:bg-blue-900/10' 
+          : 'border-gray-200 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-500/30 bg-white dark:bg-gray-800'
+      }`}
+    >
+      <motion.button
+        onClick={() => setActiveFaq(isOpen ? null : index)}
+        className="w-full p-4 font-semibold text-gray-900 dark:text-white cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center justify-between text-left"
+        whileHover={{ x: 5 }}
+      >
+        <span className="pr-4">{faq.q}</span>
+        <motion.div
+          animate={{ rotate: isOpen ? 180 : 0 }}
+          transition={{ duration: 0.3 }}
+          className="flex-shrink-0"
+        >
+          <FaChevronDown className={`text-blue-600 dark:text-blue-400 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+        </motion.div>
+      </motion.button>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <p className="px-4 pb-4 text-gray-600 dark:text-gray-400 text-sm leading-relaxed">{faq.a}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+};
+
+// ============================================
+// INDIAN CITIES & COUNTRIES
+// ============================================
+
 const indianCities = [
   "Agra", "Delhi", "Mumbai", "Bangalore", "Chennai", "Hyderabad", 
   "Pune", "Kolkata", "Ahmedabad", "Surat", "Jaipur", "Lucknow", 
@@ -282,7 +644,6 @@ const indianCities = [
   "Dehradun", "Noida", "Gurugram", "Ghaziabad", "Faridabad"
 ];
 
-// ✅ Global Countries
 const globalCountries = [
   "USA", "UK", "Canada", "Australia", "UAE", "Singapore", 
   "Germany", "France", "Japan", "South Korea", "Netherlands", 
@@ -304,59 +665,48 @@ const Home = () => {
   const [activeFaq, setActiveFaq] = useState(null);
 
   const siteUrl = window.location.origin;
-const fetchData = useCallback(async () => {
-  try {
-    setError(null);
-    const [projectsRes, testimonialsRes] = await Promise.all([
-      axios.get(`${API_BASE_URL}/api/projects`),
-      axios.get(`${API_BASE_URL}/api/testimonials`)
-    ]);
 
-    // ✅ SAFE: Handle both array and object responses
-    let testimonialsData = [];
-    
-    // Check if it's an array directly
-    if (Array.isArray(testimonialsRes.data)) {
-      testimonialsData = testimonialsRes.data;
-    } 
-    // Check if it's an object with a data property that's an array
-    else if (testimonialsRes.data && typeof testimonialsRes.data === 'object') {
-      if (Array.isArray(testimonialsRes.data.data)) {
-        testimonialsData = testimonialsRes.data.data;
-      } else if (Array.isArray(testimonialsRes.data.testimonials)) {
-        testimonialsData = testimonialsRes.data.testimonials;
-      } else {
-        // Try to find any array property
-        const arrayProp = Object.values(testimonialsRes.data).find(val => Array.isArray(val));
-        if (arrayProp) {
-          testimonialsData = arrayProp;
+  const fetchData = useCallback(async () => {
+    try {
+      setError(null);
+      setLoading(true);
+      
+      const [projectsRes, testimonialsRes] = await Promise.all([
+        api.getProjects(),
+        api.getTestimonials()
+      ]);
+
+      let testimonialsData = [];
+      if (Array.isArray(testimonialsRes.data)) {
+        testimonialsData = testimonialsRes.data;
+      } else if (testimonialsRes.data && typeof testimonialsRes.data === 'object') {
+        if (Array.isArray(testimonialsRes.data.data)) {
+          testimonialsData = testimonialsRes.data.data;
+        } else if (Array.isArray(testimonialsRes.data.testimonials)) {
+          testimonialsData = testimonialsRes.data.testimonials;
         }
       }
+      
+      const approvedTestimonials = testimonialsData.filter(t => t.is_approved);
+      
+      let projectsData = [];
+      if (Array.isArray(projectsRes.data)) {
+        projectsData = projectsRes.data;
+      } else if (projectsRes.data && Array.isArray(projectsRes.data.data)) {
+        projectsData = projectsRes.data.data;
+      }
+      
+      setProjects(projectsData.slice(0, PROJECTS_LIMIT));
+      setTestimonials(approvedTestimonials.slice(0, TESTIMONIALS_LIMIT));
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      setError('Failed to load data. Please try again later.');
+      setProjects([]);
+      setTestimonials([]);
+    } finally {
+      setLoading(false);
     }
-    
-    // Filter approved testimonials
-    const approvedTestimonials = testimonialsData.filter(t => t.is_approved);
-    
-    // Handle projects data safely
-    let projectsData = [];
-    if (Array.isArray(projectsRes.data)) {
-      projectsData = projectsRes.data;
-    } else if (projectsRes.data && Array.isArray(projectsRes.data.data)) {
-      projectsData = projectsRes.data.data;
-    }
-    
-    setProjects(projectsData.slice(0, PROJECTS_LIMIT));
-    setTestimonials(approvedTestimonials.slice(0, TESTIMONIALS_LIMIT));
-  } catch (error) {
-    console.error('Error fetching data:', error);
-    setError('Failed to load data. Please try again later.');
-    // Set empty arrays to prevent further errors
-    setProjects([]);
-    setTestimonials([]);
-  } finally {
-    setLoading(false);
-  }
-}, []);
+  }, []);
 
   useEffect(() => {
     fetchData();
@@ -377,7 +727,8 @@ const fetchData = useCallback(async () => {
         '1 Month Support',
         'Free Domain First Year'
       ],
-      tag: 'Best for Startups'
+      tag: 'Best for Startups',
+      gradient: 'from-blue-500 to-cyan-500'
     },
     {
       icon: FaReact,
@@ -395,7 +746,8 @@ const fetchData = useCallback(async () => {
         'Free Hosting 6 Months'
       ],
       isPopular: true,
-      tag: 'Most Popular'
+      tag: 'Most Popular',
+      gradient: 'from-purple-500 to-pink-500'
     },
     {
       icon: FaServer,
@@ -413,7 +765,8 @@ const fetchData = useCallback(async () => {
         '6 Months Support',
         'Free Hosting 1 Year'
       ],
-      tag: 'For Growing Businesses'
+      tag: 'For Growing Businesses',
+      gradient: 'from-green-500 to-emerald-500'
     },
     {
       icon: FaCloud,
@@ -431,7 +784,8 @@ const fetchData = useCallback(async () => {
         'Dedicated Team',
         'Custom Quote'
       ],
-      tag: 'For Large Enterprises'
+      tag: 'For Large Enterprises',
+      gradient: 'from-orange-500 to-red-500'
     }
   ];
 
@@ -512,114 +866,92 @@ const fetchData = useCallback(async () => {
     }
   ];
 
+  // FAQ Data
+  const faqs = [
+    {
+      q: "What services does Krynova Technologies offer?",
+      a: "We provide custom web solutions including website creation (basic to advanced), HRMS software, property management systems, task management tools, WhatsApp automation bots, and enterprise-grade business applications."
+    },
+    {
+      q: "How much does a website cost?",
+      a: "Our website creation pricing starts from ₹15,000 for a basic website (up to 5 pages). Professional websites with advanced features start from ₹35,000. Advanced web applications with custom functionality start from ₹75,000."
+    },
+    {
+      q: "What is included in a basic website package?",
+      a: "Our basic website package includes up to 5 pages, responsive design, basic SEO setup, contact form, social media integration, 1 month support, and free domain for the first year."
+    },
+    {
+      q: "Where is Krynova Technologies located?",
+      a: "We are based in Agra, Uttar Pradesh, India. We serve clients nationwide and internationally."
+    },
+    {
+      q: "How long does it take to create a website?",
+      a: "Simple websites take 1-2 weeks. Professional websites take 2-4 weeks. Advanced web applications typically take 1-3 months."
+    },
+    {
+      q: "Do you provide free online tools?",
+      a: "Yes! We offer 12+ free online tools including ATS-friendly Resume Builder, Cover Letter Generator, QR Code Generator, PDF converters, and more."
+    }
+  ];
+
   if (loading) return <LoadingSkeleton />;
 
   if (error) {
     return (
-      <div className="container py-20 text-center">
-        <div className="text-red-500 text-4xl mb-4">⚠️</div>
-        <p className="text-red-600 mb-4">{error}</p>
-        <button 
-          onClick={fetchData}
-          className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
-        >
-          Retry
-        </button>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
+        <div className="p-8 rounded-2xl bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl border border-red-200/50 dark:border-red-500/20 shadow-2xl max-w-md mx-auto text-center">
+          <div className="text-5xl mb-4 animate-bounce">⚠️</div>
+          <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
+          <button 
+            onClick={fetchData}
+            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
     <>
+      {/* Controls Panel with Full Features */}
+      <ControlsPanel />
+
       {/* ========================================== */}
-      {/* ✅ HELMET - SEO + AEO + GEO COMBINED */}
+      {/* HELMET - SEO + AEO + GEO */}
       {/* ========================================== */}
       <Helmet>
-        {/* ===== SEO TAGS ===== */}
         <title>Krynova Technologies - Best Web Development Company in India | Website Design & Development</title>
-        <meta name="description" content="Krynova Technologies - India's leading web development company in Agra. We create custom websites, web applications, and enterprise solutions. From basic websites to advanced web applications with SEO, animations, and security. Trusted by 50+ businesses. Affordable pricing starting from ₹15,000. Serving clients in all Indian cities and globally." />
-        <meta name="keywords" content="Krynova Technologies, web development company India, website design company, custom web development, website creation, web application development, best web development company Agra, affordable website design, professional web development, enterprise software development, India web developers, global web development" />
-        <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
-        <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large" />
-        
-        {/* ✅ Canonical Tag */}
+        <meta name="description" content="Krynova Technologies - India's leading web development company in Agra. We create custom websites, web applications, and enterprise solutions. Trusted by 50+ businesses. Starting from ₹15,000." />
+        <meta name="keywords" content="Krynova Technologies, web development company India, website design company, custom web development" />
         <link rel="canonical" href={siteUrl} />
-        
-        {/* ===== GEO TAGS - Local Targeting ===== */}
         <meta name="geo.region" content="IN-UP" />
         <meta name="geo.placename" content="Agra" />
         <meta name="geo.position" content="27.1767;78.0081" />
         <meta name="ICBM" content="27.1767, 78.0081" />
-        <meta name="city" content="Agra" />
-        <meta name="state" content="Uttar Pradesh" />
-        <meta name="country" content="India" />
-        <meta name="areaServed" content={indianCities.join(", ")} />
-        <meta name="serviceArea" content={`India, ${globalCountries.join(", ")}, Worldwide`} />
-        <meta name="coverage" content="Global, National, Local" />
-        
-        {/* ===== GEO TAGS - All Indian Cities ===== */}
-        <meta name="targetedCities" content={indianCities.join(", ")} />
-        <meta name="targetedStates" content="Uttar Pradesh, Delhi, Maharashtra, Karnataka, Tamil Nadu, Telangana, West Bengal, Gujarat, Rajasthan, Punjab, Haryana, Madhya Pradesh, Bihar, Odisha, Kerala, Andhra Pradesh, Jharkhand, Chhattisgarh, Uttarakhand, Himachal Pradesh, Goa, Assam, Jammu & Kashmir" />
-        <meta name="targetedCountries" content={globalCountries.join(", ")} />
-        
-        {/* ===== GEO TAGS - Multi-language ===== */}
-        <meta name="language" content="en, hi, bn, te, ta, ur, gu, mr, kn, ml, pa" />
-        <meta name="locales" content="en_IN, hi_IN, bn_IN, te_IN, ta_IN, ur_IN, gu_IN, mr_IN, kn_IN, ml_IN, pa_IN" />
-        
-        {/* ===== AEO TAGS - Answer Engine Optimization ===== */}
-        <meta name="question" content="Which is the best web development company in India?" />
-        <meta name="answer" content="Krynova Technologies is India's leading web development company based in Agra, offering custom websites, web applications, and enterprise solutions. Trusted by 50+ businesses with 8+ years of experience. Pricing starting from ₹15,000." />
-        <meta name="faq" content="true" />
-        <meta name="speakable" content="true" />
-        <meta name="speakable-type" content="text/html" />
-        <meta name="speakable-css" content=".speakable" />
-        <meta name="voice-search" content="true" />
-        <meta name="voice-search-keywords" content="web development company India, website design, custom web development, best web developer Agra, affordable website design, enterprise software India" />
-        
-        {/* ===== AEO - Rich Snippets ===== */}
-        <meta name="rich-snippet" content="organization" />
-        <meta name="structured-data" content="true" />
-        
-        {/* ===== Open Graph ===== */}
         <meta property="og:type" content="website" />
         <meta property="og:url" content={siteUrl} />
-        <meta property="og:title" content="Krynova Technologies - Best Web Development Company in India | Website Design & Development" />
-        <meta property="og:description" content="Krynova Technologies - India's leading web development company in Agra. Custom websites, web applications, and enterprise solutions. Trusted by 50+ businesses. Starting from ₹15,000." />
+        <meta property="og:title" content="Krynova Technologies - Best Web Development Company in India" />
+        <meta property="og:description" content="Custom websites, web applications, and enterprise solutions. Trusted by 50+ businesses. Starting from ₹15,000." />
         <meta property="og:image" content={`${siteUrl}/logo.png`} />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
-        <meta property="og:site_name" content="Krynova Technologies" />
-        <meta property="og:locale" content="en_IN" />
-        
-        {/* ===== Twitter Card ===== */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:url" content={siteUrl} />
         <meta name="twitter:title" content="Krynova Technologies - Best Web Development Company in India" />
-        <meta name="twitter:description" content="Custom websites, web applications, and enterprise solutions. Trusted by 50+ businesses. Starting from ₹15,000." />
+        <meta name="twitter:description" content="Custom websites, web applications, and enterprise solutions." />
         <meta name="twitter:image" content={`${siteUrl}/logo.png`} />
       </Helmet>
 
       {/* ========================================== */}
-      {/* ✅ AEO SPEAKABLE CONTENT */}
+      {/* AEO SPEAKABLE CONTENT */}
       {/* ========================================== */}
       <div className="speakable sr-only" aria-hidden="true">
         <h1>Krynova Technologies - Best Web Development Company in India</h1>
         <p>Krynova Technologies is India's leading web development company based in Agra, offering custom websites, web applications, and enterprise solutions. Trusted by 50+ businesses with 8+ years of experience.</p>
         <p>We serve clients in Agra, Delhi, Mumbai, Bangalore, Hyderabad, Pune, Kolkata, and all major cities in India, as well as international clients in USA, UK, Canada, Australia, UAE, and worldwide.</p>
-        <ul>
-          <li>Custom Website Design - Beautiful, responsive websites</li>
-          <li>Web Application Development - Custom web applications</li>
-          <li>E-commerce Solutions - Online stores and marketplaces</li>
-          <li>Enterprise Web Solutions - Scalable enterprise websites</li>
-          <li>HRMS Software - Complete human resource management</li>
-          <li>Property Management System - Real estate management</li>
-          <li>WhatsApp Automation - AI-powered business communication</li>
-        </ul>
-        <p>Affordable pricing starting from ₹15,000. Free consultation available.</p>
       </div>
 
       {/* ========================================== */}
-      {/* ✅ SCHEMA.ORG - Organization Schema */}
+      {/* SCHEMA.ORG - Organization Schema */}
       {/* ========================================== */}
       <script type="application/ld+json">
         {JSON.stringify({
@@ -630,20 +962,11 @@ const fetchData = useCallback(async () => {
           "url": siteUrl,
           "logo": `${siteUrl}/logo.png`,
           "foundingDate": "2024-03",
-          "founders": [
-            {
-              "@type": "Person",
-              "name": "Shivam Sharma",
-              "jobTitle": "Founder & CEO",
-              "description": "Full Stack Developer with 8+ years of experience, building 50+ enterprise systems."
-            }
-          ],
           "contactPoint": {
             "@type": "ContactPoint",
             "telephone": "+918630519082",
             "contactType": "sales",
-            "email": "princeb744@gmail.com",
-            "availableLanguage": ["English", "Hindi"]
+            "email": "princeb744@gmail.com"
           },
           "address": {
             "@type": "PostalAddress",
@@ -651,120 +974,122 @@ const fetchData = useCallback(async () => {
             "addressRegion": "Uttar Pradesh",
             "addressCountry": "India"
           },
-          "areaServed": indianCities,
-          "availableLanguage": ["English", "Hindi", "Bengali", "Telugu", "Tamil", "Urdu", "Gujarati", "Marathi", "Kannada", "Malayalam", "Punjabi"],
-          "offers": {
-            "@type": "Offer",
-            "description": "Custom web solutions for businesses",
-            "priceSpecification": {
-              "@type": "PriceSpecification",
-              "price": "Starting from ₹15,000",
-              "priceCurrency": "INR"
-            }
-          },
-          "speakable": {
-            "@type": "SpeakableSpecification",
-            "cssSelector": ".speakable"
-          }
+          "areaServed": indianCities
         })}
       </script>
 
       {/* ========================================== */}
       {/* HERO SECTION */}
       {/* ========================================== */}
-      <section className="bg-gradient-to-br from-blue-950 via-blue-900 to-indigo-900 text-white py-20 relative overflow-hidden">
+      <section className="relative overflow-hidden bg-gradient-to-br from-blue-950 via-blue-900 to-indigo-900 text-white py-20 min-h-[600px] flex items-center">
         <div className="absolute inset-0 opacity-20">
           <div className="absolute top-0 left-0 w-64 h-64 bg-yellow-400 rounded-full filter blur-3xl animate-pulse"></div>
           <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-400 rounded-full filter blur-3xl animate-pulse delay-1000"></div>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-grid-pattern opacity-10"></div>
         </div>
         
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-20 left-10 animate-float">
-            <FaCode className="text-4xl text-blue-400/30" />
-          </div>
-          <div className="absolute bottom-20 right-10 animate-float-delayed">
-            <FaCloud className="text-5xl text-blue-400/30" />
-          </div>
-          <div className="absolute top-1/2 left-1/4 animate-float-slow">
-            <FaRocket className="text-3xl text-yellow-400/20" />
-          </div>
-          <div className="absolute top-1/3 right-1/4 animate-float-delayed">
-            <FaFileAlt className="text-3xl text-green-400/20" />
-          </div>
-        </div>
-
-        <div className="container relative z-10">
+        <div className="container relative z-10 mx-auto px-4">
           <div className="max-w-5xl mx-auto text-center">
-            <div className="flex justify-center mb-6">
+            <motion.div
+              initial={{ opacity: 0, y: -50 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+              className="flex justify-center mb-6"
+            >
               <img 
                 src="/logo.png" 
                 alt="Krynova Technologies Logo" 
                 className="h-20 w-auto md:h-24 hover:scale-105 transition-transform duration-300"
                 loading="lazy"
               />
-            </div>
+            </motion.div>
             
-            <div className="flex flex-wrap justify-center gap-2 mb-6">
-              <span className="inline-flex items-center gap-2 bg-blue-800/50 px-4 py-2 rounded-full text-sm backdrop-blur-sm border border-blue-700/50">
-                <FaStar className="text-yellow-400" />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.3, duration: 0.6 }}
+              className="flex flex-wrap justify-center gap-2 mb-6"
+            >
+              <span className="px-4 py-2 rounded-full bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg">
+                <FaStar className="inline mr-2 text-yellow-400" />
                 India's Leading Web Development Company
               </span>
-              <span className="inline-flex items-center gap-2 bg-green-800/50 px-4 py-2 rounded-full text-sm backdrop-blur-sm border border-green-700/50">
-                <FaTools className="text-yellow-400" />
+              <span className="px-4 py-2 rounded-full bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg">
+                <FaTools className="inline mr-2 text-yellow-400" />
                 12 Free Online Tools
               </span>
-            </div>
+            </motion.div>
 
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight animate-fade-in">
+            <motion.h1 
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5, duration: 0.8 }}
+              className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight"
+            >
               Custom <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400">Web Solutions</span>
               <br />
               <span className="text-blue-200">for Every Business Need</span>
-            </h1>
+            </motion.h1>
             
-            <p className="text-xl md:text-2xl text-blue-100 mb-8 animate-slide-up max-w-3xl mx-auto">
+            <motion.p 
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7, duration: 0.8 }}
+              className="text-xl md:text-2xl text-blue-100 mb-8 max-w-3xl mx-auto"
+            >
               From basic websites to advanced web applications — we build custom solutions with SEO, animations, and enterprise-grade security. <strong className="text-yellow-400">Starting from ₹15,000</strong>
-            </p>
+            </motion.p>
             
-            <div className="flex flex-wrap justify-center gap-4 animate-slide-up-delayed">
+            <motion.div 
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.9, duration: 0.8 }}
+              className="flex flex-wrap justify-center gap-4"
+            >
               <Link 
                 to="/contact" 
-                className="bg-gradient-to-r from-yellow-400 to-orange-400 text-blue-900 px-8 py-3 rounded-lg font-semibold hover:shadow-2xl hover:shadow-yellow-500/30 transition-all duration-300 flex items-center gap-2 transform hover:-translate-y-1 group"
+                className="bg-gradient-to-r from-yellow-400 to-orange-400 text-blue-900 px-8 py-3 rounded-xl font-semibold shadow-lg hover:shadow-2xl transition-all duration-300 flex items-center gap-2 transform hover:-translate-y-1 group"
               >
-                Get Free Quote <FaArrowRight className="group-hover:translate-x-1 transition" />
+                Get Free Quote <FaArrowRight className="group-hover:translate-x-1 transition-transform" />
               </Link>
               <a 
                 href="#pricing"
-                className="border-2 border-white/50 px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-900 transition-all duration-300 backdrop-blur-sm"
+                className="border border-white/30 text-white px-8 py-3 rounded-xl font-semibold hover:bg-white/10 transition-all duration-300 backdrop-blur-sm"
               >
                 View Pricing
               </a>
               <Link 
                 to="/products"
-                className="border-2 border-green-400/50 text-green-400 px-8 py-3 rounded-lg font-semibold hover:bg-green-400 hover:text-blue-900 transition-all duration-300"
+                className="border border-green-400/30 text-green-400 px-8 py-3 rounded-xl font-semibold hover:bg-green-400/10 transition-all duration-300"
               >
                 Our Products
               </Link>
-            </div>
+            </motion.div>
 
-            <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-                <div className="text-2xl font-bold text-yellow-400">8+</div>
-                <div className="text-sm text-blue-200">Years Experience</div>
-              </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-                <div className="text-2xl font-bold text-yellow-400">50+</div>
-                <div className="text-sm text-blue-200">Systems Built</div>
-              </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-                <div className="text-2xl font-bold text-yellow-400">100%</div>
-                <div className="text-sm text-blue-200">Client Satisfaction</div>
-              </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-                <div className="text-2xl font-bold text-yellow-400">24/7</div>
-                <div className="text-sm text-blue-200">Premium Support</div>
-              </div>
-            </div>
+            {/* Stats */}
+            <motion.div 
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.1, duration: 0.8 }}
+              className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto"
+            >
+              {[
+                { value: '8+', label: 'Years Experience', icon: FaAward },
+                { value: '50+', label: 'Systems Built', icon: FaServer },
+                { value: '100%', label: 'Client Satisfaction', icon: FaStar },
+                { value: '24/7', label: 'Premium Support', icon: FaHeadset }
+              ].map((stat, index) => (
+                <motion.div 
+                  key={index}
+                  whileHover={{ scale: 1.05, y: -5 }}
+                  className="p-4 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10 shadow-lg"
+                >
+                  <div className="text-2xl font-bold text-yellow-400">{stat.value}</div>
+                  <div className="text-sm text-blue-200 flex items-center gap-1 justify-center">
+                    <stat.icon className="text-xs" /> {stat.label}
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
           </div>
         </div>
       </section>
@@ -772,19 +1097,26 @@ const fetchData = useCallback(async () => {
       {/* ========================================== */}
       {/* WEBSITE CREATION PRICING SECTION */}
       {/* ========================================== */}
-      <section id="pricing" className="py-16 bg-gradient-to-b from-white to-gray-50">
-        <div className="container">
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-full text-sm font-semibold mb-4">
-              <FaRocket /> Website Creation Plans
+      <section id="pricing" className="py-16 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+        <div className="container mx-auto px-4">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-12"
+          >
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 text-sm font-semibold text-blue-700 dark:text-blue-400 border border-blue-200/50 dark:border-blue-500/20">
+              <FaRocket className="animate-spin-slow" />
+              Website Creation Plans
             </div>
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
               Choose Your <span className="gradient-text">Website Plan</span>
             </h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
+            <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
               From simple business websites to complex web applications — we have a plan for every budget and requirement
             </p>
-          </div>
+          </motion.div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {websitePlans.map((plan, index) => (
@@ -796,62 +1128,72 @@ const fetchData = useCallback(async () => {
             ))}
           </div>
 
-          <div className="text-center mt-10">
-            <p className="text-gray-500 text-sm">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center mt-10"
+          >
+            <p className="text-gray-500 dark:text-gray-400 text-sm">
               * All prices are inclusive of GST. Custom quotes available for enterprise solutions.
-              <br />
-              Get a <strong>free consultation</strong> to discuss your specific requirements.
             </p>
             <Link 
               to="/contact" 
-              className="inline-flex items-center gap-2 mt-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-3 rounded-lg font-semibold hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-300 transform hover:-translate-y-1"
+              className="inline-flex items-center gap-2 mt-4 px-8 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
             >
               Get Free Consultation <FaArrowRight />
             </Link>
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* ========================================== */}
       {/* TRUST & CREDIBILITY */}
       {/* ========================================== */}
-      <section className="py-8 bg-white border-b border-gray-100">
-        <div className="container">
-          <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16">
-            <div className="flex items-center gap-2 text-gray-600">
-              <FaAward className="text-blue-600 text-xl" />
-              <span>Trusted by 50+ Businesses</span>
-            </div>
-            <div className="flex items-center gap-2 text-gray-600">
-              <FaTrophy className="text-blue-600 text-xl" />
-              <span>50+ Enterprise Systems</span>
-            </div>
-            <div className="flex items-center gap-2 text-gray-600">
-              <FaMedal className="text-blue-600 text-xl" />
-              <span>24/7 Premium Support</span>
-            </div>
-            <div className="flex items-center gap-2 text-gray-600">
-              <FaTools className="text-blue-600 text-xl" />
-              <span>12 Free Tools</span>
-            </div>
-            <div className="flex items-center gap-2 text-gray-600">
-              <FaGlobe className="text-blue-600 text-xl" />
-              <span>Global Presence</span>
-            </div>
-          </div>
+      <section className="py-8 bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
+        <div className="container mx-auto px-4">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="flex flex-wrap justify-center items-center gap-8 md:gap-16"
+          >
+            {[
+              { icon: FaAward, text: 'Trusted by 50+ Businesses', color: 'text-blue-600' },
+              { icon: FaTrophy, text: '50+ Enterprise Systems', color: 'text-purple-600' },
+              { icon: FaMedal, text: '24/7 Premium Support', color: 'text-green-600' },
+              { icon: FaTools, text: '12 Free Tools', color: 'text-orange-600' },
+              { icon: FaGlobe, text: 'Global Presence', color: 'text-teal-600' }
+            ].map((item, index) => (
+              <motion.div 
+                key={index}
+                whileHover={{ scale: 1.1, y: -2 }}
+                className="flex items-center gap-2 text-gray-600 dark:text-gray-400"
+              >
+                <item.icon className={`${item.color} text-xl`} />
+                <span className="font-medium">{item.text}</span>
+              </motion.div>
+            ))}
+          </motion.div>
         </div>
       </section>
 
       {/* ========================================== */}
       {/* ABOUT SECTION */}
       {/* ========================================== */}
-      <section className="py-16 bg-white">
-        <div className="container">
+      <section className="py-16 bg-white dark:bg-gray-800">
+        <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-2 gap-12 items-center">
-            <div>
-              <span className="text-blue-600 font-semibold text-sm uppercase tracking-wider">About Us</span>
-              <h2 className="text-3xl font-bold mb-4 mt-2">Why Choose Krynova?</h2>
-              <p className="text-gray-600 mb-6 leading-relaxed">
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              <span className="text-blue-600 dark:text-blue-400 font-semibold text-sm uppercase tracking-wider">About Us</span>
+              <h2 className="text-3xl font-bold mb-4 mt-2 text-gray-900 dark:text-white">Why Choose Krynova?</h2>
+              <p className="text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
                 Founded in March 2024, Krynova Technologies is a cutting-edge technology company dedicated to providing 
                 custom web solutions for businesses of all sizes and industries. We also offer <strong>12 FREE online tools</strong> 
                 to help professionals and businesses boost their productivity.
@@ -861,25 +1203,34 @@ const fetchData = useCallback(async () => {
                   icon={FaRocket}
                   title="Our Vision"
                   description="To become the go-to partner for businesses seeking innovative, scalable, and secure web solutions."
+                  color="blue"
                   delay={0}
                 />
                 <FeatureItem 
                   icon={FaShieldAlt}
                   title="Our Mission"
                   description="Empower businesses with custom software that drives growth, efficiency, and customer satisfaction."
+                  color="purple"
                   delay={100}
                 />
                 <FeatureItem 
                   icon={FaUsers}
                   title="Our Commitment"
                   description="Deliver excellence with 100% client satisfaction, transparent communication, and long-term support."
+                  color="green"
                   delay={200}
                 />
               </div>
-            </div>
-            <div className="space-y-6">
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-8 rounded-xl shadow-lg border border-gray-100">
-                <h3 className="text-xl font-bold mb-4 text-blue-900">Why Choose Krynova?</h3>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="space-y-6"
+            >
+              <div className="p-8 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200/50 dark:border-blue-500/20 shadow-xl">
+                <h3 className="text-xl font-bold mb-4 text-blue-900 dark:text-blue-400">Why Choose Krynova?</h3>
                 <ul className="space-y-3">
                   {[
                     '100% Custom Solutions',
@@ -891,109 +1242,23 @@ const fetchData = useCallback(async () => {
                     'Enterprise-Grade Security',
                     '12 Free Online Tools'
                   ].map((item, index) => (
-                    <li key={index} className="flex items-center gap-3 group hover:translate-x-1 transition-transform">
-                      <span className="bg-green-100 text-green-600 p-1 rounded-full flex-shrink-0">
+                    <motion.li 
+                      key={index}
+                      initial={{ opacity: 0, x: -10 }}
+                      whileInView={{ opacity: 1, x: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: index * 0.05 }}
+                      className="flex items-center gap-3 group hover:translate-x-1 transition-transform"
+                    >
+                      <span className="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 p-1 rounded-full flex-shrink-0">
                         <FaCheckCircle />
                       </span>
-                      <span className="text-gray-700">{item}</span>
-                    </li>
+                      <span className="text-gray-700 dark:text-gray-300">{item}</span>
+                    </motion.li>
                   ))}
                 </ul>
               </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ========================================== */}
-      {/* FOUNDER SECTION */}
-      {/* ========================================== */}
-      <section className="py-16 bg-gradient-to-r from-blue-50 to-indigo-50">
-        <div className="container">
-          <div className="max-w-5xl mx-auto">
-            <div className="text-center mb-12">
-              <span className="text-blue-600 font-semibold text-sm uppercase tracking-wider">Leadership</span>
-              <h2 className="text-3xl font-bold mt-2">Meet Our Founder</h2>
-              <p className="text-gray-600 mt-2">Driven by innovation and a passion for technology</p>
-            </div>
-            <div className="bg-white rounded-2xl shadow-xl p-8 md:p-12 border border-gray-100 hover:shadow-2xl transition-shadow duration-300">
-              <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
-                <div className="flex-shrink-0 relative">
-                  <div className="w-32 h-32 md:w-48 md:h-48 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-white text-5xl md:text-7xl font-bold shadow-xl ring-4 ring-blue-200 overflow-hidden">
-                    <img 
-                      src="/founder-shivam-sharma.png" 
-                      alt="Shivam Sharma - Founder & CEO of Krynova Technologies" 
-                      className="w-full h-full rounded-full object-cover hover:scale-105 transition-transform duration-300"
-                      onError={(e) => {
-                        e.target.src = '/founder-shivam-sharma';
-                        e.target.onerror = () => {
-                          e.target.style.display = 'none';
-                          const parent = e.target.parentElement;
-                          if (parent) {
-                            parent.innerHTML = '';
-                            const initials = document.createElement('span');
-                            initials.textContent = 'SS';
-                            initials.className = 'text-white text-5xl md:text-7xl font-bold';
-                            parent.appendChild(initials);
-                            parent.className = parent.className + ' flex items-center justify-center';
-                          }
-                        };
-                      }}
-                    />
-                  </div>
-                  <div className="absolute -bottom-2 -right-2 bg-yellow-400 text-blue-900 px-3 py-1 rounded-full text-xs font-bold shadow-lg">
-                    CEO
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-2xl font-bold text-gray-900">Shivam Sharma</h3>
-                  <p className="text-blue-600 font-semibold">Founder & CEO, Krynova Technologies</p>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-medium">Full Stack Developer</span>
-                    <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium">8+ Years Experience</span>
-                    <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-medium">Enterprise Solutions</span>
-                    <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-medium">50+ Systems Built</span>
-                    <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-medium">Data Analyst</span>
-                  </div>
-                  <p className="text-gray-600 mt-4 leading-relaxed">
-                    Shivam Sharma is an experienced Full Stack Developer and Data Analyst with over 8 years of industry experience. 
-                    He has successfully built and deployed 50+ enterprise systems for leading organizations including
-                    <strong> Torrent Power Limited</strong>, <strong>Tech Mahindra</strong>, <strong>Romsons</strong>,
-                    <strong> Agra Chain</strong>, and <strong>Anna Infrastructure Limited</strong>.
-                    His expertise spans across custom software development, data analytics, and enterprise architecture.
-                  </p>
-                  <p className="text-gray-600 mt-2">
-                    Shivam specializes in <strong>website creation from basic to advanced</strong>, custom web applications, 
-                    and enterprise solutions with modern technologies like React, Node.js, Python, and cloud platforms.
-                  </p>
-                  <div className="flex flex-wrap gap-4 mt-4">
-                    <a 
-                      href="mailto:princeb744@gmail.com" 
-                      className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition"
-                    >
-                      <FaEnvelope /> princeb744@gmail.com
-                    </a>
-                    <a 
-                      href="tel:+918630519082" 
-                      className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition"
-                    >
-                      <FaPhone /> +91 86305 19082
-                    </a>
-                  </div>
-                  <div className="flex gap-3 mt-4">
-                    <a href="#" className="text-gray-500 hover:text-blue-600 transition text-xl" aria-label="LinkedIn">
-                      <FaLinkedin />
-                    </a>
-                    <a href="#" className="text-gray-500 hover:text-gray-900 transition text-xl" aria-label="GitHub">
-                      <FaGithub />
-                    </a>
-                    <a href="#" className="text-gray-500 hover:text-blue-400 transition text-xl" aria-label="Twitter">
-                      <FaTwitter />
-                    </a>
-                  </div>
-                </div>
-              </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
@@ -1001,101 +1266,164 @@ const fetchData = useCallback(async () => {
       {/* ========================================== */}
       {/* EXPERIENCE & CLIENTS */}
       {/* ========================================== */}
-      <section className="py-16 bg-white">
-        <div className="container">
-          <div className="text-center mb-12">
-            <span className="text-blue-600 font-semibold text-sm uppercase tracking-wider">Experience</span>
-            <h2 className="text-3xl font-bold mt-2">Trusted By Leading Enterprises</h2>
-            <p className="text-gray-600 mt-2">8+ years of experience building solutions for industry leaders</p>
-          </div>
+      <section className="py-16 bg-gray-50 dark:bg-gray-900">
+        <div className="container mx-auto px-4">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-12"
+          >
+            <span className="text-blue-600 dark:text-blue-400 font-semibold text-sm uppercase tracking-wider">Experience</span>
+            <h2 className="text-3xl font-bold mt-2 text-gray-900 dark:text-white">Trusted By Leading Enterprises</h2>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">8+ years of experience building solutions for industry leaders</p>
+          </motion.div>
           
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
-            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white text-center shadow-xl">
-              <div className="text-4xl font-bold">8+</div>
-              <div className="text-sm text-blue-100">Years Experience</div>
-            </div>
-            <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white text-center shadow-xl">
-              <div className="text-4xl font-bold">50+</div>
-              <div className="text-sm text-green-100">Systems Built</div>
-            </div>
-            <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white text-center shadow-xl">
-              <div className="text-4xl font-bold">100+</div>
-              <div className="text-sm text-purple-100">Websites Created</div>
-            </div>
-            <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-white text-center shadow-xl">
-              <div className="text-4xl font-bold">100%</div>
-              <div className="text-sm text-orange-100">Client Satisfaction</div>
-            </div>
+            <Counter 
+              target={8} 
+              label="Years Experience" 
+              icon={FaAward} 
+              suffix="+" 
+              color="from-blue-500 to-cyan-500"
+            />
+            <Counter 
+              target={50} 
+              label="Systems Built" 
+              icon={FaServer} 
+              suffix="+" 
+              color="from-purple-500 to-pink-500"
+            />
+            <Counter 
+              target={100} 
+              label="Websites Created" 
+              icon={FaGlobe} 
+              suffix="+" 
+              color="from-green-500 to-emerald-500"
+            />
+            <Counter 
+              target={100} 
+              label="Client Satisfaction" 
+              icon={FaStar} 
+              suffix="%" 
+              color="from-orange-500 to-red-500"
+            />
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4"
+          >
             {[
-              { name: 'Torrent Power', color: 'from-red-500 to-red-700' },
-              { name: 'Tech Mahindra', color: 'from-blue-500 to-blue-700' },
-              { name: 'Romsons', color: 'from-green-500 to-green-700' },
-              { name: 'Agra Chain', color: 'from-purple-500 to-purple-700' },
-              { name: 'Anna Infra', color: 'from-orange-500 to-orange-700' }
+              { name: 'Torrent Power', gradient: 'from-red-500 to-red-700' },
+              { name: 'Tech Mahindra', gradient: 'from-blue-500 to-blue-700' },
+              { name: 'Romsons', gradient: 'from-green-500 to-green-700' },
+              { name: 'Agra Chain', gradient: 'from-purple-500 to-purple-700' },
+              { name: 'Anna Infra', gradient: 'from-orange-500 to-orange-700' }
             ].map((client, index) => (
-              <div 
+              <motion.div 
                 key={index}
-                className={`bg-gradient-to-r ${client.color} text-white p-4 rounded-xl text-center shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 hover:scale-105`}
+                initial={{ opacity: 0, scale: 0.8 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+                whileHover={{ y: -10, scale: 1.05 }}
+                className={`p-4 rounded-xl text-center shadow-xl hover:shadow-2xl transition-all duration-300 bg-gradient-to-r ${client.gradient}`}
               >
-                <FaBuilding className="text-2xl mx-auto mb-2 opacity-80" />
-                <p className="font-semibold text-sm">{client.name}</p>
-                <p className="text-xs opacity-80">Enterprise Client</p>
-              </div>
+                <FaBuilding className="text-2xl mx-auto mb-2 text-white/80" />
+                <p className="font-semibold text-sm text-white">{client.name}</p>
+                <p className="text-xs text-white/70">Enterprise Client</p>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* ========================================== */}
       {/* SERVICES SECTION */}
       {/* ========================================== */}
-      <section className="py-16 bg-gray-50">
-        <div className="container">
-          <div className="text-center mb-12">
-            <span className="text-blue-600 font-semibold text-sm uppercase tracking-wider">Services</span>
-            <h2 className="text-3xl font-bold mt-2">What We Offer</h2>
-            <p className="text-gray-600 mt-2">Comprehensive web solutions for every business need</p>
-          </div>
+      <section className="py-16 bg-white dark:bg-gray-800">
+        <div className="container mx-auto px-4">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-12"
+          >
+            <span className="text-blue-600 dark:text-blue-400 font-semibold text-sm uppercase tracking-wider">Services</span>
+            <h2 className="text-3xl font-bold mt-2 text-gray-900 dark:text-white">What We Offer</h2>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">Comprehensive web solutions for every business need</p>
+          </motion.div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
-              { icon: FaServer, title: 'Custom Web Development', desc: 'Tailored web applications built with modern technologies for your specific business needs.' },
-              { icon: FaPalette, title: 'Website Design', desc: 'Beautiful, responsive, and user-friendly website designs that convert visitors into customers.' },
-              { icon: FaDatabase, title: 'HRMS Solutions', desc: 'Complete human resource management systems with payroll, attendance, and performance tracking.' },
-              { icon: FaBuilding, title: 'Property Management', desc: 'Advanced property management systems for real estate businesses with tenant management and rent collection.' },
-              { icon: FaMobile, title: 'WhatsApp Automation', desc: 'AI-powered WhatsApp bots for lead generation, customer support, and automated communication.' },
-              { icon: FaChartLine, title: 'Data Analytics', desc: 'Comprehensive data analytics solutions with real-time dashboards and business intelligence.' },
-            ].map((service, index) => (
-              <div key={index} className="bg-white p-6 rounded-xl border border-gray-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
-                <div className="bg-blue-100 w-14 h-14 rounded-lg flex items-center justify-center text-blue-600 text-2xl group-hover:scale-110 transition-transform">
-                  <service.icon />
-                </div>
-                <h3 className="text-lg font-bold mt-4 text-gray-900">{service.title}</h3>
-                <p className="text-gray-600 text-sm mt-2">{service.desc}</p>
-                <Link to="/contact" className="text-blue-600 font-semibold text-sm mt-4 inline-flex items-center gap-1 group-hover:gap-2 transition-all">
-                  Learn More <FaArrowRight className="text-xs" />
-                </Link>
-              </div>
-            ))}
+              { icon: FaServer, title: 'Custom Web Development', desc: 'Tailored web applications built with modern technologies for your specific business needs.', color: 'blue' },
+              { icon: FaPalette, title: 'Website Design', desc: 'Beautiful, responsive, and user-friendly website designs that convert visitors into customers.', color: 'purple' },
+              { icon: FaDatabase, title: 'HRMS Solutions', desc: 'Complete human resource management systems with payroll, attendance, and performance tracking.', color: 'green' },
+              { icon: FaBuilding, title: 'Property Management', desc: 'Advanced property management systems for real estate businesses with tenant management and rent collection.', color: 'orange' },
+              { icon: FaMobile, title: 'WhatsApp Automation', desc: 'AI-powered WhatsApp bots for lead generation, customer support, and automated communication.', color: 'teal' },
+              { icon: FaChartLine, title: 'Data Analytics', desc: 'Comprehensive data analytics solutions with real-time dashboards and business intelligence.', color: 'pink' },
+            ].map((service, index) => {
+              const colorClasses = {
+                blue: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
+                purple: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400',
+                green: 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400',
+                orange: 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400',
+                teal: 'bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400',
+                pink: 'bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400',
+              };
+              return (
+                <motion.div 
+                  key={index}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                  whileHover={{ y: -10 }}
+                  className="p-6 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl hover:shadow-2xl transition-all duration-300 group relative overflow-hidden"
+                >
+                  <div className={`${colorClasses[service.color]} w-14 h-14 rounded-lg flex items-center justify-center text-2xl group-hover:scale-110 transition-transform`}>
+                    <service.icon />
+                  </div>
+                  <h3 className="text-lg font-bold mt-4 text-gray-900 dark:text-white">{service.title}</h3>
+                  <p className="text-gray-600 dark:text-gray-400 text-sm mt-2">{service.desc}</p>
+                  <Link to="/contact" className="text-blue-600 dark:text-blue-400 font-semibold text-sm mt-4 inline-flex items-center gap-1 group-hover:gap-2 transition-all">
+                    Learn More <FaArrowRight className="text-xs" />
+                  </Link>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       </section>
 
       {/* ========================================== */}
-      {/* FEATURED PRODUCTS */}
+      {/* FEATURED PRODUCTS SECTION */}
       {/* ========================================== */}
-      <section className="py-16 bg-white">
-        <div className="container">
-          <div className="text-center mb-12">
-            <span className="text-blue-600 font-semibold text-sm uppercase tracking-wider">Our Products</span>
-            <h2 className="text-3xl font-bold mt-2">Featured Solutions</h2>
-            <p className="text-gray-600 mt-2">Explore our ready-to-deploy enterprise solutions</p>
-          </div>
+      <section className="py-16 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+        <div className="container mx-auto px-4">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-12"
+          >
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 text-sm font-semibold text-purple-700 dark:text-purple-400 border border-purple-200/50 dark:border-purple-500/20">
+              <FaCube className="animate-spin-slow" />
+              Our Products
+            </div>
+            <h2 className="text-3xl font-bold mt-2 text-gray-900 dark:text-white">Featured Solutions</h2>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">Explore our ready-to-deploy enterprise solutions</p>
+          </motion.div>
+
           {projects.length === 0 ? (
-            <div className="text-center py-12 bg-gray-50 rounded-xl shadow">
-              <p className="text-gray-500">No products available yet. Check back soon!</p>
+            <div className="text-center py-12 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl">
+              <p className="text-gray-500 dark:text-gray-400">No products available yet. Check back soon!</p>
             </div>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1104,67 +1432,96 @@ const fetchData = useCallback(async () => {
               ))}
             </div>
           )}
-          <div className="text-center mt-10">
+          
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mt-10"
+          >
             <Link 
               to="/products" 
-              className="text-blue-600 font-semibold hover:text-blue-800 transition-colors inline-flex items-center gap-2 group"
+              className="inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 font-semibold hover:text-blue-800 dark:hover:text-blue-300 transition-colors group"
             >
               View All Products 
               <FaArrowRight className="group-hover:translate-x-1 transition-transform" />
             </Link>
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* ========================================== */}
-      {/* TESTIMONIALS */}
+      {/* TESTIMONIALS SECTION */}
       {/* ========================================== */}
-      <section className="py-16 bg-gray-50">
-        <div className="container">
-          <div className="text-center mb-12">
-            <span className="text-blue-600 font-semibold text-sm uppercase tracking-wider">Testimonials</span>
-            <h2 className="text-3xl font-bold mt-2">What Our Clients Say</h2>
-            <p className="text-gray-600 mt-2">Real feedback from real businesses</p>
-          </div>
+      <section className="py-16 bg-white dark:bg-gray-800">
+        <div className="container mx-auto px-4">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-12"
+          >
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900/30 dark:to-orange-900/30 text-sm font-semibold text-yellow-700 dark:text-yellow-400 border border-yellow-200/50 dark:border-yellow-500/20">
+              <FaStar className="animate-pulse" />
+              Testimonials
+            </div>
+            <h2 className="text-3xl font-bold mt-2 text-gray-900 dark:text-white">What Our Clients Say</h2>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">Real feedback from real businesses</p>
+          </motion.div>
+
           {testimonials.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-xl">
-              <p className="text-gray-500">No testimonials yet. Be the first to share your experience!</p>
+            <div className="text-center py-12 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl">
+              <p className="text-gray-500 dark:text-gray-400">No testimonials yet. Be the first to share your experience!</p>
             </div>
           ) : (
             <div className="grid md:grid-cols-3 gap-6">
               {testimonials.map((testimonial, index) => (
-                <TestimonialCard key={index} testimonial={testimonial} />
+                <TestimonialCard key={index} testimonial={testimonial} index={index} />
               ))}
             </div>
           )}
-          <div className="text-center mt-10">
+          
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mt-10"
+          >
             <Link 
               to="/testimonials" 
-              className="text-blue-600 font-semibold hover:text-blue-800 transition-colors inline-flex items-center gap-2 group"
+              className="inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 font-semibold hover:text-blue-800 dark:hover:text-blue-300 transition-colors group"
             >
               Read All Testimonials 
               <FaArrowRight className="group-hover:translate-x-1 transition-transform" />
             </Link>
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* ========================================== */}
       {/* FREE TOOLS SECTION */}
       {/* ========================================== */}
-      <section id="free-tools" className="py-16 bg-gradient-to-b from-white to-gray-50">
-        <div className="container">
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 bg-green-100 text-green-700 px-4 py-2 rounded-full text-sm font-semibold mb-4">
-              <FaTools /> Free Tools
+      <section id="free-tools" className="py-16 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+        <div className="container mx-auto px-4">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-12"
+          >
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 text-sm font-semibold text-green-700 dark:text-green-400 border border-green-200/50 dark:border-green-500/20">
+              <FaTools className="animate-spin-slow" />
+              Free Tools
             </div>
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
               Free Online Tools
             </h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
+            <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
               Boost your productivity with our completely free online tools. No sign-up required, unlimited usage!
             </p>
-          </div>
+          </motion.div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {freeTools.map((tool, index) => (
@@ -1172,100 +1529,75 @@ const fetchData = useCallback(async () => {
             ))}
           </div>
 
-          <div className="text-center mt-10">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mt-10"
+          >
             <Link 
               to="/tools" 
-              className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-3 rounded-lg font-semibold hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-300 transform hover:-translate-y-1"
+              className="inline-flex items-center gap-2 px-8 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
             >
               Explore All Tools <FaArrowRight />
             </Link>
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* ========================================== */}
       {/* FAQ SECTION */}
       {/* ========================================== */}
-      <section className="py-16 bg-white">
-        <div className="container max-w-4xl mx-auto">
-          <div className="text-center mb-10">
-            <span className="text-blue-600 font-semibold text-sm uppercase tracking-wider">FAQ</span>
-            <h2 className="text-3xl font-bold mt-2">Frequently Asked Questions</h2>
-            <p className="text-gray-600 mt-2">Quick answers about our services and free tools</p>
-          </div>
+      <section className="py-16 bg-white dark:bg-gray-800">
+        <div className="container mx-auto px-4 max-w-4xl">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-10"
+          >
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 text-sm font-semibold text-blue-700 dark:text-blue-400 border border-blue-200/50 dark:border-blue-500/20">
+              <FaQuestionCircle />
+              FAQ
+            </div>
+            <h2 className="text-3xl font-bold mt-2 text-gray-900 dark:text-white">Frequently Asked Questions</h2>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">Quick answers about our services and free tools</p>
+          </motion.div>
           <div className="space-y-3">
-            {[
-              {
-                q: "What services does Krynova Technologies offer?",
-                a: "We provide custom web solutions including website creation (basic to advanced), HRMS software, property management systems, task management tools, WhatsApp automation bots, and enterprise-grade business applications. Our expertise covers everything from simple business websites to complex web applications."
-              },
-              {
-                q: "How much does a website cost?",
-                a: "Our website creation pricing starts from ₹15,000 for a basic website (up to 5 pages). Professional websites with advanced features start from ₹35,000. Advanced web applications with custom functionality start from ₹75,000. Enterprise solutions are custom-quoted based on your specific requirements."
-              },
-              {
-                q: "What is included in a basic website package?",
-                a: "Our basic website package includes up to 5 pages, responsive design, basic SEO setup, contact form, social media integration, 1 month support, and free domain for the first year. Perfect for startups and small businesses."
-              },
-              {
-                q: "Where is Krynova Technologies located?",
-                a: "We are based in Agra, Uttar Pradesh, India. We serve clients nationwide including Torrent Power (Gujarat), Tech Mahindra (Pune), Romsons, Agra Chain, and Anna Infrastructure Limited, as well as international clients worldwide."
-              },
-              {
-                q: "How long does it take to create a website?",
-                a: "Simple websites take 1-2 weeks. Professional websites take 2-4 weeks. Advanced web applications typically take 1-3 months. We provide regular updates and transparent communication throughout the development process."
-              },
-              {
-                q: "Do you provide free online tools?",
-                a: "Yes! We offer 12+ free online tools including ATS-friendly Resume Builder, Cover Letter Generator, QR Code Generator, PDF to Image Converter, PDF to Word Converter, PDF to Excel Converter, Image to PDF Converter, PDF Compressor, Merge PDF, Split PDF, Image Resizer, and Text to PDF Generator. All tools are completely free to use."
-              },
-              {
-                q: "Do you offer post-deployment support?",
-                a: "Yes! We offer 24/7 premium support and maintenance packages. All our solutions come with a warranty period and ongoing support options to ensure your business runs smoothly."
-              }
-            ].map((faq, index) => (
-              <details 
+            {faqs.map((faq, index) => (
+              <FAQItem 
                 key={index}
-                className={`bg-gray-50 rounded-xl overflow-hidden border transition-all duration-300 ${
-                  activeFaq === index ? 'border-blue-400 shadow-md' : 'border-gray-200 hover:border-blue-200'
-                }`}
-                onToggle={(e) => setActiveFaq(e.target.open ? index : null)}
-              >
-                <summary className="p-4 font-semibold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors flex items-center justify-between">
-                  <span>{faq.q}</span>
-                  <FaChevronDown className={`text-blue-600 transition-transform duration-300 ${activeFaq === index ? 'rotate-180' : ''}`} />
-                </summary>
-                <p className="px-4 pb-4 text-gray-600 text-sm leading-relaxed">{faq.a}</p>
-              </details>
+                faq={faq}
+                index={index}
+                activeFaq={activeFaq}
+                setActiveFaq={setActiveFaq}
+              />
             ))}
           </div>
-
-          {/* ✅ FAQ Schema */}
-          <script type="application/ld+json">
-            {JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "FAQPage",
-              "mainEntity": [
-                { "@type": "Question", "name": "What services does Krynova Technologies offer?", "acceptedAnswer": { "@type": "Answer", "text": "Custom web solutions including website creation (basic to advanced), HRMS, property management, task management, WhatsApp automation, and enterprise applications." } },
-                { "@type": "Question", "name": "How much does a website cost?", "acceptedAnswer": { "@type": "Answer", "text": "Basic website: ₹15,000. Professional: ₹35,000. Advanced web app: ₹75,000. Enterprise: custom-quoted." } },
-                { "@type": "Question", "name": "Where is Krynova Technologies located?", "acceptedAnswer": { "@type": "Answer", "text": "Agra, Uttar Pradesh, India. Serving clients nationwide and globally." } },
-                { "@type": "Question", "name": "Do you provide free online tools?", "acceptedAnswer": { "@type": "Answer", "text": "Yes! 12+ free tools including Resume Builder, Cover Letter Generator, QR Code Generator, PDF converters, and more." } }
-              ]
-            })}
-          </script>
         </div>
       </section>
 
       {/* ========================================== */}
       {/* FINAL CTA SECTION */}
       {/* ========================================== */}
-      <section className="py-16 bg-gradient-to-r from-blue-900 via-blue-800 to-indigo-900 text-white relative overflow-hidden">
+      <section className="py-16 relative overflow-hidden bg-gradient-to-r from-blue-900 via-blue-800 to-indigo-900 text-white">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-0 left-0 w-96 h-96 bg-yellow-400 rounded-full filter blur-3xl"></div>
           <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-400 rounded-full filter blur-3xl"></div>
         </div>
-        <div className="container relative z-10">
-          <div className="max-w-4xl mx-auto text-center">
+        <div className="container relative z-10 mx-auto px-4">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="max-w-4xl mx-auto text-center"
+          >
+            <div className="inline-block px-6 py-3 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 shadow-lg mb-4">
+              <FaRocket className="inline mr-2 text-yellow-400" />
+              <span className="font-medium">Ready to Build Your Website?</span>
+            </div>
             <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Build Your Website?</h2>
             <p className="text-xl text-blue-100 mb-8">
               Get a free consultation and discover how our custom solutions can help your business grow online.
@@ -1273,32 +1605,32 @@ const fetchData = useCallback(async () => {
               <span className="text-yellow-300 text-lg">From basic websites to advanced web applications — we've got you covered!</span>
             </p>
             <div className="flex flex-wrap justify-center gap-3 mb-6">
-              <span className="inline-flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full text-xs">
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 text-xs shadow-lg">
                 <FaMapPin /> {indianCities.length}+ Indian Cities
               </span>
-              <span className="inline-flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full text-xs">
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 text-xs shadow-lg">
                 <FaGlobe /> {globalCountries.length}+ Countries
               </span>
-              <span className="inline-flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full text-xs">
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 text-xs shadow-lg">
                 <FaTrophy /> 50+ Systems Built
               </span>
             </div>
             <div className="flex flex-wrap justify-center gap-4">
               <Link 
                 to="/contact" 
-                className="bg-gradient-to-r from-yellow-400 to-orange-400 text-blue-900 px-8 py-3 rounded-lg font-semibold hover:shadow-2xl hover:shadow-yellow-500/30 transition-all duration-300 inline-flex items-center gap-2 transform hover:-translate-y-1"
+                className="bg-gradient-to-r from-yellow-400 to-orange-400 text-blue-900 px-8 py-3 rounded-xl font-semibold shadow-lg hover:shadow-2xl transition-all duration-300 inline-flex items-center gap-2 transform hover:-translate-y-1"
               >
                 Get Free Quote <FaArrowRight />
               </Link>
               <a 
                 href="#pricing"
-                className="border-2 border-white/50 px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-900 transition-all duration-300 backdrop-blur-sm"
+                className="border border-white/30 text-white px-8 py-3 rounded-xl font-semibold hover:bg-white/10 transition-all duration-300 backdrop-blur-sm"
               >
                 View Pricing Plans
               </a>
               <Link 
                 to="/tools"
-                className="border-2 border-green-400/50 text-green-400 px-8 py-3 rounded-lg font-semibold hover:bg-green-400 hover:text-blue-900 transition-all duration-300"
+                className="border border-green-400/30 text-green-400 px-8 py-3 rounded-xl font-semibold hover:bg-green-400/10 transition-all duration-300"
               >
                 Try Free Tools
               </Link>
@@ -1306,7 +1638,7 @@ const fetchData = useCallback(async () => {
             <p className="mt-6 text-blue-200 text-sm">
               Join 50+ satisfied businesses already using our solutions | Trusted by enterprises across India and globally
             </p>
-          </div>
+          </motion.div>
         </div>
       </section>
 
@@ -1314,48 +1646,24 @@ const fetchData = useCallback(async () => {
       {/* CSS Animations */}
       {/* ========================================== */}
       <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
+        @keyframes spin-slow {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(30px); }
-          to { opacity: 1; transform: translateY(0); }
+        .animate-spin-slow {
+          animation: spin-slow 4s linear infinite;
         }
-        @keyframes slideUp {
-          from { opacity: 0; transform: translateY(40px); }
-          to { opacity: 1; transform: translateY(0); }
+        .gradient-text {
+          background: linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          background-size: 200% 200%;
+          animation: gradient-shift 4s ease-in-out infinite;
         }
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-20px); }
-        }
-        @keyframes floatDelayed {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-15px); }
-        }
-        @keyframes floatSlow {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-10px) rotate(5deg); }
-        }
-        .animate-fade-in { animation: fadeIn 1s ease-out; }
-        .animate-fade-in-up { animation: fadeInUp 0.6s ease-out forwards; }
-        .animate-slide-up { animation: slideUp 0.8s ease-out; }
-        .animate-slide-up-delayed { animation: slideUp 0.8s ease-out 0.3s both; }
-        .animate-float { animation: float 3s ease-in-out infinite; }
-        .animate-float-delayed { animation: floatDelayed 3.5s ease-in-out infinite 1s; }
-        .animate-float-slow { animation: floatSlow 4s ease-in-out infinite 0.5s; }
-        .bg-grid-pattern {
-          background-image: 
-            linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
-          background-size: 50px 50px;
-        }
-        .line-clamp-2 {
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
+        @keyframes gradient-shift {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
         }
         .sr-only {
           position: absolute;
@@ -1367,6 +1675,12 @@ const fetchData = useCallback(async () => {
           clip: rect(0, 0, 0, 0);
           white-space: nowrap;
           border-width: 0;
+        }
+        .line-clamp-2 {
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
         }
         html { scroll-behavior: smooth; }
       `}} />

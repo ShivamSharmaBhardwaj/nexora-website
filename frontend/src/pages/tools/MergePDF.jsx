@@ -14,6 +14,7 @@ import {
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { api } from '../../utils/api';
+import { secureStorage } from '../../utils/security';
 import PaymentModal from '../../components/PaymentModal';
 
 // ============================================
@@ -383,6 +384,7 @@ const MergePDF = () => {
   const [result, setResult] = useState(null);
   const [usageInfo, setUsageInfo] = useState(null);
   const [isPremium, setIsPremium] = useState(false);
+  const [userId, setUserId] = useState('anonymous');
   const [dragActive, setDragActive] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [mergeHistory, setMergeHistory] = useState([]);
@@ -401,18 +403,25 @@ const MergePDF = () => {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const fileInputRef = useRef(null);
 
-  // Check premium status
+  // ✅ Get user ID from storage
+  useEffect(() => {
+    try {
+      const user = secureStorage.get('user');
+      if (user?.id) {
+        setUserId(user.id);
+      } else if (user?.email) {
+        setUserId(user.email);
+      }
+    } catch (e) {
+      console.warn('Could not get user:', e);
+    }
+  }, []);
+
+  // ✅ Check premium status with proper user ID
   useEffect(() => {
     const checkPremiumStatus = async () => {
       try {
-        let response;
-        if (api.checkPremiumStatus) {
-          response = await api.checkPremiumStatus();
-        } else if (api.checkPremium) {
-          response = await api.checkPremium();
-        } else {
-          return;
-        }
+        const response = await api.checkPremium(userId);
         
         if (response.data && response.data.is_premium) {
           setIsPremium(true);
@@ -420,10 +429,14 @@ const MergePDF = () => {
         }
       } catch (error) {
         console.error('Premium check failed:', error);
+        setIsPremium(false);
       }
     };
-    checkPremiumStatus();
-  }, []);
+    
+    if (userId) {
+      checkPremiumStatus();
+    }
+  }, [userId]);
 
   // Load merge history
   useEffect(() => {
@@ -636,7 +649,8 @@ const MergePDF = () => {
     
     const formData = new FormData();
     safeArray(files).forEach(file => formData.append('files', file));
-    formData.append('is_premium', isPremium);
+    formData.append('is_premium', isPremium ? 'true' : 'false');
+    formData.append('user_id', userId);
     formData.append('options', JSON.stringify(mergeOptions));
     formData.append('batch_mode', 'false');
     
@@ -1298,7 +1312,17 @@ const MergePDF = () => {
           isOpen={showPaymentModal}
           onClose={() => setShowPaymentModal(false)}
           userEmail={localStorage.getItem('userEmail') || ''}
-          userId={localStorage.getItem('userId') || ''}
+          userId={userId}
+          onSuccess={() => {
+            setIsPremium(true);
+            toast.success('🎉 Premium activated! Enjoy unlimited merges.');
+            // Refresh premium status
+            api.checkPremium(userId).then(res => {
+              if (res.data?.is_premium) {
+                setIsPremium(true);
+              }
+            }).catch(() => {});
+          }}
         />
 
         <style dangerouslySetInnerHTML={{ __html: `

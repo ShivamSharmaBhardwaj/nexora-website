@@ -1,17 +1,13 @@
 // src/pages/tools/QRGenerator.jsx
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { 
   FaSpinner, FaDownload, FaStar, FaLock, FaQrcode, 
-  FaCheckCircle, FaCircle, FaTimes, FaTrash, FaPlus,
-  FaCrown, FaRocket, FaShieldAlt, FaPalette,
-  FaUpload, FaArrowRight, FaCopy, FaPrint,
-  FaEye, FaEyeSlash, FaMagic, FaClock,
-  FaFileImage, FaLink, FaTextHeight, FaEnvelope, FaPhone,
-  FaFileExcel, FaFileWord, FaList, FaBars,
-  FaChevronDown, FaChevronUp, FaEdit, FaSave,
-  FaGlobe, FaMapMarkerAlt, FaLanguage, FaHeadphones,
-  FaTwitter, FaFacebook, FaLinkedin, FaWhatsapp
+  FaCheckCircle, FaTimes, FaTrash, FaCrown,
+  FaRocket, FaShieldAlt, FaPalette, FaCopy, 
+  FaClock, FaFileImage, FaLink, FaEnvelope, FaPhone,
+  FaFileExcel, FaFileWord, FaBars,
+  FaChevronDown, FaChevronUp, FaGlobe
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { api } from '../../utils/api';
@@ -19,50 +15,10 @@ import PaymentModal from '../../components/PaymentModal';
 import * as XLSX from 'xlsx';
 
 // ============================================
-// ✅ SAFE ARRAY HELPERS - Fix for .map() errors
-// ============================================
-
-const safeMap = (data, callback) => {
-  if (!data) return null;
-  const arr = Array.isArray(data) ? data : [];
-  return arr.map(callback);
-};
-
-const safeArray = (data) => {
-  return Array.isArray(data) ? data : [];
-};
-
-// ============================================
-// SEO DATA
+// ✅ CONSTANTS
 // ============================================
 
 const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://krynovatechnology.pythonanywhere.com';
-
-const indianCities = [
-  "Agra", "Lucknow", "Kanpur", "Varanasi", "Prayagraj", "Mathura", "Aligarh", "Bareilly",
-  "Meerut", "Ghaziabad", "Noida", "Delhi", "Mumbai", "Pune", "Bengaluru", "Chennai",
-  "Hyderabad", "Kolkata", "Ahmedabad", "Surat", "Jaipur", "Indore", "Bhopal", "Nagpur",
-  "Patna", "Ranchi", "Bhubaneswar", "Guwahati", "Chandigarh", "Dehradun", "Shimla",
-  "Srinagar", "Jammu", "Amritsar", "Ludhiana", "Jalandhar", "Panchkula", "Mohali",
-  "Gurugram", "Faridabad", "Aurangabad", "Nashik", "Vadodara", "Rajkot",
-  "Jodhpur", "Udaipur", "Kota", "Bikaner", "Gwalior", "Jabalpur", "Ujjain", "Sagar",
-  "Raipur", "Bilaspur", "Durgapur", "Asansol", "Siliguri", "Dhanbad", "Bhagalpur",
-  "Muzaffarpur", "Gaya", "Nanded", "Solapur", "Mysore", "Tiruchirappalli", "Coimbatore",
-  "Madurai", "Kochi", "Thiruvananthapuram", "Goa", "Panaji", "Puducherry"
-];
-
-const globalCountries = [
-  "United States", "United Kingdom", "Canada", "Australia", "Germany", "France",
-  "United Arab Emirates", "Saudi Arabia", "Singapore", "Malaysia", "Indonesia",
-  "Philippines", "South Africa", "Nigeria", "Kenya", "Tanzania", "Uganda", "Rwanda",
-  "Egypt", "Morocco", "Turkey", "Russia", "Japan", "South Korea", "China", "Hong Kong",
-  "Brazil", "Argentina", "Mexico", "New Zealand", "Ireland", "Netherlands", "Italy",
-  "Spain", "Portugal", "Sweden", "Norway", "Denmark", "Finland", "Switzerland", "Austria"
-];
-
-// ============================================
-// QR CODE STYLES
-// ============================================
 
 const QR_STYLES = [
   { id: 'default', name: 'Default', color: 'black', bg: 'white' },
@@ -74,10 +30,6 @@ const QR_STYLES = [
   { id: 'gradient', name: 'Gradient', color: 'gradient', bg: 'white' },
 ];
 
-// ============================================
-// QR CODE SIZES
-// ============================================
-
 const QR_SIZES = [
   { id: 'small', name: 'Small', size: 150 },
   { id: 'medium', name: 'Medium', size: 250 },
@@ -85,59 +37,174 @@ const QR_SIZES = [
   { id: 'xlarge', name: 'Extra Large', size: 500 },
 ];
 
+const indianCities = [
+  "Agra", "Lucknow", "Kanpur", "Varanasi", "Prayagraj", "Mathura", "Aligarh", "Bareilly",
+  "Meerut", "Ghaziabad", "Noida", "Delhi", "Mumbai", "Pune", "Bengaluru", "Chennai",
+  "Hyderabad", "Kolkata", "Ahmedabad", "Surat", "Jaipur", "Indore", "Bhopal", "Nagpur",
+  "Patna", "Ranchi", "Bhubaneswar", "Guwahati", "Chandigarh", "Dehradun", "Shimla",
+  "Srinagar", "Jammu", "Amritsar", "Ludhiana", "Jalandhar", "Panchkula", "Mohali",
+  "Gurugram", "Faridabad", "Aurangabad", "Nashik", "Vadodara", "Rajkot"
+];
+
+const globalCountries = [
+  "United States", "United Kingdom", "Canada", "Australia", "Germany", "France",
+  "United Arab Emirates", "Saudi Arabia", "Singapore", "Malaysia", "Indonesia",
+  "Philippines", "South Africa", "Nigeria", "Kenya", "Tanzania", "Uganda", "Rwanda",
+  "Egypt", "Morocco", "Turkey", "Russia", "Japan", "South Korea", "China"
+];
+
 // ============================================
-// MAIN QR GENERATOR
+// ✅ SAFE ARRAY HELPERS
+// ============================================
+
+const safeArray = (data) => Array.isArray(data) ? data : [];
+const safeString = (data) => data || '';
+
+// ============================================
+// ✅ MAIN QR GENERATOR
 // ============================================
 
 const QRGenerator = () => {
+  // ============================================
+  // STATE
+  // ============================================
+  
+  const [userId, setUserId] = useState(null);
+  const [userEmail, setUserEmail] = useState('');
+  const [isPremium, setIsPremium] = useState(false);
+  const [loadingPremium, setLoadingPremium] = useState(false);
+  
   const [content, setContent] = useState('');
   const [bulkContent, setBulkContent] = useState('');
   const [selectedStyle, setSelectedStyle] = useState('default');
   const [selectedSize, setSelectedSize] = useState('medium');
+  const [qrName, setQrName] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [usageInfo, setUsageInfo] = useState(null);
-  const [isPremium, setIsPremium] = useState(false);
   const [qrHistory, setQrHistory] = useState([]);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [mode, setMode] = useState('single');
   const [bulkResults, setBulkResults] = useState([]);
   const [bulkProgress, setBulkProgress] = useState(0);
   const [bulkStatus, setBulkStatus] = useState('');
-  const [qrName, setQrName] = useState('');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  
   const fileInputRef = useRef(null);
 
-  // Check premium status on load
-  useEffect(() => {
-    const checkPremiumStatus = async () => {
-      try {
-        const response = await api.checkPremium();
-        if (response.data.is_premium) {
-          setIsPremium(true);
-          toast.success('🎉 Premium activated! Bulk generation unlocked.');
-        }
-      } catch (error) {
-        console.error('Premium check failed:', error);
+  // ============================================
+  // ✅ GET USER ID FROM STORAGE
+  // ============================================
+  
+  const getUserId = useCallback(() => {
+    try {
+      let id = localStorage.getItem('userId');
+      if (!id) {
+        id = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        localStorage.setItem('userId', id);
       }
-    };
-    checkPremiumStatus();
+      return id;
+    } catch (error) {
+      console.error('Error getting userId:', error);
+      return `user_${Date.now()}`;
+    }
   }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (mode === 'single') {
-      await generateSingleQR();
-    } else {
-      await generateBulkQR();
+  // ============================================
+  // ✅ CHECK PREMIUM STATUS
+  // ============================================
+  
+  const checkPremiumStatus = useCallback(async () => {
+    const id = getUserId();
+    if (!id) return;
+    
+    setUserId(id);
+    setLoadingPremium(true);
+    
+    try {
+      const response = await api.checkPremium(id);
+      
+      if (response.data && response.data.success) {
+        const premium = response.data.is_premium || false;
+        setIsPremium(premium);
+        
+        if (premium) {
+          toast.success('🎉 Premium activated! Bulk generation unlocked.');
+        }
+      }
+    } catch (error) {
+      console.error('Premium check failed:', error);
+      setIsPremium(false);
+    } finally {
+      setLoadingPremium(false);
     }
-  };
+  }, [getUserId]);
 
-  const generateSingleQR = async () => {
+  // ============================================
+  // ✅ LOAD USER DATA ON MOUNT
+  // ============================================
+  
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const id = getUserId();
+        setUserId(id);
+        
+        const email = localStorage.getItem('userEmail') || '';
+        setUserEmail(email);
+        
+        await checkPremiumStatus();
+        
+        try {
+          const history = JSON.parse(localStorage.getItem('qrHistory') || '[]');
+          setQrHistory(history.slice(0, 10));
+        } catch (e) {
+          setQrHistory([]);
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      }
+    };
+    
+    loadUserData();
+  }, [checkPremiumStatus, getUserId]);
+
+  // ============================================
+  // ✅ HANDLE PAYMENT SUCCESS
+  // ============================================
+  
+  const handlePaymentSuccess = useCallback(async () => {
+    toast.success('🎉 Payment successful! Premium activated.');
+    setShowPaymentModal(false);
+    await checkPremiumStatus();
+    
+    if (result) {
+      try {
+        const response = await api.checkPremium(userId);
+        if (response.data && response.data.success) {
+          setUsageInfo({
+            used: response.data.usage_count || 0,
+            remaining: response.data.remaining_free || "Unlimited",
+            isPremium: response.data.is_premium || false
+          });
+        }
+      } catch (error) {
+        console.error('Error refreshing usage:', error);
+      }
+    }
+  }, [userId, result, checkPremiumStatus]);
+
+  // ============================================
+  // ✅ GENERATE SINGLE QR
+  // ============================================
+  
+  const generateSingleQR = useCallback(async () => {
     if (!content.trim()) {
       toast.error('Please enter content for QR code');
       return;
     }
+    
     setLoading(true);
+    setResult(null);
     
     try {
       const payload = {
@@ -145,35 +212,43 @@ const QRGenerator = () => {
         style: selectedStyle,
         size: QR_SIZES.find(s => s.id === selectedSize)?.size || 250,
         is_premium: isPremium,
-        name: qrName || content.trim().substring(0, 20)
+        name: qrName || content.trim().substring(0, 20),
+        user_id: userId
       };
       
       const response = await api.generateQR(payload);
       
       if (response.data.success) {
-        setResult(response.data.qr_code);
-        setQrHistory(prev => [{
+        const qrData = response.data.qr_code;
+        setResult(qrData);
+        
+        const newHistory = [{
           id: Date.now(),
           content: content.trim(),
           name: qrName || content.trim().substring(0, 20),
-          qr: response.data.qr_code,
+          qr: qrData,
           timestamp: new Date().toISOString()
-        }, ...prev].slice(0, 10));
+        }, ...qrHistory].slice(0, 10);
+        
+        setQrHistory(newHistory);
+        localStorage.setItem('qrHistory', JSON.stringify(newHistory));
+        
         setUsageInfo({
-          used: response.data.usage_count,
-          remaining: response.data.remaining_free,
-          isPremium: response.data.is_premium
+          used: response.data.usage_count || 0,
+          remaining: response.data.remaining_free || 0,
+          isPremium: response.data.is_premium || false
         });
+        
         toast.success('🎉 QR Code generated successfully!');
       }
     } catch (error) {
       if (error.response?.data?.limit_reached) {
         toast.error('Free limit reached! Upgrade to premium for unlimited access.');
         setUsageInfo({
-          used: error.response.data.usage_count,
+          used: error.response.data.usage_count || 0,
           remaining: 0,
           isPremium: false,
-          maxFree: error.response.data.max_free
+          maxFree: error.response.data.max_free || 5
         });
         setShowPaymentModal(true);
       } else {
@@ -182,16 +257,20 @@ const QRGenerator = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [content, selectedStyle, selectedSize, isPremium, qrName, userId, qrHistory]);
 
-  const generateBulkQR = async () => {
+  // ============================================
+  // ✅ GENERATE BULK QR
+  // ============================================
+  
+  const generateBulkQR = useCallback(async () => {
     if (!bulkContent.trim()) {
       toast.error('Please enter content for QR codes (one per line)');
       return;
     }
 
-    const lines = bulkContent.split('\n').filter(line => line.trim());
-    if (safeArray(lines).length === 0) {
+    const lines = safeArray(bulkContent.split('\n')).filter(line => line.trim());
+    if (lines.length === 0) {
       toast.error('Please enter at least one QR code content');
       return;
     }
@@ -208,10 +287,10 @@ const QRGenerator = () => {
     setBulkStatus('Starting bulk generation...');
 
     const results = [];
-    const total = safeArray(lines).length;
+    const total = lines.length;
 
     for (let i = 0; i < total; i++) {
-      const line = safeArray(lines)[i].trim();
+      const line = lines[i].trim();
       setBulkStatus(`Generating QR ${i + 1} of ${total}: ${line.substring(0, 30)}...`);
       
       try {
@@ -220,7 +299,8 @@ const QRGenerator = () => {
           style: selectedStyle,
           size: QR_SIZES.find(s => s.id === selectedSize)?.size || 250,
           is_premium: true,
-          name: line.substring(0, 30)
+          name: line.substring(0, 30),
+          user_id: userId
         };
         
         const response = await api.generateQR(payload);
@@ -250,9 +330,9 @@ const QRGenerator = () => {
       }
 
       setBulkProgress(((i + 1) / total) * 100);
+      setBulkResults([...results]);
     }
 
-    setBulkResults(results);
     setBulkStatus(`Completed! ${results.filter(r => r.success).length} of ${total} QR codes generated`);
     
     const successCount = results.filter(r => r.success).length;
@@ -264,9 +344,13 @@ const QRGenerator = () => {
     }
 
     setLoading(false);
-  };
+  }, [bulkContent, selectedStyle, selectedSize, isPremium, userId]);
 
-  const handleDownloadSingle = () => {
+  // ============================================
+  // ✅ DOWNLOAD FUNCTIONS
+  // ============================================
+  
+  const handleDownloadSingle = useCallback(() => {
     if (!result) return;
     const link = document.createElement('a');
     link.download = `${qrName || 'qrcode'}.png`;
@@ -275,9 +359,9 @@ const QRGenerator = () => {
     link.click();
     document.body.removeChild(link);
     toast.success('QR Code downloaded!');
-  };
+  }, [result, qrName]);
 
-  const handleDownloadWord = () => {
+  const handleDownloadWord = useCallback(() => {
     if (!result) return;
     const html = `
       <html>
@@ -311,16 +395,17 @@ const QRGenerator = () => {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     toast.success('Word document downloaded!');
-  };
+  }, [result, content, qrName]);
 
-  const handleDownloadExcel = () => {
-    if (safeArray(bulkResults).length === 0) {
+  const handleDownloadExcel = useCallback(() => {
+    const results = safeArray(bulkResults);
+    if (results.length === 0) {
       toast.error('No QR codes to export');
       return;
     }
 
     try {
-      const data = safeArray(bulkResults).map((item, index) => ({
+      const data = results.map((item, index) => ({
         'S.No': index + 1,
         'Content': item.content,
         'Status': item.success ? 'Generated' : 'Failed',
@@ -353,17 +438,18 @@ const QRGenerator = () => {
       console.error('Excel export error:', error);
       toast.error('Failed to export Excel file');
     }
-  };
+  }, [bulkResults]);
 
-  const handleDownloadExcelWithImages = async () => {
-    if (safeArray(bulkResults).length === 0) {
+  const handleDownloadExcelWithImages = useCallback(async () => {
+    const results = safeArray(bulkResults);
+    if (results.length === 0) {
       toast.error('No QR codes to export');
       return;
     }
 
     try {
-      const successResults = safeArray(bulkResults).filter(r => r.success);
-      if (safeArray(successResults).length === 0) {
+      const successResults = results.filter(r => r.success);
+      if (successResults.length === 0) {
         toast.error('No successful QR codes to export');
         return;
       }
@@ -392,7 +478,7 @@ const QRGenerator = () => {
                 </tr>
               </thead>
               <tbody>
-                ${safeArray(successResults).map((item, index) => `
+                ${successResults.map((item, index) => `
                   <tr>
                     <td>${index + 1}</td>
                     <td>${item.content.substring(0, 100)}</td>
@@ -401,7 +487,7 @@ const QRGenerator = () => {
                 `).join('')}
               </tbody>
             </table>
-            <p>Total: ${safeArray(successResults).length} QR codes generated</p>
+            <p>Total: ${successResults.length} QR codes generated</p>
           </body>
         </html>
       `;
@@ -416,20 +502,20 @@ const QRGenerator = () => {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
       
-      toast.success('HTML file with QR images downloaded! Open in browser to view.');
+      toast.success('HTML file with QR images downloaded!');
     } catch (error) {
       console.error('Export error:', error);
       toast.error('Failed to export with images');
     }
-  };
+  }, [bulkResults]);
 
-  const handleCopy = () => {
+  const handleCopy = useCallback(() => {
     if (!result) return;
     navigator.clipboard.writeText(result);
     toast.success('QR Code copied to clipboard!');
-  };
+  }, [result]);
 
-  const handlePrint = () => {
+  const handlePrint = useCallback(() => {
     if (!result) return;
     const printWindow = window.open('', '_blank');
     if (printWindow) {
@@ -446,26 +532,65 @@ const QRGenerator = () => {
       `);
       printWindow.document.close();
     }
-  };
+  }, [result]);
 
-  const handleUpgrade = () => {
-    setShowPaymentModal(true);
-  };
+  // ============================================
+  // ✅ HANDLE SUBMIT
+  // ============================================
+  
+  const handleSubmit = useCallback(async (e) => {
+    e.preventDefault();
+    if (mode === 'single') {
+      await generateSingleQR();
+    } else {
+      await generateBulkQR();
+    }
+  }, [mode, generateSingleQR, generateBulkQR]);
 
-  const getSizeLabel = () => {
-    return QR_SIZES.find(s => s.id === selectedSize)?.name || 'Medium';
-  };
+  // ============================================
+  // ✅ SET EXAMPLE
+  // ============================================
+  
+  const setExample = useCallback((value) => {
+    if (mode === 'single') {
+      setContent(value);
+    } else {
+      setBulkContent(value);
+    }
+  }, [mode]);
 
-  const getStyleLabel = () => {
-    return QR_STYLES.find(s => s.id === selectedStyle)?.name || 'Default';
-  };
-
-  const reuseQR = (content) => {
+  // ============================================
+  // ✅ REUSE QR
+  // ============================================
+  
+  const reuseQR = useCallback((content) => {
     setContent(content);
     setMode('single');
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  }, []);
 
+  // ============================================
+  // ✅ HANDLE UPGRADE
+  // ============================================
+  
+  const handleUpgrade = useCallback(() => {
+    setShowPaymentModal(true);
+  }, []);
+
+  // ============================================
+  // ✅ CLEAR HISTORY
+  // ============================================
+  
+  const clearHistory = useCallback(() => {
+    setQrHistory([]);
+    localStorage.removeItem('qrHistory');
+    toast.success('History cleared!');
+  }, []);
+
+  // ============================================
+  // ✅ EXAMPLES
+  // ============================================
+  
   const examples = [
     { label: 'Website URL', value: 'https://krynova.com' },
     { label: 'Business Card', value: 'John Doe\nCEO, Krynova Technologies\n+91 86305 19082' },
@@ -479,180 +604,49 @@ const QRGenerator = () => {
     { label: 'Business Cards', value: 'John Doe, CEO, +911234567890\nJane Smith, CTO, +911234567891\nBob Johnson, CMO, +911234567892' },
   ];
 
-  const setExample = (value) => {
-    if (mode === 'single') {
-      setContent(value);
-    } else {
-      setBulkContent(value);
-    }
-  };
-
+  // ============================================
+  // ✅ RENDER
+  // ============================================
+  
   return (
     <>
-      {/* ============================================ */}
-      {/* SEO + AEO + GEO Helmet Implementation */}
-      {/* ============================================ */}
       <Helmet>
         <title>Free QR Code Generator - Create Custom QR Codes Online | Krynova Technologies</title>
-        <meta name="description" content="Generate free custom QR codes online with Krynova Technologies. Create QR codes for websites, business cards, WiFi networks, and more. No registration required. India's best QR code generator." />
-        <meta name="keywords" content="free QR code generator, create QR codes online, QR code maker, custom QR code generator, QR generator India, best free QR code tool, Krynova QR generator, QR code creator, QR code generator free, online QR code maker" />
+        <meta name="description" content="Generate free custom QR codes online with Krynova Technologies. Create QR codes for websites, business cards, WiFi networks, and more. No registration required." />
+        <meta name="keywords" content="free QR code generator, create QR codes online, QR code maker, custom QR code generator, QR generator India" />
         <link rel="canonical" href={`${siteUrl}/tools/qr-generator`} />
-        
-        {/* GEO Meta Tags */}
         <meta name="geo.region" content="IN-UP" />
         <meta name="geo.placename" content="Agra" />
-        <meta name="geo.position" content="27.1767;78.0081" />
-        <meta name="ICBM" content="27.1767, 78.0081" />
         <meta name="areaServed" content={indianCities.join(", ")} />
-        <meta name="serviceArea" content={`India, ${globalCountries.join(", ")}, Worldwide`} />
-        <meta name="targetGeo" content="India" />
-        
-        {/* AEO Meta Tags */}
-        <meta name="question" content="What is the best free QR code generator in India?" />
-        <meta name="answer" content="Krynova Technologies offers the best free QR code generator in India. Create custom QR codes for free with no registration, unlimited generations, and support for multiple QR types including URL, text, WiFi, and business cards. Premium users get bulk generation and Excel export." />
-        <meta name="faq" content="true" />
-        <meta name="speakable" content="true" />
-        <meta name="voice-search" content="true" />
-        <meta name="speakable" content="true" />
-        
-        {/* Open Graph */}
-        <meta property="og:title" content="Free QR Code Generator - Create Custom QR Codes Online | Krynova Technologies" />
-        <meta property="og:description" content="Generate free custom QR codes online. Create QR codes for websites, business cards, WiFi, and more. No registration required. India's best QR code generator." />
+        <meta property="og:title" content="Free QR Code Generator - Create Custom QR Codes Online" />
+        <meta property="og:description" content="Generate free custom QR codes online. Create QR codes for websites, business cards, WiFi, and more." />
         <meta property="og:url" content={`${siteUrl}/tools/qr-generator`} />
-        <meta property="og:type" content="website" />
-        <meta property="og:site_name" content="Krynova Technologies" />
-        
-        {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Free QR Code Generator - Create Custom QR Codes Online" />
-        <meta name="twitter:description" content="Generate free custom QR codes online with Krynova Technologies. No registration required." />
       </Helmet>
 
-      {/* ============================================ */}
-      {/* Speakable Content for Voice Assistants */}
-      {/* ============================================ */}
-      <div className="speakable sr-only" aria-hidden="true">
-        <h2>Free QR Code Generator - Krynova Technologies</h2>
-        <p>Create custom QR codes online for free. Generate QR codes for websites, business cards, WiFi networks, contact information, and more.</p>
-        <ul>
-          <li>Free QR code generation - 5 QR codes per day</li>
-          <li>No registration required</li>
-          <li>Multiple QR types supported - URL, text, WiFi, vCard, email, phone</li>
-          <li>Download in high quality PNG format</li>
-          <li>Unlimited generations with Premium plan</li>
-          <li>Bulk QR code generation with Premium</li>
-          <li>Export to Excel with Premium</li>
-          <li>Custom colors and sizes available</li>
-        </ul>
-        <p>Krynova Technologies is the best QR code generator in India, serving cities like Agra, Delhi, Mumbai, Bengaluru, Chennai, Hyderabad, and all across India.</p>
-      </div>
-
-      {/* ============================================ */}
-      {/* Schema.org WebApplication */}
-      {/* ============================================ */}
       <script type="application/ld+json">
         {JSON.stringify({
           "@context": "https://schema.org",
           "@type": "WebApplication",
           "name": "QR Code Generator",
-          "description": "Free online QR code generator. Create custom QR codes for websites, business cards, WiFi, and more. India's best QR code generator.",
+          "description": "Free online QR code generator. Create custom QR codes for websites, business cards, WiFi, and more.",
           "url": `${siteUrl}/tools/qr-generator`,
           "applicationCategory": "Utilities",
           "operatingSystem": "All",
-          "browserRequirements": "Requires JavaScript",
           "offers": {
             "@type": "Offer",
             "price": "0",
             "priceCurrency": "INR",
-            "description": "Free QR code generator with 5 QR codes per day. Premium upgrade available for unlimited access."
+            "description": "Free QR code generator with 5 QR codes per day."
           },
           "provider": {
             "@type": "Organization",
             "name": "Krynova Technologies",
-            "url": siteUrl,
-            "address": {
-              "@type": "PostalAddress",
-              "addressLocality": "Agra",
-              "addressRegion": "Uttar Pradesh",
-              "addressCountry": "India"
-            }
-          },
-          "areaServed": indianCities,
-          "availableLanguage": ["English", "Hindi", "Marathi", "Bengali", "Tamil", "Telugu", "Kannada", "Malayalam", "Gujarati", "Punjabi", "Urdu"],
-          "potentialAction": {
-            "@type": "CreateAction",
-            "target": `${siteUrl}/tools/qr-generator`,
-            "result": {
-              "@type": "ImageObject",
-              "contentUrl": `${siteUrl}/api/generate-qr`
-            }
+            "url": siteUrl
           }
         })}
       </script>
 
-      {/* ============================================ */}
-      {/* FAQ Schema */}
-      {/* ============================================ */}
-      <script type="application/ld+json">
-        {JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "FAQPage",
-          "mainEntity": [
-            {
-              "@type": "Question",
-              "name": "How to generate a QR code for free?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "To generate a QR code for free, visit Krynova Technologies' QR Code Generator, enter your URL or text, select the QR type, and click generate. Download your custom QR code instantly. You get 5 free QR codes per day."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "What types of QR codes can I create?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "You can create QR codes for websites, text messages, WiFi networks, business cards (vCard), contact information, event links, social media profiles, email addresses, phone numbers, and more."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "Is the QR code generator really free?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Yes, Krynova Technologies' QR code generator is completely free for 5 QR codes per day. No registration required, and you can download QR codes in high-quality PNG format. Premium users get unlimited access, bulk generation, and Excel export features."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "What is the best QR code generator in India?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Krynova Technologies offers one of the best free QR code generators in India. It supports multiple QR types, provides high-quality downloads, requires no registration, and serves users across all major Indian cities including Agra, Delhi, Mumbai, Bengaluru, Chennai, and Hyderabad."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "Can I generate QR codes in bulk?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Yes, bulk QR code generation is available for Premium users. You can generate multiple QR codes at once, with options to export results to Excel with or without QR images embedded."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "Can I customize the QR code colors and size?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Yes, you can customize QR code colors with 7 different style options including default, blue, green, purple, red, dark, and gradient. You can also choose from 4 different sizes - Small, Medium, Large, and Extra Large."
-              }
-            }
-          ]
-        })}
-      </script>
-
-      {/* ============================================ */}
-      {/* Main Component */}
-      {/* ============================================ */}
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8">
         <div className="container mx-auto px-4 max-w-6xl">
           {/* Header */}
@@ -666,7 +660,7 @@ const QRGenerator = () => {
             </h1>
             <p className="text-gray-600 max-w-2xl mx-auto">
               Create custom QR codes instantly for websites, business cards, WiFi, and more. 
-              Free users get 5 QR codes per day. <span className="text-green-600 font-semibold">Premium</span> users get unlimited access + bulk generation!
+              Free users get 5 QR codes per day.
             </p>
             <div className="flex flex-wrap justify-center gap-3 mt-3">
               <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm">
@@ -675,12 +669,11 @@ const QRGenerator = () => {
               <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">
                 <FaCrown className="text-yellow-500" /> Premium: Unlimited + Bulk
               </span>
-              <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm">
-                <FaPalette className="text-purple-500" /> Custom Styles
-              </span>
-              <span className="inline-flex items-center gap-1 bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-sm">
-                <FaGlobe className="text-indigo-500" /> Serving 60+ Indian Cities
-              </span>
+              {isPremium && (
+                <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm">
+                  <FaCrown className="text-yellow-500" /> Premium Active
+                </span>
+              )}
             </div>
           </div>
 
@@ -699,7 +692,7 @@ const QRGenerator = () => {
                 ) : (
                   <>
                     <FaClock className="text-blue-500" />
-                    {usageInfo.used} used today • {usageInfo.remaining} free remaining
+                    {usageInfo.used || 0} used today • {usageInfo.remaining || 0} free remaining
                   </>
                 )}
               </p>
@@ -742,7 +735,7 @@ const QRGenerator = () => {
                     : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
-                <FaBars /> Bulk Generation {!isPremium && <FaLock className="text-xs" />}
+                <FaBars /> Bulk {!isPremium && <FaLock className="text-xs" />}
               </button>
             </div>
             {isPremium && (
@@ -815,7 +808,7 @@ const QRGenerator = () => {
 
                       {isPremium && (
                         <div className="flex flex-wrap gap-2">
-                          {safeArray(bulkExamples).map((example, idx) => (
+                          {bulkExamples.map((example, idx) => (
                             <button
                               key={idx}
                               type="button"
@@ -834,7 +827,7 @@ const QRGenerator = () => {
                   <div>
                     <p className="text-sm text-gray-500 mb-1">Quick Examples:</p>
                     <div className="flex flex-wrap gap-2">
-                      {safeArray(examples).map((example, idx) => (
+                      {examples.map((example, idx) => (
                         <button
                           key={idx}
                           type="button"
@@ -851,7 +844,7 @@ const QRGenerator = () => {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Style</label>
                     <div className="flex flex-wrap gap-2">
-                      {safeArray(QR_STYLES).map((style) => (
+                      {QR_STYLES.map((style) => (
                         <button
                           key={style.id}
                           type="button"
@@ -887,7 +880,7 @@ const QRGenerator = () => {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Size</label>
                     <div className="flex flex-wrap gap-2">
-                      {safeArray(QR_SIZES).map((size) => (
+                      {QR_SIZES.map((size) => (
                         <button
                           key={size.id}
                           type="button"
@@ -956,8 +949,7 @@ const QRGenerator = () => {
                       <FaQrcode className="text-green-600" /> Preview
                     </h3>
                     <div className="flex items-center gap-2 text-xs text-gray-500">
-                      <span>{getStyleLabel()} • {getSizeLabel()}</span>
-                      {mode === 'bulk' && <span className="bg-purple-100 text-purple-600 px-2 py-0.5 rounded">Bulk</span>}
+                      <span>{QR_STYLES.find(s => s.id === selectedStyle)?.name || 'Default'} • {QR_SIZES.find(s => s.id === selectedSize)?.name || 'Medium'}</span>
                     </div>
                   </div>
 
@@ -996,10 +988,10 @@ const QRGenerator = () => {
                         </button>
                       </div>
                     </>
-                  ) : mode === 'bulk' && safeArray(bulkResults).length > 0 ? (
+                  ) : mode === 'bulk' && bulkResults.length > 0 ? (
                     <>
                       <div className="flex-1 overflow-y-auto max-h-[300px] space-y-2">
-                        {safeArray(bulkResults).slice(0, 10).map((item, idx) => (
+                        {bulkResults.slice(0, 10).map((item, idx) => (
                           <div key={idx} className="bg-white p-3 rounded-lg border border-gray-200 flex items-center gap-3 hover:shadow-md transition">
                             <span className="text-xs font-medium text-gray-400 w-8">{item.index}</span>
                             {item.success ? (
@@ -1018,9 +1010,9 @@ const QRGenerator = () => {
                             )}
                           </div>
                         ))}
-                        {safeArray(bulkResults).length > 10 && (
+                        {bulkResults.length > 10 && (
                           <p className="text-xs text-gray-400 text-center py-2">
-                            + {safeArray(bulkResults).length - 10} more QR codes
+                            + {bulkResults.length - 10} more QR codes
                           </p>
                         )}
                       </div>
@@ -1040,7 +1032,7 @@ const QRGenerator = () => {
                         </button>
                       </div>
                       <p className="text-xs text-gray-400 text-center mt-2">
-                        {safeArray(bulkResults).filter(r => r.success).length} of {safeArray(bulkResults).length} QR codes generated successfully
+                        {bulkResults.filter(r => r.success).length} of {bulkResults.length} QR codes generated successfully
                       </p>
                     </>
                   ) : (
@@ -1058,13 +1050,22 @@ const QRGenerator = () => {
           </div>
 
           {/* History */}
-          {safeArray(qrHistory).length > 0 && (
+          {qrHistory.length > 0 && (
             <div className="mt-8 bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
-              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <FaClock className="text-green-600" /> Recent QR Codes
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <FaClock className="text-green-600" /> Recent QR Codes
+                  <span className="text-xs text-gray-400 font-normal">({qrHistory.length})</span>
+                </h3>
+                <button
+                  onClick={clearHistory}
+                  className="text-xs text-red-500 hover:text-red-700 transition flex items-center gap-1"
+                >
+                  <FaTrash /> Clear All
+                </button>
+              </div>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                {safeArray(qrHistory).map((item, idx) => (
+                {qrHistory.map((item, idx) => (
                   <div key={idx} className="bg-gray-50 p-3 rounded-lg border border-gray-200 text-center hover:shadow-md transition">
                     <img src={item.qr} alt={`QR Code ${item.name}`} className="w-16 h-16 mx-auto mb-2" loading="lazy" />
                     <p className="text-xs text-gray-600 truncate font-medium">{item.name || item.content.substring(0, 20)}</p>
@@ -1085,8 +1086,9 @@ const QRGenerator = () => {
           <PaymentModal
             isOpen={showPaymentModal}
             onClose={() => setShowPaymentModal(false)}
-            userEmail={localStorage.getItem('userEmail') || ''}
-            userId={localStorage.getItem('userId') || ''}
+            userEmail={userEmail}
+            userId={userId}
+            onSuccess={handlePaymentSuccess}
           />
         </div>
 
@@ -1096,13 +1098,6 @@ const QRGenerator = () => {
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-          }
-          @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-          }
-          .animate-pulse {
-            animation: pulse 1.5s ease-in-out infinite;
           }
         `}} />
       </div>
