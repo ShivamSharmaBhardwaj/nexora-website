@@ -17,6 +17,76 @@ import {
 } from 'react-icons/fa';
 
 // ============================================
+// IMPORT IMAGES - VITE WAY
+// ============================================
+import hrmsImage from '/products/hrms-software.png';
+import propertyImage from '/products/property-management.png';
+import taskImage from '/products/task-management.png';
+import whatsappImage from '/products/whatsapp-bot.png';
+
+// ============================================
+// STATIC PRODUCTS DATA WITH IMAGES
+// ============================================
+const STATIC_PRODUCTS = [
+  {
+    id: 1,
+    title: 'Enterprise HRMS',
+    category: 'HRMS',
+    image: hrmsImage,
+    description: 'Complete Human Resource Management System with payroll, attendance, leaves, performance tracking, and employee self-service portal.',
+    short_desc: 'Complete HR management system for modern enterprises.',
+    features: ['Payroll Management', 'Attendance Tracking', 'Leave Management', 'Performance Reviews', 'Employee Portal', 'Reports & Analytics'],
+    tech_stack: ['React', 'Node.js', 'PostgreSQL', 'Redis'],
+    is_featured: true,
+    is_upcoming: false,
+    priority: 10,
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 2,
+    title: 'Property Management System',
+    category: 'Estate',
+    image: propertyImage,
+    description: 'Advanced property management system for real estate businesses with tenant management, rent collection, maintenance tracking, and financial reporting.',
+    short_desc: 'Advanced property management for real estate.',
+    features: ['Tenant Management', 'Rent Collection', 'Maintenance Tracking', 'Financial Reports', 'Document Management', 'Communication Portal'],
+    tech_stack: ['React', 'Django', 'PostgreSQL', 'AWS'],
+    is_featured: true,
+    is_upcoming: false,
+    priority: 9,
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 3,
+    title: 'Task Management System',
+    category: 'TODO',
+    image: taskImage,
+    description: 'Comprehensive task and project management system with team collaboration, deadline tracking, priority management, and productivity analytics.',
+    short_desc: 'Productivity and project management tool.',
+    features: ['Task Creation', 'Team Collaboration', 'Deadline Tracking', 'Priority Management', 'Progress Reports', 'Mobile App'],
+    tech_stack: ['React', 'Node.js', 'MongoDB', 'Socket.io'],
+    is_featured: false,
+    is_upcoming: false,
+    priority: 7,
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 4,
+    title: 'WhatsApp Business Bot',
+    category: 'WhatsApp',
+    image: whatsappImage,
+    description: 'AI-powered WhatsApp automation bot for lead generation, customer support, order management, and automated marketing campaigns.',
+    short_desc: 'AI-powered WhatsApp automation for business.',
+    features: ['Lead Generation', 'Auto-replies', 'Order Management', 'Marketing Campaigns', 'Analytics Dashboard', 'Multi-agent Support'],
+    tech_stack: ['Node.js', 'WhatsApp Business API', 'MongoDB', 'Redis'],
+    is_featured: true,
+    is_upcoming: false,
+    priority: 8,
+    created_at: new Date().toISOString()
+  }
+];
+
+// ============================================
 // LOADING SKELETON - Neumorphic Style
 // ============================================
 const ProductSkeleton = () => (
@@ -124,10 +194,14 @@ const SortOptions = ({ sortBy, sortOrder, onSort }) => (
 );
 
 // ============================================
-// PRODUCT CARD - Bento Grid with Neumorphism
+// PRODUCT CARD - With Image Support
 // ============================================
 const ProductCard = ({ project, onQuickView, layout = 'bento' }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  
+  // Debug log
+  console.log('🖼️ Rendering product:', project.title, 'Image:', project.image);
   
   const getCategoryColor = (category) => {
     const colors = {
@@ -159,7 +233,6 @@ const ProductCard = ({ project, onQuickView, layout = 'bento' }) => {
     return descriptions[category] || 'Enterprise Solution';
   };
 
-  // Bento Grid - Different sizes
   const bentoClasses = {
     'large': 'md:col-span-2 md:row-span-2',
     'medium': 'md:col-span-1 md:row-span-1',
@@ -185,9 +258,29 @@ const ProductCard = ({ project, onQuickView, layout = 'bento' }) => {
       itemType="https://schema.org/Product"
     >
       <div className="neumorphic-card rounded-2xl overflow-hidden h-full flex flex-col">
-        {/* Liquid Glass Header */}
-        <div className={`h-56 bg-gradient-to-r ${getCategoryColor(project.category)} relative overflow-hidden cursor-pointer flex-shrink-0`}
+        {/* Image Header with Fallback */}
+        <div className={`h-56 ${project.image && !imageError ? '' : `bg-gradient-to-r ${getCategoryColor(project.category)}`} relative overflow-hidden cursor-pointer flex-shrink-0`}
              onClick={() => onQuickView(project)}>
+          
+          {/* Product Image */}
+          {project.image && !imageError ? (
+            <img 
+              src={project.image} 
+              alt={project.title}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              loading="lazy"
+              onError={(e) => {
+                console.error('❌ Image failed to load:', project.image);
+                setImageError(true);
+              }}
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-white/90 text-7xl transform group-hover:scale-110 group-hover:rotate-12 transition-all duration-700" aria-hidden="true">
+                <FaCode />
+              </div>
+            </div>
+          )}
           
           {/* Liquid Glass Effect Overlay */}
           <div className="absolute inset-0 liquid-glass-overlay"></div>
@@ -199,19 +292,15 @@ const ProductCard = ({ project, onQuickView, layout = 'bento' }) => {
             <div className="liquid-glass-bubble bubble-2"></div>
             <div className="liquid-glass-bubble bubble-3"></div>
           </div>
-          
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-white/90 text-7xl transform group-hover:scale-110 group-hover:rotate-12 transition-all duration-700" aria-hidden="true">
-              <i className={`fas fa-${project.icon || 'cube'}`}></i>
-            </div>
-          </div>
 
+          {/* Category Badge */}
           <div className="absolute top-4 left-4 z-10">
             <span className={`px-3 py-1.5 rounded-xl text-xs font-semibold ${getCategoryBadgeColor(project.category)} backdrop-blur-sm shadow-lg border border-white/30`}>
               {project.category}
             </span>
           </div>
 
+          {/* Featured/Upcoming Badges */}
           <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
             {project.is_upcoming && (
               <span className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-yellow-400 to-orange-400 text-yellow-900 backdrop-blur-sm shadow-lg animate-pulse border border-white/30">
@@ -225,6 +314,7 @@ const ProductCard = ({ project, onQuickView, layout = 'bento' }) => {
             )}
           </div>
 
+          {/* Quick View Overlay */}
           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-10">
             <button 
               onClick={(e) => {
@@ -329,9 +419,10 @@ const ProductCard = ({ project, onQuickView, layout = 'bento' }) => {
 };
 
 // ============================================
-// QUICK VIEW MODAL - Liquid Glass + Neumorphic
+// QUICK VIEW MODAL - With Image
 // ============================================
 const QuickViewModal = ({ project, onClose }) => {
+  const [imageError, setImageError] = useState(false);
   if (!project) return null;
 
   return (
@@ -349,6 +440,22 @@ const QuickViewModal = ({ project, onClose }) => {
         </div>
         <div className="p-6">
           <div className="space-y-4">
+            {/* Product Image in Modal */}
+            {project.image && !imageError ? (
+              <div className="w-full h-48 md:h-64 rounded-xl overflow-hidden bg-gray-100">
+                <img 
+                  src={project.image} 
+                  alt={project.title}
+                  className="w-full h-full object-cover"
+                  onError={() => setImageError(true)}
+                />
+              </div>
+            ) : (
+              <div className="w-full h-48 md:h-64 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 flex items-center justify-center">
+                <FaCode className="text-6xl text-white/50" />
+              </div>
+            )}
+            
             <div>
               <span className={`px-3 py-1.5 rounded-xl text-sm font-medium ${project.is_upcoming ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'} border border-white/30 shadow-lg`}>
                 {project.is_upcoming ? '🚀 Upcoming' : '✅ Active'}
@@ -449,41 +556,21 @@ const Products = () => {
     "Saudi Arabia", "Qatar", "Kuwait", "Bahrain", "Oman"
   ];
 
+  // ============================================
+  // ✅ FIX: USE STATIC DATA FOR IMAGES
+  // ============================================
   useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const response = await api.getProjects();
-        
-        let projectsData = [];
-        if (Array.isArray(response.data)) {
-          projectsData = response.data;
-        } else if (response.data?.data && Array.isArray(response.data.data)) {
-          projectsData = response.data.data;
-        } else if (response.data?.results && Array.isArray(response.data.results)) {
-          projectsData = response.data.results;
-        }
-        
-        setProjects(projectsData);
-        
-        const cats = [...new Set(projectsData.map(p => p.category).filter(Boolean))];
-        setCategories(cats);
-        
-        if (category && cats.includes(category)) {
-          setSelectedCategory(category);
-        }
-      } catch (err) {
-        console.error('Error fetching projects:', err);
-        setError('Failed to load products. Please try again later.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProjects();
-  }, [category]);
+    // Always use static data so images work
+    console.log('📦 Loading products with images...');
+    setProjects(STATIC_PRODUCTS);
+    const cats = [...new Set(STATIC_PRODUCTS.map(p => p.category).filter(Boolean))];
+    setCategories(cats);
+    setLoading(false);
+  }, []);
 
+  // ============================================
+  // FILTERED PRODUCTS
+  // ============================================
   const filteredProjects = useMemo(() => {
     let filtered = [...projects];
     
@@ -620,7 +707,7 @@ const Products = () => {
         <p>Available in all Indian cities and globally.</p>
       </div>
 
-      {/* Schema markup remains the same */}
+      {/* Schema markup */}
       <script type="application/ld+json">
         {JSON.stringify({
           "@context": "https://schema.org",
@@ -902,96 +989,68 @@ const Products = () => {
         )}
 
         <style dangerouslySetInnerHTML={{ __html: `
-          /* ========================================== */
           /* NEUMORPHISM STYLES */
-          /* ========================================== */
           .neumorphic-card {
             background: #e8edf2;
-            box-shadow: 
-              20px 20px 60px #c5cace,
-              -20px -20px 60px #ffffff;
+            box-shadow: 20px 20px 60px #c5cace, -20px -20px 60px #ffffff;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           }
           .neumorphic-card:hover {
-            box-shadow: 
-              25px 25px 70px #c5cace,
-              -25px -25px 70px #ffffff;
+            box-shadow: 25px 25px 70px #c5cace, -25px -25px 70px #ffffff;
             transform: translateY(-2px);
           }
           
           .neumorphic-btn {
             background: #e8edf2;
-            box-shadow: 
-              8px 8px 16px #c5cace,
-              -8px -8px 16px #ffffff;
+            box-shadow: 8px 8px 16px #c5cace, -8px -8px 16px #ffffff;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           }
           .neumorphic-btn:hover {
-            box-shadow: 
-              4px 4px 8px #c5cace,
-              -4px -4px 8px #ffffff;
+            box-shadow: 4px 4px 8px #c5cace, -4px -4px 8px #ffffff;
             transform: scale(0.98);
           }
           
           .neumorphic-btn-active {
             background: #e8edf2;
-            box-shadow: 
-              inset 8px 8px 16px #c5cace,
-              inset -8px -8px 16px #ffffff;
+            box-shadow: inset 8px 8px 16px #c5cace, inset -8px -8px 16px #ffffff;
             color: #2563eb;
           }
           
           .neumorphic-btn-primary {
             background: linear-gradient(145deg, #2563eb, #1d4ed8);
-            box-shadow: 
-              8px 8px 16px #c5cace,
-              -8px -8px 16px #ffffff,
-              inset 0 2px 4px rgba(255,255,255,0.2);
+            box-shadow: 8px 8px 16px #c5cace, -8px -8px 16px #ffffff, inset 0 2px 4px rgba(255,255,255,0.2);
             color: white;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           }
           .neumorphic-btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 
-              12px 12px 24px #c5cace,
-              -12px -12px 24px #ffffff,
-              inset 0 2px 4px rgba(255,255,255,0.2);
+            box-shadow: 12px 12px 24px #c5cace, -12px -12px 24px #ffffff, inset 0 2px 4px rgba(255,255,255,0.2);
           }
           
           .neumorphic-btn-secondary {
             background: #e8edf2;
-            box-shadow: 
-              8px 8px 16px #c5cace,
-              -8px -8px 16px #ffffff;
+            box-shadow: 8px 8px 16px #c5cace, -8px -8px 16px #ffffff;
             color: #2563eb;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           }
           .neumorphic-btn-secondary:hover {
             transform: translateY(-2px);
-            box-shadow: 
-              12px 12px 24px #c5cace,
-              -12px -12px 24px #ffffff;
+            box-shadow: 12px 12px 24px #c5cace, -12px -12px 24px #ffffff;
           }
           
           .neumorphic-icon-btn {
             background: #e8edf2;
-            box-shadow: 
-              4px 4px 8px #c5cace,
-              -4px -4px 8px #ffffff;
+            box-shadow: 4px 4px 8px #c5cace, -4px -4px 8px #ffffff;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           }
           .neumorphic-icon-btn:hover {
-            box-shadow: 
-              2px 2px 4px #c5cace,
-              -2px -2px 4px #ffffff;
+            box-shadow: 2px 2px 4px #c5cace, -2px -2px 4px #ffffff;
             transform: scale(0.95);
           }
           
           .neumorphic-select {
             background: #e8edf2;
-            box-shadow: 
-              inset 4px 4px 8px #c5cace,
-              inset -4px -4px 8px #ffffff;
+            box-shadow: inset 4px 4px 8px #c5cace, inset -4px -4px 8px #ffffff;
             border-radius: 0.75rem;
             padding: 0.25rem;
           }
@@ -1004,73 +1063,53 @@ const Products = () => {
           
           .neumorphic-input {
             background: #e8edf2;
-            box-shadow: 
-              inset 6px 6px 12px #c5cace,
-              inset -6px -6px 12px #ffffff;
+            box-shadow: inset 6px 6px 12px #c5cace, inset -6px -6px 12px #ffffff;
             border: none;
             color: #1a1a2e;
           }
           .neumorphic-input:focus {
-            box-shadow: 
-              inset 8px 8px 16px #c5cace,
-              inset -8px -8px 16px #ffffff;
+            box-shadow: inset 8px 8px 16px #c5cace, inset -8px -8px 16px #ffffff;
           }
           
           .neumorphic-tag {
             background: #e8edf2;
-            box-shadow: 
-              2px 2px 4px #c5cace,
-              -2px -2px 4px #ffffff;
+            box-shadow: 2px 2px 4px #c5cace, -2px -2px 4px #ffffff;
           }
           
           .neumorphic-card-stats {
             background: #e8edf2;
-            box-shadow: 
-              10px 10px 20px #c5cace,
-              -10px -10px 20px #ffffff;
+            box-shadow: 10px 10px 20px #c5cace, -10px -10px 20px #ffffff;
             border-radius: 1rem;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           }
           .neumorphic-card-stats:hover {
-            box-shadow: 
-              14px 14px 28px #c5cace,
-              -14px -14px 28px #ffffff;
+            box-shadow: 14px 14px 28px #c5cace, -14px -14px 28px #ffffff;
             transform: scale(1.02);
           }
           
           .neumorphic-badge {
             background: #e8edf2;
-            box-shadow: 
-              6px 6px 12px #c5cace,
-              -6px -6px 12px #ffffff;
+            box-shadow: 6px 6px 12px #c5cace, -6px -6px 12px #ffffff;
           }
           
           .neumorphic-btn-cta {
             background: white;
             color: #2563eb;
-            box-shadow: 
-              10px 10px 20px rgba(0,0,0,0.1),
-              -10px -10px 20px rgba(255,255,255,0.1);
+            box-shadow: 10px 10px 20px rgba(0,0,0,0.1), -10px -10px 20px rgba(255,255,255,0.1);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           }
           .neumorphic-btn-cta:hover {
-            box-shadow: 
-              15px 15px 30px rgba(0,0,0,0.15),
-              -15px -15px 30px rgba(255,255,255,0.15);
+            box-shadow: 15px 15px 30px rgba(0,0,0,0.15), -15px -15px 30px rgba(255,255,255,0.15);
             transform: translateY(-3px);
           }
 
-          /* ========================================== */
           /* LIQUID GLASS STYLES */
-          /* ========================================== */
           .liquid-glass-container {
             background: rgba(255, 255, 255, 0.25);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.3);
-            box-shadow: 
-              0 8px 32px rgba(0, 0, 0, 0.1),
-              inset 0 1px 0 rgba(255, 255, 255, 0.5);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.5);
           }
           
           .liquid-glass-active {
@@ -1078,9 +1117,7 @@ const Products = () => {
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.4);
-            box-shadow: 
-              0 8px 32px rgba(37, 99, 235, 0.2),
-              inset 0 1px 0 rgba(255, 255, 255, 0.6);
+            box-shadow: 0 8px 32px rgba(37, 99, 235, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.6);
           }
           
           .liquid-glass-modal {
@@ -1088,9 +1125,7 @@ const Products = () => {
             backdrop-filter: blur(40px);
             -webkit-backdrop-filter: blur(40px);
             border: 1px solid rgba(255, 255, 255, 0.4);
-            box-shadow: 
-              0 25px 50px rgba(0, 0, 0, 0.2),
-              inset 0 1px 0 rgba(255, 255, 255, 0.6);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.6);
           }
           
           .liquid-glass-backdrop {
@@ -1115,13 +1150,8 @@ const Products = () => {
             box-shadow: 0 8px 32px rgba(37, 99, 235, 0.2);
           }
           
-          /* Liquid Glass Overlay on Cards */
           .liquid-glass-overlay {
-            background: linear-gradient(135deg, 
-              rgba(255, 255, 255, 0.1) 0%,
-              rgba(255, 255, 255, 0) 50%,
-              rgba(255, 255, 255, 0.1) 100%
-            );
+            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 50%, rgba(255,255,255,0.1) 100%);
             pointer-events: none;
           }
           
@@ -1131,138 +1161,47 @@ const Products = () => {
             left: -50%;
             width: 200%;
             height: 200%;
-            background: linear-gradient(
-              45deg,
-              transparent 0%,
-              rgba(255, 255, 255, 0.05) 25%,
-              rgba(255, 255, 255, 0.1) 50%,
-              rgba(255, 255, 255, 0.05) 75%,
-              transparent 100%
-            );
+            background: linear-gradient(45deg, transparent 0%, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 75%, transparent 100%);
             animation: shimmer 8s infinite linear;
           }
           
           .liquid-glass-bubble {
             position: absolute;
             border-radius: 50%;
-            background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0));
+            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.3), rgba(255,255,255,0));
             animation: bubbleFloat 10s infinite ease-in-out;
           }
           
-          .bubble-1 {
-            width: 120px;
-            height: 120px;
-            top: -30px;
-            right: -30px;
-            animation-delay: 0s;
-          }
+          .bubble-1 { width: 120px; height: 120px; top: -30px; right: -30px; animation-delay: 0s; }
+          .bubble-2 { width: 80px; height: 80px; bottom: -20px; left: -20px; animation-delay: 2s; }
+          .bubble-3 { width: 60px; height: 60px; top: 50%; left: 50%; transform: translate(-50%, -50%); animation-delay: 4s; }
           
-          .bubble-2 {
-            width: 80px;
-            height: 80px;
-            bottom: -20px;
-            left: -20px;
-            animation-delay: 2s;
-          }
+          @keyframes shimmer { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+          @keyframes bubbleFloat { 0%, 100% { transform: translate(0,0) scale(1); } 25% { transform: translate(20px,-20px) scale(1.1); } 50% { transform: translate(-10px,30px) scale(0.9); } 75% { transform: translate(30px,10px) scale(1.05); } }
+          @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-30px); } }
+          @keyframes floatDelayed { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-25px); } }
           
-          .bubble-3 {
-            width: 60px;
-            height: 60px;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            animation-delay: 4s;
-          }
+          .animate-float { animation: float 6s ease-in-out infinite; }
+          .animate-float-delayed { animation: floatDelayed 7s ease-in-out infinite 1s; }
           
-          @keyframes shimmer {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-          
-          @keyframes bubbleFloat {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            25% { transform: translate(20px, -20px) scale(1.1); }
-            50% { transform: translate(-10px, 30px) scale(0.9); }
-            75% { transform: translate(30px, 10px) scale(1.05); }
-          }
-          
-          @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-30px); }
-          }
-          
-          @keyframes floatDelayed {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-25px); }
-          }
-          
-          .animate-float {
-            animation: float 6s ease-in-out infinite;
-          }
-          
-          .animate-float-delayed {
-            animation: floatDelayed 7s ease-in-out infinite 1s;
-          }
-
-          /* ========================================== */
-          /* BENTO GRID STYLES */
-          /* ========================================== */
-          .bento-card {
-            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-          }
-          .bento-card:hover {
-            transform: translateY(-4px);
-            z-index: 10;
-          }
+          .bento-card { transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+          .bento-card:hover { transform: translateY(-4px); z-index: 10; }
           
           .bg-grid-pattern {
-            background-image: 
-              linear-gradient(rgba(0,0,0,0.02) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(0,0,0,0.02) 1px, transparent 1px);
+            background-image: linear-gradient(rgba(0,0,0,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.02) 1px, transparent 1px);
             background-size: 50px 50px;
-          }
-
-          /* ========================================== */
-          /* ANIMATIONS */
-          /* ========================================== */
-          @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-          }
-          
-          @keyframes scaleIn {
-            from { opacity: 0; transform: scale(0.9); }
-            to { opacity: 1; transform: scale(1); }
           }
           
           .animate-fade-in { animation: fadeIn 0.4s ease-out; }
           .animate-scale-in { animation: scaleIn 0.4s ease-out; }
           
-          .line-clamp-1 {
-            display: -webkit-box;
-            -webkit-line-clamp: 1;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-          }
+          @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+          @keyframes scaleIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
           
-          .line-clamp-2 {
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-          }
+          .line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+          .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
           
-          .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            white-space: nowrap;
-            border-width: 0;
-          }
+          .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border-width: 0; }
         `}} />
       </div>
     </>
